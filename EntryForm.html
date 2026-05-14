@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Google Sans', Roboto, 'Noto Sans Thai', sans-serif;
+      background: #f8fafb;
+      color: #1a1a1a;
+      padding: 24px 28px;
+      font-size: 14px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+    .header h2 { font-size: 20px; color: #1a73e8; }
+    .header .emoji { font-size: 28px; }
+    .subtitle { color: #777; font-size: 12px; margin-bottom: 20px; }
+
+    /* Round pills */
+    .round-section { margin-bottom: 18px; }
+    .round-label { font-size: 12px; font-weight: 600; color: #666; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .round-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .round-pill {
+      padding: 7px 14px;
+      border-radius: 20px;
+      border: 1.5px solid #dadce0;
+      background: #fff;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .round-pill:hover { border-color: #1a73e8; background: #f0f7ff; }
+    .round-pill.active {
+      background: #1a73e8;
+      color: #fff;
+      border-color: #1a73e8;
+      font-weight: 600;
+    }
+    .round-pill .date-range { font-size: 10px; opacity: 0.8; display: block; margin-top: 2px; }
+
+    /* Form grid */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 20px;
+      margin-bottom: 16px;
+    }
+    .form-group { }
+    .form-group label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #5f6368;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+    .form-group select, .form-group input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid #dadce0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: #fff;
+    }
+    .form-group select:focus, .form-group input:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 3px rgba(26,115,232,0.12);
+    }
+    .form-group input.readonly {
+      background: #FFF9C4;
+      font-weight: 700;
+      font-size: 18px;
+      color: #2e7d32;
+      text-align: center;
+      cursor: default;
+    }
+    .form-group.full { grid-column: 1 / -1; }
+
+    /* Buttons */
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: #1a73e8;
+      color: #fff;
+      flex: 1;
+    }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-primary:disabled { background: #bbb; cursor: not-allowed; }
+    .btn-secondary {
+      background: #fff;
+      color: #1a73e8;
+      border: 1.5px solid #dadce0;
+    }
+    .btn-secondary:hover { background: #f0f7ff; border-color: #1a73e8; }
+
+    /* Status */
+    .status {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      display: none;
+    }
+    .status.success { display: block; background: #E8F5E9; color: #2e7d32; }
+    .status.error { display: block; background: #FFEBEE; color: #c62828; }
+    .status.info { display: block; background: #E3F2FD; color: #1565C0; }
+
+    hr { border: none; border-top: 1px solid #e8eaed; margin: 16px 0; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span class="emoji">🥥</span>
+    <h2>กรอกข้อมูลมะพร้าวน้ำหอม</h2>
+  </div>
+  <p class="subtitle">เลือกรอบ → จังหวัด → แปลง → ทะลาย → กรอกข้อมูล</p>
+
+  <!-- ROUND SELECTOR -->
+  <div class="round-section">
+    <div class="round-label">📅 เลือกรอบการเก็บ</div>
+    <div class="round-pills" id="roundPills"></div>
+    <input type="hidden" id="round" value="">
+  </div>
+
+  <!-- LOCATION -->
+  <div class="form-grid">
+    <div class="form-group">
+      <label>จังหวัด</label>
+      <select id="province" onchange="autoLoad()">
+        <option value="">-- เลือกจังหวัด --</option>
+        <option value="นครปฐม">นครปฐม</option>
+        <option value="ราชบุรี">ราชบุรี</option>
+        <option value="สมุทรสาคร">สมุทรสาคร</option>
+        <option value="สมุทรสงคราม">สมุทรสงคราม</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>แปลงที่</label>
+      <select id="plot" onchange="autoLoad()"></select>
+    </div>
+    <div class="form-group">
+      <label>ทะลายที่</label>
+      <select id="bunch" onchange="autoLoad()">
+        <option value="">-- เลือก --</option>
+        <option value="1">ทะลายที่ 1</option>
+        <option value="2">ทะลายที่ 2</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <button class="btn btn-secondary" onclick="loadExisting()" style="margin-top:18px;width:100%;">
+        📂 โหลดข้อมูลเดิม
+      </button>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- DATA INPUT -->
+  <div class="form-grid">
+    <div class="form-group">
+      <label>❶ จำนวนผลคุณภาพ (ผล)</label>
+      <input type="number" id="quality" min="0" step="1" oninput="calcTotal()" placeholder="0">
+    </div>
+    <div class="form-group">
+      <label>❷ จำนวนผลตํ่ากว่าเกณฑ์ (ผล)</label>
+      <input type="number" id="below" min="0" step="1" oninput="calcTotal()" placeholder="0">
+    </div>
+    <div class="form-group">
+      <label>❸ จำนวนผลเสีย (ผล)</label>
+      <input type="number" id="damaged" min="0" step="1" oninput="calcTotal()" placeholder="0">
+    </div>
+    <div class="form-group">
+      <label>📦 ผลผลิตทั้งหมด = ❶+❷+❸</label>
+      <input type="text" id="totalDisplay" class="readonly" value="0" readonly>
+    </div>
+    <div class="form-group">
+      <label>⚖️ นํ้าหนักผลเฉลี่ย (กก.)</label>
+      <input type="number" id="weight" min="0" step="0.01" placeholder="0.00">
+    </div>
+    <div class="form-group">
+      <label>📏 เส้นรอบวงเฉลี่ย (ซม.)</label>
+      <input type="number" id="circum" min="0" step="0.01" placeholder="0.00">
+    </div>
+    <div class="form-group full">
+      <label>📝 หมายเหตุ</label>
+      <input type="text" id="notes" placeholder="(ถ้ามี)">
+    </div>
+  </div>
+
+  <!-- BUTTONS -->
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="google.script.host.close()">ปิด</button>
+    <button class="btn btn-primary" id="btnSave" onclick="save()">💾 บันทึกข้อมูล</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <script>
+    // --- ROUND PILLS ---
+    const roundDates = [
+      { num: 1, start: '01/06/69', end: '21/06/69' },
+      { num: 2, start: '22/06/69', end: '12/07/69' },
+      { num: 3, start: '13/07/69', end: '02/08/69' },
+      { num: 4, start: '03/08/69', end: '23/08/69' },
+      { num: 5, start: '24/08/69', end: '13/09/69' },
+      { num: 6, start: '14/09/69', end: '04/10/69' }
+    ];
+
+    const container = document.getElementById('roundPills');
+    roundDates.forEach(function(rd) {
+      const pill = document.createElement('div');
+      pill.className = 'round-pill';
+      pill.innerHTML = 'รอบที่ ' + rd.num + '<span class="date-range">' + rd.start + ' – ' + rd.end + '</span>';
+      pill.onclick = function() {
+        document.querySelectorAll('.round-pill').forEach(function(p) { p.classList.remove('active'); });
+        pill.classList.add('active');
+        document.getElementById('round').value = rd.num;
+        autoLoad();
+      };
+      container.appendChild(pill);
+    });
+
+    // Default: select round 1
+    document.querySelector('.round-pill').classList.add('active');
+    document.getElementById('round').value = '1';
+
+    // --- PLOT DROPDOWN ---
+    const plotSelect = document.getElementById('plot');
+    for (let i = 1; i <= 10; i++) {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = 'แปลงที่ ' + i;
+      plotSelect.appendChild(opt);
+    }
+
+    // --- HELPERS ---
+    function calcTotal() {
+      const q = parseInt(document.getElementById('quality').value) || 0;
+      const b = parseInt(document.getElementById('below').value) || 0;
+      const d = parseInt(document.getElementById('damaged').value) || 0;
+      document.getElementById('totalDisplay').value = q + b + d;
+    }
+
+    function getForm() {
+      return {
+        round: document.getElementById('round').value,
+        province: document.getElementById('province').value,
+        plot: document.getElementById('plot').value,
+        bunch: document.getElementById('bunch').value,
+        quality: document.getElementById('quality').value,
+        below: document.getElementById('below').value,
+        damaged: document.getElementById('damaged').value,
+        weight: document.getElementById('weight').value,
+        circum: document.getElementById('circum').value,
+        notes: document.getElementById('notes').value
+      };
+    }
+
+    function setStatus(msg, type) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'status ' + type;
+    }
+
+    function autoLoad() {
+      const f = getForm();
+      if (f.round && f.province && f.plot && f.bunch) {
+        loadExisting();
+      }
+    }
+
+    // --- LOAD ---
+    function loadExisting() {
+      const f = getForm();
+      if (!f.round || !f.province || !f.plot || !f.bunch) return;
+
+      setStatus('⏳ กำลังโหลด...', 'info');
+      google.script.run
+        .withSuccessHandler(function(result) {
+          document.getElementById('status').className = 'status';
+          if (result) {
+            document.getElementById('quality').value = result.quality;
+            document.getElementById('below').value = result.below;
+            document.getElementById('damaged').value = result.damaged;
+            document.getElementById('weight').value = result.weight;
+            document.getElementById('circum').value = result.circum;
+            document.getElementById('notes').value = result.notes || '';
+            calcTotal();
+            setStatus('✅ โหลดข้อมูลแล้ว', 'success');
+            setTimeout(function() { document.getElementById('status').className = 'status'; }, 2000);
+          } else {
+            // Clear form
+            document.getElementById('quality').value = '';
+            document.getElementById('below').value = '';
+            document.getElementById('damaged').value = '';
+            document.getElementById('weight').value = '';
+            document.getElementById('circum').value = '';
+            document.getElementById('notes').value = '';
+            document.getElementById('totalDisplay').value = '0';
+            setStatus('📝 ยังไม่เคยกรอกข้อมูล', 'info');
+          }
+        })
+        .withFailureHandler(function(err) {
+          setStatus('❌ โหลดล้มเหลว: ' + err.message, 'error');
+        })
+        .loadEntry(f.round, f.province, f.plot, f.bunch);
+    }
+
+    // --- SAVE ---
+    function save() {
+      const f = getForm();
+      if (!f.round) { setStatus('⚠️ กรุณาเลือกรอบ', 'error'); return; }
+      if (!f.province) { setStatus('⚠️ กรุณาเลือกจังหวัด', 'error'); return; }
+      if (!f.plot) { setStatus('⚠️ กรุณาเลือกแปลงที่', 'error'); return; }
+      if (!f.bunch) { setStatus('⚠️ กรุณาเลือกทะลายที่', 'error'); return; }
+      if (!f.quality && !f.below && !f.damaged) {
+        setStatus('⚠️ กรุณากรอกจำนวนผลอย่างน้อย 1 ช่อง', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btnSave');
+      btn.disabled = true;
+      btn.textContent = '⏳ กำลังบันทึก...';
+
+      google.script.run
+        .withSuccessHandler(function(msg) {
+          btn.disabled = false;
+          btn.textContent = '💾 บันทึกข้อมูล';
+          setStatus(msg, 'success');
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.textContent = '💾 บันทึกข้อมูล';
+          setStatus('❌ ' + err.message, 'error');
+        })
+        .saveEntry(f.round, f.province, f.plot, f.bunch,
+                   f.quality, f.below, f.damaged,
+                   f.weight, f.circum, f.notes);
+    }
+
+    // Auto-load on initial open
+    setTimeout(autoLoad, 300);
+  </script>
+</body>
+</html>
