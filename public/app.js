@@ -9,6 +9,7 @@ const state = {
   user: null,
   data: null,
   activeRound: 1,
+  dashboardView: 'cards',
 };
 
 const el = (id) => document.getElementById(id);
@@ -35,6 +36,12 @@ function bindEvents() {
 
   document.querySelectorAll('.tab').forEach((button) => {
     button.addEventListener('click', () => showTab(button.dataset.tab));
+  });
+  document.querySelectorAll('.view-btn').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.dashboardView = button.dataset.view;
+      renderDashboard();
+    });
   });
 }
 
@@ -156,6 +163,7 @@ function renderDashboard() {
   const agg = aggregate();
   renderOverall(agg.overall);
   renderCards(agg.provinces);
+  renderVisual(agg.provinces);
   renderTable(agg.provinces);
   el('roundButtons').querySelectorAll('button').forEach((button) => {
     const active = state.activeRound === 'all'
@@ -163,6 +171,12 @@ function renderDashboard() {
       : Number(button.dataset.round) === state.activeRound;
     button.classList.toggle('active', active);
   });
+  document.querySelectorAll('.view-btn').forEach((button) => {
+    button.classList.toggle('active', button.dataset.view === state.dashboardView);
+  });
+  el('provinceCards').hidden = state.dashboardView !== 'cards';
+  el('dashboardVisual').hidden = state.dashboardView === 'cards' || state.dashboardView === 'table';
+  document.querySelector('.table-wrap').hidden = state.dashboardView !== 'table';
 }
 
 function aggregate() {
@@ -236,6 +250,75 @@ function renderCards(provinces) {
       </article>
     `;
   }).join('');
+}
+
+function renderVisual(provinces) {
+  if (state.dashboardView === 'bars') return renderBars(provinces);
+  if (state.dashboardView === 'trend') return renderTrend();
+  el('dashboardVisual').innerHTML = '';
+}
+
+function renderBars(provinces) {
+  const maxTotal = Math.max(...PROVINCES.map((province) => provinces[province.code].totalFruits), 1);
+  el('dashboardVisual').innerHTML = `
+    <section class="visual-panel">
+      <h3>Province composition</h3>
+      <div class="bar-list">
+        ${PROVINCES.map((province) => {
+          const data = provinces[province.code];
+          const total = data.totalFruits || 0;
+          const width = Math.max((total / maxTotal) * 100, total > 0 ? 6 : 0);
+          const q = total > 0 ? (data.quality / total) * 100 : 0;
+          const b = total > 0 ? (data.below / total) * 100 : 0;
+          const d = total > 0 ? (data.damaged / total) * 100 : 0;
+          return `
+            <div class="bar-row">
+              <div class="bar-name">${province.label}</div>
+              <div class="bar-track-wide" style="width:${width}%">
+                <span class="seg quality" style="width:${q}%"></span>
+                <span class="seg below" style="width:${b}%"></span>
+                <span class="seg damaged" style="width:${d}%"></span>
+              </div>
+              <div class="bar-total">${total.toLocaleString()}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <div class="legend">
+        <span><i class="dot quality"></i>Quality</span>
+        <span><i class="dot below"></i>Below</span>
+        <span><i class="dot damaged"></i>Damaged</span>
+      </div>
+    </section>
+  `;
+}
+
+function renderTrend() {
+  const rounds = state.data.rounds.map((round) => {
+    const rate = round.overall.qualityRate || 0;
+    return {
+      label: `R${round.round}`,
+      total: round.overall.totalFruits || 0,
+      rate,
+      height: Math.max(rate * 100, round.overall.totalFruits > 0 ? 3 : 0),
+    };
+  });
+
+  el('dashboardVisual').innerHTML = `
+    <section class="visual-panel">
+      <h3>Quality rate by round</h3>
+      <div class="trend-chart">
+        ${rounds.map((round) => `
+          <div class="trend-item">
+            <div class="trend-value">${(round.rate * 100).toFixed(0)}%</div>
+            <div class="trend-bar"><span class="${rateClass(round.rate)}" style="height:${round.height}%"></span></div>
+            <div class="trend-label">${round.label}</div>
+            <div class="trend-total">${round.total.toLocaleString()}</div>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+  `;
 }
 
 function renderTable(provinces) {

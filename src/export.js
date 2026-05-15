@@ -1,0 +1,76 @@
+const HEADERS = [
+  'Round',
+  'Province Code',
+  'Province',
+  'Plot',
+  'Bunch',
+  'Quality',
+  'Below Standard',
+  'Damaged',
+  'Total',
+  'Quality Rate',
+  'Avg Weight (kg)',
+  'Avg Circumference (cm)',
+  'Notes',
+  'Recorded At',
+];
+
+export function entriesToExcelHtml(entries) {
+  const rows = entries.map((entry) => {
+    const quality = Number(entry.quality) || 0;
+    const below = Number(entry.below) || 0;
+    const damaged = Number(entry.damaged) || 0;
+    const total = quality + below + damaged;
+    const rate = total > 0 ? `${((quality / total) * 100).toFixed(2)}%` : '';
+
+    return [
+      entry.round,
+      entry.province_code,
+      entry.province_label || entry.province_code,
+      entry.plot,
+      entry.bunch,
+      quality,
+      below,
+      damaged,
+      total,
+      rate,
+      entry.weight ?? '',
+      entry.circum ?? '',
+      entry.notes ?? '',
+      entry.recorded_at ?? '',
+    ];
+  });
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    table { border-collapse: collapse; }
+    th, td { border: 1px solid #999; padding: 6px 8px; }
+    th { background: #d9ead3; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <table>
+    <thead><tr>${HEADERS.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+    <tbody>
+      ${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('\n')}
+    </tbody>
+  </table>
+</body>
+</html>`;
+}
+
+export function exportFilename(date = new Date()) {
+  return `coconut-doae-${date.toISOString().slice(0, 10)}.xls`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
