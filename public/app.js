@@ -1,8 +1,8 @@
 const PROVINCES = [
-  { code: 'nakhon_pathom', label: 'Nakhon Pathom' },
-  { code: 'ratchaburi', label: 'Ratchaburi' },
-  { code: 'samut_sakhon', label: 'Samut Sakhon' },
-  { code: 'samut_songkhram', label: 'Samut Songkhram' },
+  { code: 'nakhon_pathom', label: 'นครปฐม' },
+  { code: 'ratchaburi', label: 'ราชบุรี' },
+  { code: 'samut_sakhon', label: 'สมุทรสาคร' },
+  { code: 'samut_songkhram', label: 'สมุทรสงคราม' },
 ];
 
 const state = {
@@ -18,8 +18,8 @@ init();
 async function init() {
   fillSelect(el('loginProvince'), PROVINCES, 'code', 'label');
   fillSelect(el('province'), PROVINCES, 'code', 'label');
-  fillNumberSelect(el('round'), 1, 6, 'Round ');
-  fillNumberSelect(el('plot'), 1, 10, 'Plot ');
+  fillNumberSelect(el('round'), 1, 6, 'รอบที่ ');
+  fillNumberSelect(el('plot'), 1, 10, 'แปลงที่ ');
   bindEvents();
   await loadMe();
 }
@@ -40,7 +40,7 @@ function bindEvents() {
 
 async function login(event) {
   event.preventDefault();
-  setStatus('loginStatus', 'Checking...', '');
+  setStatus('loginStatus', 'กำลังตรวจสอบ...', '');
   try {
     const response = await api('/api/login', {
       method: 'POST',
@@ -54,7 +54,8 @@ async function login(event) {
     showApp();
     await loadDashboard();
   } catch (error) {
-    setStatus('loginStatus', error.message, 'error');
+    console.error('Login Error:', error);
+    setStatus('loginStatus', `เข้าสู่ระบบไม่สำเร็จ: ${error.message}`, 'error');
   }
 }
 
@@ -134,7 +135,7 @@ function buildRoundButtons() {
   const wrap = el('roundButtons');
   wrap.innerHTML = '';
   const all = document.createElement('button');
-  all.textContent = 'All rounds';
+  all.textContent = 'ทุกรอบการประเมิน';
   all.dataset.round = 'all';
   wrap.append(all);
 
@@ -212,10 +213,10 @@ function finalize(summary) {
 
 function renderOverall(overall) {
   el('overall').innerHTML = [
-    metric('Total fruits', overall.totalFruits.toLocaleString()),
-    metric('Quality rate', `${(overall.qualityRate * 100).toFixed(1)}%`, rateClass(overall.qualityRate)),
-    metric('Avg weight', overall.avgWeight === null ? '--' : overall.avgWeight.toFixed(2)),
-    metric('Avg circumference', overall.avgCircum === null ? '--' : overall.avgCircum.toFixed(2)),
+    metric('ผลผลิตรวม (ลูก)', overall.totalFruits.toLocaleString()),
+    metric('อัตราคุณภาพ', `${(overall.qualityRate * 100).toFixed(1)}%`, rateClass(overall.qualityRate)),
+    metric('น้ำหนักเฉลี่ย', overall.avgWeight === null ? '--' : overall.avgWeight.toFixed(2)),
+    metric('เส้นรอบวงเฉลี่ย', overall.avgCircum === null ? '--' : overall.avgCircum.toFixed(2)),
   ].join('');
 }
 
@@ -226,11 +227,11 @@ function renderCards(provinces) {
       <article class="card">
         <h3>${province.label}<span class="${rateClass(data.qualityRate)}">${(data.qualityRate * 100).toFixed(0)}%</span></h3>
         <div class="rows">
-          ${row('Total', data.totalFruits.toLocaleString())}
-          ${row('Quality', data.quality.toLocaleString())}
-          ${row('Below', data.below.toLocaleString())}
-          ${row('Damaged', data.damaged.toLocaleString())}
-          ${row('Recorded', `${data.filled}/${data.maxRows}`)}
+          ${row('รวมทั้งหมด', data.totalFruits.toLocaleString())}
+          ${row('คุณภาพดี', data.quality.toLocaleString())}
+          ${row('ตกเกรด', data.below.toLocaleString())}
+          ${row('เสียหาย', data.damaged.toLocaleString())}
+          ${row('บันทึกแล้ว', `${data.filled}/${data.maxRows}`)}
         </div>
       </article>
     `;
@@ -240,7 +241,7 @@ function renderCards(provinces) {
 function renderTable(provinces) {
   el('compareTable').innerHTML = `
     <thead>
-      <tr><th>Province</th><th>Total</th><th>Quality</th><th>Below</th><th>Damaged</th><th>Rate</th><th>Recorded</th></tr>
+      <tr><th>จังหวัด</th><th>ผลผลิตรวม</th><th>คุณภาพดี</th><th>ตกเกรด</th><th>เสียหาย</th><th>อัตราคุณภาพ</th><th>บันทึกแล้ว</th></tr>
     </thead>
     <tbody>
       ${PROVINCES.map((province) => {
@@ -263,9 +264,10 @@ function renderTable(provinces) {
 
 function showApp() {
   el('loginView').hidden = true;
+  el('heroSection').hidden = true;
   el('appView').hidden = false;
   el('logoutBtn').hidden = false;
-  el('userLine').textContent = `${state.user.province_label} (${state.user.role})`;
+  el('userLine').textContent = `เข้าใช้งานโดย: ${state.user.province_label} (${state.user.role === 'admin' ? 'ผู้ดูแล' : 'เจ้าหน้าที่'})`;
 
   const isAdmin = state.user.role === 'admin';
   el('provinceWrap').hidden = !isAdmin;
@@ -274,9 +276,10 @@ function showApp() {
 
 function showLogin() {
   el('loginView').hidden = false;
+  el('heroSection').hidden = false;
   el('appView').hidden = true;
   el('logoutBtn').hidden = true;
-  el('userLine').textContent = 'Not signed in';
+  el('userLine').textContent = 'ยังไม่ได้เข้าสู่ระบบ';
 }
 
 function showTab(tab) {
