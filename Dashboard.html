@@ -5,47 +5,75 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
     :root {
-      --green: #1e8e3e;
-      --green-bg: #e6f4ea;
-      --yellow: #f9ab00;
-      --yellow-bg: #fef7e0;
-      --red: #d93025;
-      --red-bg: #fce8e6;
-      --blue: #1a73e8;
-      --blue-bg: #e8f0fe;
+      --green: #4FAE7B;
+      --green-bg: #E7F6EF;
+      --yellow: #F2B84B;
+      --yellow-bg: #FFF5DA;
+      --red: #E97878;
+      --red-bg: #FDECEC;
+      --blue: #6EA8FE;
+      --blue-bg: #EAF2FF;
+      --ink: #243044;
+      --muted: #68758A;
       --card-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
       --card-hover: 0 4px 12px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Google Sans', Roboto, 'Noto Sans Thai', 'Sarabun', sans-serif;
-      background: #f1f3f4;
-      color: #202124;
+      font-family: 'Kanit', 'Google Sans', Roboto, 'Noto Sans Thai', sans-serif;
+      background: #F6F8FB;
+      color: var(--ink);
       line-height: 1.5;
       min-height: 100vh;
+      font-size: 16px;
     }
 
     /* ===== HEADER ===== */
     .app-header {
-      background: linear-gradient(135deg, #1a73e8 0%, #0d5bbd 100%);
+      background: linear-gradient(135deg, #7FB3FF 0%, #8ED7C6 100%);
       color: #fff;
       padding: 20px 32px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.12);
     }
     .app-header h1 {
-      font-size: 22px;
+      font-size: 28px;
       font-weight: 600;
       display: flex;
       align-items: center;
       gap: 10px;
     }
     .app-header .sub {
-      font-size: 13px;
+      font-size: 15px;
       opacity: 0.85;
       margin-top: 2px;
     }
+    .auth-line {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-top: 8px;
+    }
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .nav-btn {
+      border: 1px solid rgba(255,255,255,0.7);
+      background: rgba(255,255,255,0.14);
+      color: #fff;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,0.22); }
 
     /* ===== MAIN ===== */
     .main { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
@@ -58,25 +86,25 @@
       flex-wrap: wrap;
     }
     .round-btn {
-      padding: 8px 20px;
+      padding: 10px 22px;
       border-radius: 24px;
       border: 2px solid #dadce0;
       background: #fff;
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
       color: #5f6368;
       white-space: nowrap;
     }
-    .round-btn:hover { border-color: #1a73e8; color: #1a73e8; }
+    .round-btn:hover { border-color: var(--blue); color: #3D73C9; }
     .round-btn.active {
-      background: #1a73e8;
+      background: var(--blue);
       color: #fff;
-      border-color: #1a73e8;
+      border-color: var(--blue);
       font-weight: 600;
     }
-    .round-btn .date { font-size: 10px; opacity: 0.75; display: block; }
+    .round-btn .date { font-size: 12px; opacity: 0.78; display: block; }
 
     /* ===== OVERALL STATS BAR ===== */
     .overall-bar {
@@ -87,28 +115,103 @@
     .overall-card {
       flex: 1;
       background: #fff;
-      border-radius: 12px;
+      border-radius: 8px;
       padding: 20px;
       box-shadow: var(--card-shadow);
       text-align: center;
     }
     .overall-card .label {
-      font-size: 11px;
+      font-size: 13px;
       text-transform: uppercase;
-      color: #5f6368;
+      color: var(--muted);
       font-weight: 600;
       letter-spacing: 0.5px;
       margin-bottom: 6px;
     }
     .overall-card .value {
-      font-size: 28px;
+      font-size: 34px;
       font-weight: 700;
-      color: #202124;
+      color: var(--ink);
     }
     .overall-card .value.green { color: var(--green); }
     .overall-card .value.yellow { color: var(--yellow); }
     .overall-card .value.red { color: var(--red); }
-    .overall-card .unit { font-size: 13px; font-weight: 400; color: #5f6368; }
+    .overall-card .unit { font-size: 15px; font-weight: 400; color: var(--muted); }
+
+    .chart-section {
+      background: #fff;
+      border-radius: 8px;
+      padding: 22px;
+      box-shadow: var(--card-shadow);
+      margin-bottom: 24px;
+      border: 1px solid #E8EDF5;
+    }
+    .chart-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .chart-head h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .chart-head .hint {
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .province-chart {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 12px 16px;
+      align-items: center;
+    }
+    .chart-province {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink);
+      text-align: right;
+    }
+    .stacked-bar {
+      height: 34px;
+      display: flex;
+      overflow: hidden;
+      border-radius: 8px;
+      background: #EEF2F7;
+      box-shadow: inset 0 0 0 1px rgba(104,117,138,0.12);
+    }
+    .stack-segment {
+      min-width: 0;
+      transition: width .25s ease;
+    }
+    .stack-quality { background: #8BD7A8; }
+    .stack-below { background: #FFD88C; }
+    .stack-damaged { background: #F4A1A1; }
+    .chart-legend {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .legend-item { display: inline-flex; align-items: center; gap: 7px; }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+    .chart-empty {
+      padding: 28px;
+      border: 1px dashed #D7DFEA;
+      border-radius: 8px;
+      color: var(--muted);
+      text-align: center;
+      background: #FAFCFF;
+    }
 
     /* ===== PROVINCE CARDS GRID ===== */
     .province-grid {
@@ -118,7 +221,7 @@
     }
     .province-card {
       background: #fff;
-      border-radius: 14px;
+      border-radius: 8px;
       padding: 24px;
       box-shadow: var(--card-shadow);
       transition: box-shadow 0.25s, transform 0.25s;
@@ -149,12 +252,12 @@
       margin-bottom: 16px;
     }
     .card-province {
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 700;
-      color: #202124;
+      color: var(--ink);
     }
     .card-badge {
-      font-size: 10px;
+      font-size: 12px;
       padding: 3px 10px;
       border-radius: 12px;
       font-weight: 600;
@@ -188,17 +291,17 @@
       transform: translate(-50%, -50%);
       font-size: 18px;
       font-weight: 700;
-      color: #202124;
+      color: var(--ink);
     }
 
-    .gauge-info { font-size: 12px; }
+    .gauge-info { font-size: 15px; }
     .gauge-info .row {
       display: flex;
       justify-content: space-between;
       padding: 2px 0;
-      color: #5f6368;
+      color: var(--muted);
     }
-    .gauge-info .row span:last-child { font-weight: 600; color: #202124; }
+    .gauge-info .row span:last-child { font-weight: 600; color: var(--ink); }
 
     /* Data bars */
     .data-bars { margin-top: 14px; }
@@ -208,7 +311,7 @@
       gap: 8px;
       margin-bottom: 8px;
     }
-    .data-bar .bar-label { width: 80px; font-size: 11px; color: #5f6368; text-align: right; flex-shrink: 0; }
+    .data-bar .bar-label { width: 86px; font-size: 14px; color: var(--muted); text-align: right; flex-shrink: 0; }
     .data-bar .bar-track {
       flex: 1;
       height: 8px;
@@ -221,10 +324,10 @@
       border-radius: 4px;
       transition: width 0.5s ease;
     }
-    .data-bar .bar-fill.quality-bg { background: #4caf50; }
-    .data-bar .bar-fill.below-bg { background: #ff9800; }
-    .data-bar .bar-fill.damaged-bg { background: #f44336; }
-    .data-bar .bar-value { width: 32px; font-size: 11px; font-weight: 600; text-align: right; color: #202124; flex-shrink: 0; }
+    .data-bar .bar-fill.quality-bg { background: #8BD7A8; }
+    .data-bar .bar-fill.below-bg { background: #FFD88C; }
+    .data-bar .bar-fill.damaged-bg { background: #F4A1A1; }
+    .data-bar .bar-value { width: 38px; font-size: 14px; font-weight: 600; text-align: right; color: var(--ink); flex-shrink: 0; }
 
     /* Footer stats */
     .card-footer {
@@ -241,18 +344,18 @@
     .card-footer .stat .val {
       font-size: 15px;
       font-weight: 700;
-      color: #202124;
+      color: var(--ink);
     }
     .card-footer .stat .lbl {
-      font-size: 10px;
-      color: #80868b;
+      font-size: 12px;
+      color: var(--muted);
       margin-top: 1px;
     }
 
     /* Completion indicator */
     .completion {
-      font-size: 11px;
-      color: #80868b;
+      font-size: 13px;
+      color: var(--muted);
       margin-top: 10px;
       text-align: center;
     }
@@ -270,43 +373,43 @@
     .empty-state {
       text-align: center;
       padding: 60px 20px;
-      color: #80868b;
+      color: var(--muted);
     }
     .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
-    .empty-state p { font-size: 15px; }
+    .empty-state p { font-size: 16px; }
 
     /* Loading shimmer */
-    .loading { text-align: center; padding: 80px; color: #80868b; font-size: 16px; }
+    .loading { text-align: center; padding: 80px; color: var(--muted); font-size: 17px; }
 
     /* Round comparison table */
     .compare-section { margin-top: 32px; }
     .compare-section h3 {
-      font-size: 16px;
+      font-size: 20px;
       font-weight: 600;
       margin-bottom: 12px;
-      color: #202124;
+      color: var(--ink);
     }
     .compare-table {
       width: 100%;
       background: #fff;
-      border-radius: 12px;
+      border-radius: 8px;
       overflow: hidden;
       box-shadow: var(--card-shadow);
       border-collapse: collapse;
     }
     .compare-table th {
-      background: #f8f9fa;
+      background: #F2F7FF;
       padding: 10px 12px;
-      font-size: 11px;
+      font-size: 14px;
       text-transform: uppercase;
-      color: #5f6368;
+      color: var(--muted);
       font-weight: 600;
       text-align: center;
       border-bottom: 2px solid #e8eaed;
     }
     .compare-table td {
       padding: 10px 12px;
-      font-size: 13px;
+      font-size: 15px;
       text-align: center;
       border-bottom: 1px solid #f1f3f4;
     }
@@ -339,8 +442,14 @@
 </head>
 <body>
   <div class="app-header">
-    <h1>🥥 Dashboard คุณภาพมะพร้าวน้ำหอม</h1>
-    <div class="sub">ระบบติดตาม 4 จังหวัด · 6 รอบการเก็บ · เริ่ม 1 มิถุนายน 2569</div>
+    <div class="header-row">
+      <div>
+        <h1>🥥 Dashboard คุณภาพมะพร้าวน้ำหอม</h1>
+        <div class="sub">ระบบติดตาม 4 จังหวัด · 6 รอบการเก็บ · เริ่ม 1 มิถุนายน 2569</div>
+      </div>
+      <a class="nav-btn" href="<?= webAppUrl ?>?page=form" target="_top">✏️ กรอกข้อมูล</a>
+    </div>
+    <div class="auth-line" id="authLine">กำลังตรวจ Google login...</div>
   </div>
 
   <div class="main">
@@ -349,6 +458,20 @@
 
     <!-- OVERALL STATS -->
     <div class="overall-bar" id="overallBar" style="display:none;"></div>
+
+    <!-- PROVINCE BAR CHART -->
+    <div class="chart-section" id="provinceChartSection" style="display:none;">
+      <div class="chart-head">
+        <h3>📊 กราฟเทียบผลผลิตรายจังหวัด</h3>
+        <div class="hint">แยกผลคุณภาพ / ต่ำกว่าเกณฑ์ / ผลเสีย</div>
+      </div>
+      <div class="province-chart" id="provinceChart"></div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-dot stack-quality"></span> ผลคุณภาพ</span>
+        <span class="legend-item"><span class="legend-dot stack-below"></span> ต่ำกว่าเกณฑ์</span>
+        <span class="legend-item"><span class="legend-dot stack-damaged"></span> ผลเสีย</span>
+      </div>
+    </div>
 
     <!-- PROVINCE CARDS -->
     <div class="province-grid" id="provinceGrid"></div>
@@ -370,6 +493,26 @@
     // --- INIT ---
     function init() {
       document.getElementById('emptyState').innerHTML = '<div class="loading">⏳ กำลังโหลดข้อมูล...</div>';
+      google.script.run
+        .withSuccessHandler(function(user) {
+          if (!user || !user.signedIn) {
+            document.getElementById('authLine').textContent = 'ยังไม่ได้ login Google';
+            document.getElementById('emptyState').innerHTML =
+              '<div class="empty-state"><div class="icon">⚠️</div><p>กรุณาเปิด Web App ด้วย Google account</p></div>';
+            return;
+          }
+          document.getElementById('authLine').textContent = 'Login: ' + user.email;
+          loadDashboardData();
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('authLine').textContent = 'ตรวจ login ไม่สำเร็จ';
+          document.getElementById('emptyState').innerHTML =
+            '<div class="empty-state"><div class="icon">⚠️</div><p>' + err.message + '</p></div>';
+        })
+        .getCurrentUser();
+    }
+
+    function loadDashboardData() {
       google.script.run
         .withSuccessHandler(onDataLoaded)
         .withFailureHandler(function(err) {
@@ -447,6 +590,7 @@
       }
 
       renderOverall(aggregated, roundLabel);
+      renderProvinceChart(aggregated);
       renderCards(aggregated);
       renderComparison(roundFilter);
 
@@ -535,6 +679,43 @@
           <div class="value">${o.avgCircum !== null ? o.avgCircum.toFixed(2) : '--'} <span class="unit">ซม.</span></div>
         </div>
       `;
+    }
+
+    function renderProvinceChart(agg) {
+      const section = document.getElementById('provinceChartSection');
+      const chart = document.getElementById('provinceChart');
+      const maxTotal = Math.max.apply(null, CONFIG.provinces.map(function(p) {
+        return agg.provinces[p].totalFruits || 0;
+      }));
+
+      section.style.display = 'block';
+      if (maxTotal <= 0) {
+        chart.innerHTML = '<div class="chart-empty" style="grid-column:1/-1;">ยังไม่มีข้อมูลสำหรับวาดกราฟ เมื่อบันทึกข้อมูลแล้วกราฟจะขึ้นอัตโนมัติ</div>';
+        return;
+      }
+
+      chart.innerHTML = CONFIG.provinces.map(function(p) {
+        const d = agg.provinces[p];
+        const total = d.totalFruits || 0;
+        const barWidth = total > 0 ? Math.max((total / maxTotal) * 100, 4) : 0;
+        const qualityWidth = total > 0 ? (d.quality / total) * 100 : 0;
+        const belowWidth = total > 0 ? (d.below / total) * 100 : 0;
+        const damagedWidth = total > 0 ? (d.damaged / total) * 100 : 0;
+
+        return `
+          <div class="chart-province">${p}</div>
+          <div>
+            <div class="stacked-bar" title="${p}: ${total.toLocaleString()} ผล" style="width:${barWidth}%">
+              <div class="stack-segment stack-quality" style="width:${qualityWidth}%"></div>
+              <div class="stack-segment stack-below" style="width:${belowWidth}%"></div>
+              <div class="stack-segment stack-damaged" style="width:${damagedWidth}%"></div>
+            </div>
+            <div style="font-size:13px;color:var(--muted);margin-top:4px;">
+              รวม ${total.toLocaleString()} ผล · คุณภาพ ${d.quality.toLocaleString()} · ต่ำกว่า ${d.below.toLocaleString()} · เสีย ${d.damaged.toLocaleString()}
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
     // --- PROVINCE CARDS ---

@@ -1,0 +1,14 @@
+{
+  "name": "coconut-doae-cloudflare",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "dev": "npx wrangler pages dev public --d1 DB=coconut_doae",
+    "deploy": "npx wrangler pages deploy public --project-name coconut-doae"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coconut DOAE</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Coconut DOAE</h1>
+      <p id="userLine">Not signed in</p>
+    </div>
+    <button id="logoutBtn" class="ghost" hidden>Logout</button>
+  </header>
+
+  <main>
+    <section id="loginView" class="panel auth-panel">
+      <h2>Province Login</h2>
+      <form id="loginForm" class="login-form">
+        <label>
+          Province
+          <select id="loginProvince" required></select>
+        </label>
+        <label>
+          PIN
+          <input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" required>
+        </label>
+        <button type="submit">Login</button>
+      </form>
+      <p id="loginStatus" class="status"></p>
+    </section>
+
+    <section id="appView" hidden>
+      <nav class="tabs">
+        <button class="tab active" data-tab="entry">Entry</button>
+        <button class="tab" data-tab="dashboard">Dashboard</button>
+      </nav>
+
+      <section id="entryTab" class="panel">
+        <div class="section-head">
+          <h2>Entry Form</h2>
+          <button id="loadBtn" class="ghost">Load</button>
+        </div>
+        <form id="entryForm" class="entry-grid">
+          <label>
+            Round
+            <select id="round"></select>
+          </label>
+          <label id="provinceWrap">
+            Province
+            <select id="province"></select>
+          </label>
+          <label>
+            Plot
+            <select id="plot"></select>
+          </label>
+          <label>
+            Bunch
+            <select id="bunch">
+              <option value="1">Bunch 1</option>
+              <option value="2">Bunch 2</option>
+            </select>
+          </label>
+          <label>
+            Quality fruits
+            <input id="quality" type="number" min="0" step="1" value="0">
+          </label>
+          <label>
+            Below standard
+            <input id="below" type="number" min="0" step="1" value="0">
+          </label>
+          <label>
+            Damaged
+            <input id="damaged" type="number" min="0" step="1" value="0">
+          </label>
+          <label>
+            Total
+            <input id="total" type="text" readonly value="0">
+          </label>
+          <label>
+            Avg weight (kg)
+            <input id="weight" type="number" min="0" step="0.01">
+          </label>
+          <label>
+            Avg circumference (cm)
+            <input id="circum" type="number" min="0" step="0.01">
+          </label>
+          <label class="wide">
+            Notes
+            <input id="notes" type="text">
+          </label>
+          <button type="submit" class="wide">Save Entry</button>
+        </form>
+        <p id="entryStatus" class="status"></p>
+      </section>
+
+      <section id="dashboardTab" class="panel" hidden>
+        <div class="section-head">
+          <h2>Dashboard</h2>
+          <button id="refreshBtn" class="ghost">Refresh</button>
+        </div>
+        <div id="roundButtons" class="rounds"></div>
+        <div id="overall" class="stats"></div>
+        <div id="provinceCards" class="cards"></div>
+        <div class="table-wrap">
+          <table id="compareTable"></table>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+name = "coconut-doae"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "coconut_doae"
+database_id = "aa92e397-d320-41b3-a024-f1fa3a69b902"

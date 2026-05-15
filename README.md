@@ -50,8 +50,21 @@
 - **Deploy > New Deployment**
 - Type: **Web App**
 - Execute as: **Me**
-- Who has access: **Anyone** (หรือเฉพาะองค์กร)
+- Who has access: **Anyone with Google account** (ต้อง login Google ก่อนเข้า)
 - Copy URL → แชร์
+
+ถ้า Dashboard ยังขึ้นว่าไม่ได้ login:
+- เปลี่ยน **Execute as** เป็น **User accessing the web app**
+- แชร์ Google Sheet ให้ user คนนั้น
+- Deploy ใหม่ แล้วเปิด URL ใหม่
+
+จำกัดโดเมนได้ใน `Code.gs`:
+
+```javascript
+const AUTH = {
+  allowedDomains: ['doae.go.th']
+};
+```
 
 ## วิธีใช้งาน
 

@@ -14,6 +14,7 @@
 
 // ======================== CONFIGURATION ========================
 const CONFIG = {
+  spreadsheetId: '1Ru78wrgmx7ZALVualZKmfIU8s7oVbXDme71SUbRrTmk',
   provinces: ['นครปฐม', 'ราชบุรี', 'สมุทรสาคร', 'สมุทรสงคราม'],
   maxPlots: 10,
   bunchesPerPlot: 2,
@@ -21,6 +22,7 @@ const CONFIG = {
   roundDays: 21,
   startDate: '2026-06-01',
   dataSheet: 'ข้อมูล',
+  lookerSheet: 'Looker_Source',
   summarySheet: 'สรุปภาพรวม',
   configSheet: 'ตั้งค่า',
   col: {
@@ -38,6 +40,60 @@ const CONFIG = {
     recordedAt: 12  // L
   }
 };
+
+function getSpreadsheet_() {
+  if (CONFIG.spreadsheetId) {
+    return SpreadsheetApp.openById(CONFIG.spreadsheetId);
+  }
+  return SpreadsheetApp.getActiveSpreadsheet();
+}
+
+function clearSheetState_(sheet) {
+  const range = sheet.getDataRange();
+  range.clearDataValidations();
+  const filter = sheet.getFilter();
+  if (filter) filter.remove();
+  sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE).forEach(function(p) {
+    if (p.canEdit()) p.remove();
+  });
+  sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(function(p) {
+    if (p.canEdit()) p.remove();
+  });
+}
+
+const AUTH = {
+  // Leave empty to allow any signed-in Google account.
+  // Example: ['example.com', 'doae.go.th']
+  allowedDomains: []
+};
+
+function getCurrentUser() {
+  const email = (Session.getActiveUser().getEmail() || '').trim();
+  const domain = email.indexOf('@') > -1 ? email.split('@').pop().toLowerCase() : '';
+  const allowed = AUTH.allowedDomains.length === 0 || AUTH.allowedDomains.indexOf(domain) !== -1;
+  return {
+    email: email,
+    domain: domain,
+    signedIn: !!email && allowed,
+    allowed: allowed,
+    allowedDomains: AUTH.allowedDomains
+  };
+}
+
+function getWebAppUrl() {
+  return ScriptApp.getService().getUrl();
+}
+
+function requireSignedIn_() {
+  const user = getCurrentUser();
+  if (!user.email) {
+    throw new Error('กรุณาเปิด Web App ด้วย Google account และตั้ง Deploy access เป็น "Anyone with Google account"');
+  }
+  if (!user.allowed) {
+    throw new Error('บัญชีนี้ไม่ได้รับอนุญาต: ' + user.email);
+  }
+  return user;
+}
 
 function getRoundDates() {
   const rounds = [];
@@ -71,18 +127,21 @@ function onOpen() {
     .addSeparator()
     .addItem('📊 Dashboard', 'openDashboard')
     .addItem('📄 สรุปลง Sheet', 'buildSummarySheet')
+    .addItem('📈 เตรียมข้อมูล Looker', 'buildLookerSourceSheet')
     .addItem('🔍 ตรวจสอบข้อมูล', 'validateAll')
     .addToUi();
 }
 
 // ======================== SETUP ========================
 function setupAllSheets() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet_();
   const rounds = getRoundDates();
+  ss.getSheets().forEach(clearSheetState_);
 
   // --- Config sheet ---
   let cfg = ss.getSheetByName(CONFIG.configSheet);
   if (!cfg) cfg = ss.insertSheet(CONFIG.configSheet);
+  clearSheetState_(cfg);
   cfg.clear();
   cfg.getRange(1, 1, 1, 4).setValues([['รอบที่', 'วันที่เริ่ม', 'วันที่สิ้นสุด', 'จำนวนวัน']]).setFontWeight('bold');
   rounds.forEach((r, i) => {
@@ -143,27 +202,13 @@ function setupAllSheets() {
   // Yellow background for auto-calc column E
   data.getRange(3, 5, rows.length, 1).setBackground('#FFF9C4');
 
-  // Data validation: F, G, H (columns 6-8) = non-negative integer
-  const nonNeg = SpreadsheetApp.newDataValidation()
-    .requireNumberGreaterThanOrEqualTo(0).setAllowInvalid(true)
-    .setHelpText('จำนวนเต็ม ≥ 0').build();
-  data.getRange(3, 6, rows.length, 3).setDataValidation(nonNeg);
-
-  // Data validation: I, J (columns 9-10) = positive number
-  const positive = SpreadsheetApp.newDataValidation()
-    .requireNumberGreaterThan(0).setAllowInvalid(true)
-    .setHelpText('ตัวเลข > 0').build();
-  data.getRange(3, 9, rows.length, 2).setDataValidation(positive);
-
-  // Protect header rows + auto columns
-  data.getRange(1, 1, 2, 12).protect().setDescription('Header').setWarningOnly(true);
-  data.getRange(3, 1, rows.length, 4).protect().setDescription('รอบ/จังหวัด/แปลง/ทะลาย').setWarningOnly(true);
-  data.getRange(3, 5, rows.length, 1).protect().setDescription('ผลรวมอัตโนมัติ').setWarningOnly(true);
+  // Keep setup resilient for fresh spreadsheets. Validation happens in the web form.
 
   // --- Summary sheet ---
   let summary = ss.getSheetByName(CONFIG.summarySheet);
   if (!summary) summary = ss.insertSheet(CONFIG.summarySheet);
   buildSummarySheet();
+  buildLookerSourceSheet();
 
   // --- Freeze panes ---
   data.setFrozenRows(2);
@@ -182,7 +227,7 @@ function showEntryForm() {
 }
 
 function findRow(round, province, plot, bunch) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet_();
   const data = ss.getSheetByName(CONFIG.dataSheet);
   if (!data) throw new Error('ยังไม่ได้ตั้งค่าเริ่มต้น กรุณากด "ตั้งค่าเริ่มต้น" ก่อน');
 
@@ -196,9 +241,10 @@ function findRow(round, province, plot, bunch) {
 }
 
 function loadEntry(round, province, plot, bunch) {
+  requireSignedIn_();
   try {
     const row = findRow(round, province, plot, bunch);
-    const data = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.dataSheet);
+    const data = getSpreadsheet_().getSheetByName(CONFIG.dataSheet);
     const vals = data.getRange(row, 1, 1, 12).getValues()[0];
     return {
       quality: vals[5] || '',
@@ -214,8 +260,9 @@ function loadEntry(round, province, plot, bunch) {
 }
 
 function saveEntry(round, province, plot, bunch, quality, below, damaged, weight, circum, notes) {
+  requireSignedIn_();
   const row = findRow(round, province, plot, bunch);
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.dataSheet);
+  const sheet = getSpreadsheet_().getSheetByName(CONFIG.dataSheet);
 
   const values = [[
     round, province, plot, bunch,
@@ -248,9 +295,13 @@ function saveEntry(round, province, plot, bunch, quality, below, damaged, weight
 }
 
 // ======================== DASHBOARD (Web App + Modal) ========================
-function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Dashboard')
-    .setTitle('🥥 Dashboard มะพร้าวน้ำหอม')
+function doGet(e) {
+  const page = e && e.parameter && e.parameter.page === 'form' ? 'EntryForm' : 'Dashboard';
+  const title = page === 'EntryForm' ? '🥥 กรอกข้อมูลมะพร้าวน้ำหอม' : '🥥 Dashboard มะพร้าวน้ำหอม';
+  const template = HtmlService.createTemplateFromFile(page);
+  template.webAppUrl = ScriptApp.getService().getUrl();
+  return template.evaluate()
+    .setTitle(title)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -266,7 +317,8 @@ function openDashboard() {
  * Returns ALL data for the dashboard as JSON.
  */
 function getDashboardData() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  requireSignedIn_();
+  const ss = getSpreadsheet_();
   const sheet = ss.getSheetByName(CONFIG.dataSheet);
   if (!sheet) return JSON.stringify({ error: 'ยังไม่มีข้อมูล กรุณากดตั้งค่าเริ่มต้น' });
 
@@ -356,7 +408,7 @@ function getDashboardData() {
 
 // ======================== SUMMARY SHEET ========================
 function buildSummarySheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet_();
   let s = ss.getSheetByName(CONFIG.summarySheet);
   if (!s) s = ss.insertSheet(CONFIG.summarySheet);
   s.clear();
@@ -408,6 +460,65 @@ function buildSummarySheet() {
   ss.toast('✅ อัปเดตสรุปภาพรวมเรียบร้อย', '', 4);
 }
 
+function buildLookerSourceSheet() {
+  const ss = getSpreadsheet_();
+  const data = ss.getSheetByName(CONFIG.dataSheet);
+  if (!data) {
+    throw new Error('ยังไม่มี sheet ข้อมูล กรุณารัน setupAllSheets ก่อน');
+  }
+
+  let sheet = ss.getSheetByName(CONFIG.lookerSheet);
+  if (!sheet) sheet = ss.insertSheet(CONFIG.lookerSheet);
+  if (sheet.getFilter()) sheet.getFilter().remove();
+  sheet.clear();
+
+  const headers = [
+    'round', 'province', 'plot', 'bunch',
+    'total_fruits', 'quality_fruits', 'below_standard_fruits', 'damaged_fruits',
+    'avg_weight_kg', 'avg_circumference_cm', 'notes', 'recorded_at',
+    'round_start', 'round_end', 'quality_rate', 'is_recorded'
+  ];
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+    .setFontWeight('bold')
+    .setBackground('#E3F2FD')
+    .setBorder(true, true, true, true, true, true);
+
+  const rowCount = CONFIG.totalRounds * CONFIG.provinces.length * CONFIG.maxPlots * CONFIG.bunchesPerPlot;
+  const dataStart = 3;
+  const sourceEnd = dataStart + rowCount - 1;
+  const sourceName = "'" + CONFIG.dataSheet + "'";
+  const configName = "'" + CONFIG.configSheet + "'";
+
+  const formulas = [];
+  for (let row = dataStart; row <= sourceEnd; row++) {
+    formulas.push([
+      '=' + sourceName + '!A' + row,
+      '=' + sourceName + '!B' + row,
+      '=' + sourceName + '!C' + row,
+      '=' + sourceName + '!D' + row,
+      '=' + sourceName + '!E' + row,
+      '=' + sourceName + '!F' + row,
+      '=' + sourceName + '!G' + row,
+      '=' + sourceName + '!H' + row,
+      '=' + sourceName + '!I' + row,
+      '=' + sourceName + '!J' + row,
+      '=' + sourceName + '!K' + row,
+      '=' + sourceName + '!L' + row,
+      '=IFERROR(VLOOKUP(A' + (row - 1) + ',' + configName + '!A:B,2,FALSE),"")',
+      '=IFERROR(VLOOKUP(A' + (row - 1) + ',' + configName + '!A:C,3,FALSE),"")',
+      '=IF(E' + (row - 1) + '>0,F' + (row - 1) + '/E' + (row - 1) + ',"")',
+      '=E' + (row - 1) + '>0'
+    ]);
+  }
+
+  sheet.getRange(2, 1, formulas.length, headers.length).setFormulas(formulas);
+  sheet.setFrozenRows(1);
+  sheet.getRange(2, 13, formulas.length, 2).setNumberFormat('dd/MM/yyyy');
+  sheet.getRange(2, 15, formulas.length, 1).setNumberFormat('0.0%');
+  sheet.autoResizeColumns(1, headers.length);
+  SpreadsheetApp.flush();
+}
+
 // ======================== AUTO-CALC onEdit ========================
 function onEdit(e) {
   const sheet = e.source.getActiveSheet();
@@ -434,7 +545,7 @@ function onEdit(e) {
 
 // ======================== VALIDATION ========================
 function validateAll() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet_();
   const sheet = ss.getSheetByName(CONFIG.dataSheet);
   if (!sheet) {
     SpreadsheetApp.getUi().alert('ยังไม่ได้ตั้งค่าเริ่มต้น');

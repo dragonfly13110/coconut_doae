@@ -4,88 +4,109 @@
   <base target="_top">
   <meta charset="UTF-8">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Google Sans', Roboto, 'Noto Sans Thai', sans-serif;
-      background: #f8fafb;
-      color: #1a1a1a;
-      padding: 24px 28px;
-      font-size: 14px;
+      font-family: 'Kanit', 'Google Sans', Roboto, 'Noto Sans Thai', sans-serif;
+      background: #F6F8FB;
+      color: #243044;
+      padding: 28px 32px;
+      font-size: 16px;
     }
 
     .header {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 12px;
       margin-bottom: 6px;
     }
-    .header h2 { font-size: 20px; color: #1a73e8; }
-    .header .emoji { font-size: 28px; }
-    .subtitle { color: #777; font-size: 12px; margin-bottom: 20px; }
+    .title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header h2 { font-size: 26px; color: #3D73C9; }
+    .header .emoji { font-size: 30px; }
+    .subtitle { color: #68758A; font-size: 15px; margin-bottom: 22px; }
+    .nav-btn {
+      border: 1.5px solid #D7DFEA;
+      background: #fff;
+      color: #3D73C9;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: inherit;
+      text-decoration: none;
+    }
+    .nav-btn:hover { background: #EAF2FF; border-color: #6EA8FE; }
 
     /* Round pills */
-    .round-section { margin-bottom: 18px; }
-    .round-label { font-size: 12px; font-weight: 600; color: #666; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .round-section { margin-bottom: 20px; }
+    .round-label { font-size: 14px; font-weight: 600; color: #68758A; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
     .round-pills {
       display: flex;
       gap: 6px;
       flex-wrap: wrap;
     }
     .round-pill {
-      padding: 7px 14px;
+      padding: 9px 16px;
       border-radius: 20px;
-      border: 1.5px solid #dadce0;
+      border: 1.5px solid #D7DFEA;
       background: #fff;
-      font-size: 12px;
+      font-size: 14px;
       cursor: pointer;
       transition: all 0.2s;
       white-space: nowrap;
     }
-    .round-pill:hover { border-color: #1a73e8; background: #f0f7ff; }
+    .round-pill:hover { border-color: #6EA8FE; background: #EAF2FF; }
     .round-pill.active {
-      background: #1a73e8;
+      background: #6EA8FE;
       color: #fff;
-      border-color: #1a73e8;
+      border-color: #6EA8FE;
       font-weight: 600;
     }
-    .round-pill .date-range { font-size: 10px; opacity: 0.8; display: block; margin-top: 2px; }
+    .round-pill .date-range { font-size: 12px; opacity: 0.82; display: block; margin-top: 2px; }
 
     /* Form grid */
     .form-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px 20px;
-      margin-bottom: 16px;
+      gap: 14px 22px;
+      margin-bottom: 18px;
     }
     .form-group { }
     .form-group label {
       display: block;
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 600;
-      color: #5f6368;
+      color: #68758A;
       margin-bottom: 4px;
       text-transform: uppercase;
     }
     .form-group select, .form-group input {
       width: 100%;
-      padding: 9px 12px;
-      border: 1.5px solid #dadce0;
+      padding: 11px 13px;
+      border: 1.5px solid #D7DFEA;
       border-radius: 8px;
-      font-size: 14px;
+      font-size: 16px;
       font-family: inherit;
       transition: border-color 0.2s, box-shadow 0.2s;
       background: #fff;
     }
     .form-group select:focus, .form-group input:focus {
       outline: none;
-      border-color: #1a73e8;
-      box-shadow: 0 0 0 3px rgba(26,115,232,0.12);
+      border-color: #6EA8FE;
+      box-shadow: 0 0 0 3px rgba(110,168,254,0.18);
     }
     .form-group input.readonly {
-      background: #FFF9C4;
+      background: #FFF5DA;
       font-weight: 700;
-      font-size: 18px;
-      color: #2e7d32;
+      font-size: 20px;
+      color: #3B805E;
       text-align: center;
       cursor: default;
     }
@@ -98,9 +119,9 @@
       margin-top: 6px;
     }
     .btn {
-      padding: 10px 20px;
+      padding: 12px 22px;
       border-radius: 8px;
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 600;
       cursor: pointer;
       border: none;
@@ -108,39 +129,42 @@
       font-family: inherit;
     }
     .btn-primary {
-      background: #1a73e8;
+      background: #6EA8FE;
       color: #fff;
       flex: 1;
     }
-    .btn-primary:hover { background: #1557b0; }
+    .btn-primary:hover { background: #4D8CE8; }
     .btn-primary:disabled { background: #bbb; cursor: not-allowed; }
     .btn-secondary {
       background: #fff;
-      color: #1a73e8;
-      border: 1.5px solid #dadce0;
+      color: #3D73C9;
+      border: 1.5px solid #D7DFEA;
     }
-    .btn-secondary:hover { background: #f0f7ff; border-color: #1a73e8; }
+    .btn-secondary:hover { background: #EAF2FF; border-color: #6EA8FE; }
 
     /* Status */
     .status {
       margin-top: 12px;
       padding: 10px 14px;
       border-radius: 8px;
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 500;
       display: none;
     }
-    .status.success { display: block; background: #E8F5E9; color: #2e7d32; }
-    .status.error { display: block; background: #FFEBEE; color: #c62828; }
-    .status.info { display: block; background: #E3F2FD; color: #1565C0; }
+    .status.success { display: block; background: #E7F6EF; color: #3B805E; }
+    .status.error { display: block; background: #FDECEC; color: #B85353; }
+    .status.info { display: block; background: #EAF2FF; color: #3D73C9; }
 
     hr { border: none; border-top: 1px solid #e8eaed; margin: 16px 0; }
   </style>
 </head>
 <body>
   <div class="header">
-    <span class="emoji">🥥</span>
-    <h2>กรอกข้อมูลมะพร้าวน้ำหอม</h2>
+    <div class="title-wrap">
+      <span class="emoji">🥥</span>
+      <h2>กรอกข้อมูลมะพร้าวน้ำหอม</h2>
+    </div>
+    <a class="nav-btn" href="<?= webAppUrl ?>" target="_top">📊 Dashboard</a>
   </div>
   <p class="subtitle">เลือกรอบ → จังหวัด → แปลง → ทะลาย → กรอกข้อมูล</p>
 

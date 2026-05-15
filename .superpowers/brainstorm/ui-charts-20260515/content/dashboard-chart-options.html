@@ -1,0 +1,73 @@
+<h2>เลือกแนว Dashboard + กราฟ</h2>
+<p class="subtitle">ปรับ font เป็น Kanit และขยายตัวอักษรทั้งหน้ากรอกข้อมูล/แดชบอร์ด</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="font-family:Kanit, sans-serif; padding:14px; background:#f5f7fb;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <strong style="font-size:18px;">ภาพรวมคุณภาพ</strong>
+          <span style="font-size:13px; color:#5f6368;">รอบที่ 1</span>
+        </div>
+        <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:12px;">
+          <div style="background:white; border:1px solid #ddd; border-radius:8px; padding:12px;">
+            <div style="height:150px; display:flex; align-items:end; gap:12px;">
+              <div style="height:72%; width:42px; background:#1e8e3e;"></div>
+              <div style="height:44%; width:42px; background:#f9ab00;"></div>
+              <div style="height:22%; width:42px; background:#d93025;"></div>
+              <div style="height:60%; width:42px; background:#1a73e8;"></div>
+            </div>
+            <div style="font-size:12px; color:#5f6368;">กราฟแท่งเทียบจังหวัด</div>
+          </div>
+          <div style="display:grid; gap:8px;">
+            <div style="background:white; border:1px solid #ddd; border-radius:8px; padding:12px;">KPI ใหญ่ขึ้น</div>
+            <div style="background:white; border:1px solid #ddd; border-radius:8px; padding:12px;">การ์ดจังหวัดเดิม</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. เพิ่มกราฟแท่งเทียบจังหวัด</h3>
+      <p>ง่าย อ่านเร็ว เหมาะกับผู้บริหารและ Looker ต่อภายหลัง. แนะนำเริ่มแบบนี้.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="font-family:Kanit, sans-serif; padding:14px; background:#f5f7fb;">
+        <strong style="font-size:18px;">แนวโน้ม 6 รอบ</strong>
+        <div style="height:150px; background:white; border:1px solid #ddd; border-radius:8px; padding:18px; margin-top:12px;">
+          <svg viewBox="0 0 360 120" width="100%" height="100%">
+            <polyline points="10,90 75,70 140,82 205,48 270,54 340,26" fill="none" stroke="#1a73e8" stroke-width="5"/>
+            <polyline points="10,96 75,88 140,72 205,64 270,42 340,35" fill="none" stroke="#1e8e3e" stroke-width="5"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. เพิ่มกราฟเส้นแนวโน้ม 6 รอบ</h3>
+      <p>ดีเมื่อมีข้อมูลหลายรอบแล้ว. ตอนเริ่มระบบข้อมูลยัง 0 กราฟจะว่างเยอะ.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="font-family:Kanit, sans-serif; padding:14px; background:#f5f7fb;">
+        <strong style="font-size:18px;">สัดส่วนผลผลิต</strong>
+        <div style="display:flex; align-items:center; gap:18px; background:white; border:1px solid #ddd; border-radius:8px; padding:18px; margin-top:12px;">
+          <div style="width:110px; height:110px; border-radius:50%; background:conic-gradient(#1e8e3e 0 55%, #f9ab00 55% 82%, #d93025 82% 100%);"></div>
+          <div style="font-size:14px; line-height:1.9;">คุณภาพ<br>ต่ำกว่าเกณฑ์<br>เสีย</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. เพิ่มโดนัทสัดส่วนผล</h3>
+      <p>สวยและดูภาพรวมง่าย แต่เทียบจังหวัดไม่ชัดเท่ากราฟแท่ง.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>ข้อเสนอผม</h3>
+  <p>ใช้ Kanit ทั้งระบบ, เพิ่ม font base จาก 14 เป็น 16, ปุ่ม/label เป็น 15, KPI เป็น 30-34. Dashboard เพิ่มกราฟแท่ง “คุณภาพ/ต่ำกว่า/เสีย แยกจังหวัด” ก่อน แล้วค่อยเพิ่มกราฟเส้นแนวโน้มเมื่อมีข้อมูลครบหลายรอบ.</p>
+</div>
