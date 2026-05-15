@@ -1,136 +1,138 @@
 <!doctype html>
-<html lang="th">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ระบบติดตามคุณภาพมะพร้าวน้ำหอม | Coconut Quality Tracking</title>
+  <title>Coconut DOAE Quality Tracker</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <header class="topbar" id="mainHeader">
-    <div class="brand">
-      <span style="font-size: 2rem;">🥥</span>
-      <h1>COCONUT DOAE</h1>
+  <header class="shell-header">
+    <div class="brand-block">
+      <div class="brand-mark">C</div>
+      <div>
+        <h1>Coconut DOAE</h1>
+        <p>Quality tracking for 4 provinces, 6 collection rounds</p>
+      </div>
     </div>
-    <div class="user-info">
-      <p id="userLine">กำลังโหลด...</p>
-      <button id="logoutBtn" class="ghost" style="padding: 0.5rem 1rem; font-size: 0.875rem;" hidden>ออกจากระบบ</button>
+    <div class="session-block">
+      <span id="userLine">Checking session...</span>
+      <button id="logoutBtn" class="button ghost small" hidden>Logout</button>
     </div>
   </header>
 
-  <section class="hero" id="heroSection">
-    <h2>คุณภาพมะพร้าวน้ำหอม</h2>
-    <p>ระบบติดตามและประเมินคุณภาพผลผลิตมะพร้าวน้ำหอมเชิงบูรณาการ 4 จังหวัดเป้าหมาย เพื่อยกระดับมาตรฐานสินค้าเกษตรไทยสู่สากล</p>
-  </section>
+  <main class="shell-main">
+    <section id="loginView" class="login-layout">
+      <div class="login-copy">
+        <div class="photo-panel" aria-hidden="true"></div>
+        <div class="copy-content">
+          <p class="eyebrow">Field data system</p>
+          <h2>Record coconut quality from each province without Google Apps Script.</h2>
+          <p>Use province code + PIN. Data saves to Cloudflare D1 and feeds the dashboard immediately.</p>
+        </div>
+      </div>
 
-  <main>
-    <!-- View: Login -->
-    <section id="loginView" class="panel auth-panel">
-      <h2>เข้าสู่ระบบ</h2>
-      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">กรุณาเลือกจังหวัดและระบุ PIN เพื่อดำเนินการ</p>
-      <form id="loginForm" class="login-form">
-        <label>
-          จังหวัด
-          <select id="loginProvince" required></select>
-        </label>
-        <label>
-          รหัส PIN (ตัวเลข)
-          <input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••" required>
-        </label>
-        <button type="submit">ยืนยันตัวตน</button>
-      </form>
-      <p id="loginStatus" class="status"></p>
+      <section class="panel login-panel">
+        <p class="eyebrow">Secure access</p>
+        <h2>Province login</h2>
+        <form id="loginForm" class="form-stack">
+          <label>
+            Province
+            <select id="loginProvince" required></select>
+          </label>
+          <label>
+            PIN
+            <input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="6 digits" required>
+          </label>
+          <button class="button primary" type="submit">Login</button>
+        </form>
+        <p id="loginStatus" class="status"></p>
+      </section>
     </section>
 
-    <!-- View: Application -->
-    <section id="appView" hidden>
-      <nav class="tabs">
-        <button class="tab active" data-tab="entry">✏️ บันทึกข้อมูล</button>
-        <button class="tab" data-tab="dashboard">📊 แดชบอร์ด</button>
+    <section id="appView" class="workspace" hidden>
+      <nav class="tabs" aria-label="Primary">
+        <button class="tab active" data-tab="entry">Entry</button>
+        <button class="tab" data-tab="dashboard">Dashboard</button>
       </nav>
 
-      <!-- Tab: Entry -->
       <section id="entryTab" class="panel">
         <div class="section-head">
           <div>
-            <h2 style="font-weight: 800; color: var(--primary);">แบบบันทึกข้อมูล</h2>
-            <p style="color: var(--text-muted); font-size: 0.875rem;">กรุณากรอกข้อมูลคุณภาพผลผลิตตามแปลงที่กำหนด</p>
+            <p class="eyebrow">Data entry</p>
+            <h2>Collection record</h2>
           </div>
-          <button id="loadBtn" class="ghost">🔄 โหลดข้อมูลเดิม</button>
+          <button id="loadBtn" class="button ghost">Load saved record</button>
         </div>
 
         <form id="entryForm" class="entry-grid">
           <label>
-            รอบการประเมิน
+            Round
             <select id="round"></select>
           </label>
           <label id="provinceWrap">
-            จังหวัด
+            Province
             <select id="province"></select>
           </label>
           <label>
-            แปลงที่
+            Plot
             <select id="plot"></select>
           </label>
           <label>
-            ทะลายที่
+            Bunch
             <select id="bunch">
-              <option value="1">ทะลาย 1</option>
-              <option value="2">ทะลาย 2</option>
+              <option value="1">Bunch 1</option>
+              <option value="2">Bunch 2</option>
             </select>
           </label>
-          
-          <div style="grid-column: 1/-1; height: 1px; background: var(--border); margin: 1rem 0;"></div>
-          
+
+          <div class="divider"></div>
+
           <label>
-            จำนวนผลคุณภาพ (ลูก)
+            Quality fruits
             <input id="quality" type="number" min="0" step="1" value="0">
           </label>
           <label>
-            จำนวนผลตกเกรด (ลูก)
+            Below standard
             <input id="below" type="number" min="0" step="1" value="0">
           </label>
           <label>
-            จำนวนผลเสียหาย (ลูก)
+            Damaged fruits
             <input id="damaged" type="number" min="0" step="1" value="0">
           </label>
           <label>
-            จำนวนผลรวมทั้งหมด
+            Total fruits
             <input id="total" type="text" readonly value="0">
           </label>
           <label>
-            น้ำหนักเฉลี่ย (กก./ลูก)
+            Avg weight (kg)
             <input id="weight" type="number" min="0" step="0.01" placeholder="0.00">
           </label>
           <label>
-            เส้นรอบวงเฉลี่ย (ซม.)
+            Avg circumference (cm)
             <input id="circum" type="number" min="0" step="0.01" placeholder="0.00">
           </label>
           <label class="wide">
-            หมายเหตุเพิ่มเติม
-            <input id="notes" type="text" placeholder="ระบุรายละเอียดเพิ่มเติม (ถ้ามี)">
+            Notes
+            <input id="notes" type="text" placeholder="Optional field observation">
           </label>
-          <button type="submit" class="wide" style="margin-top: 1rem;">💾 บันทึกข้อมูลลงระบบ</button>
+          <button type="submit" class="button primary wide">Save record</button>
         </form>
         <p id="entryStatus" class="status"></p>
       </section>
 
-      <!-- Tab: Dashboard -->
       <section id="dashboardTab" class="panel" hidden>
         <div class="section-head">
           <div>
-            <h2 style="font-weight: 800; color: var(--secondary);">รายงานสถานะภาพรวม</h2>
-            <p style="color: var(--text-muted); font-size: 0.875rem;">สรุปสถิติจำนวนผลผลิตและอัตราคุณภาพแยกตามพื้นที่</p>
+            <p class="eyebrow">Dashboard</p>
+            <h2>Quality summary</h2>
           </div>
-          <button id="refreshBtn" class="ghost">🔄 อัปเดตข้อมูล</button>
+          <button id="refreshBtn" class="button ghost">Refresh</button>
         </div>
 
         <div id="roundButtons" class="rounds"></div>
-        
         <div id="overall" class="stats"></div>
-        
         <div id="provinceCards" class="cards"></div>
-        
         <div class="table-wrap">
           <table id="compareTable"></table>
         </div>
@@ -138,21 +140,6 @@
     </section>
   </main>
 
-  <footer style="text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.875rem; border-top: 1px solid var(--border); margin-top: 4rem; background: white;">
-    © 2026 กรมส่งเสริมการเกษตร (DOAE) - โครงการติดตามคุณภาพมะพร้าวน้ำหอม
-  </footer>
-
   <script type="module" src="/app.js"></script>
-  <script>
-    // Subtle header scroll effect
-    window.addEventListener('scroll', () => {
-      const header = document.getElementById('mainHeader');
-      if (window.scrollY > 50) {
-        header.classList.add('scrolled');
-      } else {
-        header.classList.remove('scrolled');
-      }
-    });
-  </script>
 </body>
 </html>

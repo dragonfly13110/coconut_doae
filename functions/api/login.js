@@ -14,34 +14,21 @@ export async function onRequest({ request, env }) {
       'SELECT id, province_code, province_label, role, pin_hash FROM users WHERE province_code = ?',
     ).bind(provinceCode).first();
 
-    // Admin Bypass for troubleshooting (PIN: coconut2026)
-    const isAdminBypass = pin === 'coconut2026';
-
-    if (!isAdminBypass && (!user || !(await verifyPin(pin, user.pin_hash, env.PIN_PEPPER || env.SESSION_SECRET || '')))) {
+    if (!user || !(await verifyPin(pin, user.pin_hash, env.PIN_PEPPER || env.SESSION_SECRET || ''))) {
       return json({ error: 'invalid province code or PIN' }, { status: 401 });
     }
 
-    // If bypass is used but user doesn't exist in DB, create a dummy admin object
-    const finalUser = user || {
-      id: 0,
-      province_code: provinceCode,
-      province_label: 'ผู้ดูแลระบบ',
-      role: 'admin'
-    };
-
     const sessionId = randomId();
-    if (finalUser.id !== 0) {
-      await env.DB.prepare(
-        "INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, datetime('now', '+7 days'))",
-      ).bind(sessionId, finalUser.id).run();
-    }
+    await env.DB.prepare(
+      "INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, datetime('now', '+7 days'))",
+    ).bind(sessionId, user.id).run();
 
     return json(
       {
         user: {
-          province_code: finalUser.province_code,
-          province_label: finalUser.province_label,
-          role: finalUser.role,
+          province_code: user.province_code,
+          province_label: user.province_label,
+          role: user.role,
         },
       },
       { headers: { 'set-cookie': buildSessionCookie(sessionId, SESSION_TTL_SECONDS) } },

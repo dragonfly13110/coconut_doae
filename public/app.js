@@ -1,8 +1,8 @@
 const PROVINCES = [
-  { code: 'nakhon_pathom', label: 'นครปฐม' },
-  { code: 'ratchaburi', label: 'ราชบุรี' },
-  { code: 'samut_sakhon', label: 'สมุทรสาคร' },
-  { code: 'samut_songkhram', label: 'สมุทรสงคราม' },
+  { code: 'nakhon_pathom', label: 'Nakhon Pathom' },
+  { code: 'ratchaburi', label: 'Ratchaburi' },
+  { code: 'samut_sakhon', label: 'Samut Sakhon' },
+  { code: 'samut_songkhram', label: 'Samut Songkhram' },
 ];
 
 const state = {
@@ -18,8 +18,8 @@ init();
 async function init() {
   fillSelect(el('loginProvince'), PROVINCES, 'code', 'label');
   fillSelect(el('province'), PROVINCES, 'code', 'label');
-  fillNumberSelect(el('round'), 1, 6, 'รอบที่ ');
-  fillNumberSelect(el('plot'), 1, 10, 'แปลงที่ ');
+  fillNumberSelect(el('round'), 1, 6, 'Round ');
+  fillNumberSelect(el('plot'), 1, 10, 'Plot ');
   bindEvents();
   await loadMe();
 }
@@ -40,7 +40,7 @@ function bindEvents() {
 
 async function login(event) {
   event.preventDefault();
-  setStatus('loginStatus', 'กำลังตรวจสอบ...', '');
+  setStatus('loginStatus', 'Checking PIN...', '');
   try {
     const response = await api('/api/login', {
       method: 'POST',
@@ -53,9 +53,9 @@ async function login(event) {
     el('loginPin').value = '';
     showApp();
     await loadDashboard();
+    await loadEntry();
   } catch (error) {
-    console.error('Login Error:', error);
-    setStatus('loginStatus', `เข้าสู่ระบบไม่สำเร็จ: ${error.message}`, 'error');
+    setStatus('loginStatus', `Login failed: ${error.message}`, 'error');
   }
 }
 
@@ -72,6 +72,7 @@ async function loadMe() {
     state.user = response.user;
     showApp();
     await loadDashboard();
+    await loadEntry();
   } catch {
     showLogin();
   }
@@ -79,11 +80,10 @@ async function loadMe() {
 
 async function loadEntry() {
   if (!state.user) return;
-  setStatus('entryStatus', 'Loading...', '');
-  const provinceCode = provinceForRequest();
+  setStatus('entryStatus', 'Loading saved record...', '');
   const params = new URLSearchParams({
     round: el('round').value,
-    province_code: provinceCode,
+    province_code: provinceForRequest(),
     plot: el('plot').value,
     bunch: el('bunch').value,
   });
@@ -91,7 +91,7 @@ async function loadEntry() {
   try {
     const { entry } = await api(`/api/entry?${params}`);
     setEntry(entry || {});
-    setStatus('entryStatus', entry ? 'Loaded' : 'No saved entry yet', '');
+    setStatus('entryStatus', entry ? 'Saved record loaded.' : 'No record yet for this location.', entry ? 'success' : '');
   } catch (error) {
     setStatus('entryStatus', error.message, 'error');
   }
@@ -99,7 +99,7 @@ async function loadEntry() {
 
 async function saveEntry(event) {
   event.preventDefault();
-  setStatus('entryStatus', 'Saving...', '');
+  setStatus('entryStatus', 'Saving record...', '');
 
   try {
     await api('/api/entry', {
@@ -117,7 +117,7 @@ async function saveEntry(event) {
         notes: el('notes').value,
       },
     });
-    setStatus('entryStatus', 'Saved', 'success');
+    setStatus('entryStatus', 'Record saved.', 'success');
     await loadDashboard();
   } catch (error) {
     setStatus('entryStatus', error.message, 'error');
@@ -134,24 +134,22 @@ async function loadDashboard() {
 function buildRoundButtons() {
   const wrap = el('roundButtons');
   wrap.innerHTML = '';
-  const all = document.createElement('button');
-  all.textContent = 'ทุกรอบการประเมิน';
-  all.dataset.round = 'all';
-  wrap.append(all);
+  wrap.append(roundButton('All rounds', 'all'));
 
   for (const round of state.data.roundDates) {
-    const button = document.createElement('button');
-    button.textContent = `${round.label} ${round.start} - ${round.end}`;
-    button.dataset.round = String(round.number);
-    wrap.append(button);
+    wrap.append(roundButton(`${round.label} | ${round.start} - ${round.end}`, String(round.number)));
   }
+}
 
-  wrap.querySelectorAll('button').forEach((button) => {
-    button.addEventListener('click', () => {
-      state.activeRound = button.dataset.round === 'all' ? 'all' : Number(button.dataset.round);
-      renderDashboard();
-    });
+function roundButton(label, value) {
+  const button = document.createElement('button');
+  button.textContent = label;
+  button.dataset.round = value;
+  button.addEventListener('click', () => {
+    state.activeRound = value === 'all' ? 'all' : Number(value);
+    renderDashboard();
   });
+  return button;
 }
 
 function renderDashboard() {
@@ -213,26 +211,28 @@ function finalize(summary) {
 
 function renderOverall(overall) {
   el('overall').innerHTML = [
-    metric('ผลผลิตรวม (ลูก)', overall.totalFruits.toLocaleString()),
-    metric('อัตราคุณภาพ', `${(overall.qualityRate * 100).toFixed(1)}%`, rateClass(overall.qualityRate)),
-    metric('น้ำหนักเฉลี่ย', overall.avgWeight === null ? '--' : overall.avgWeight.toFixed(2)),
-    metric('เส้นรอบวงเฉลี่ย', overall.avgCircum === null ? '--' : overall.avgCircum.toFixed(2)),
+    metric('Total fruits', overall.totalFruits.toLocaleString()),
+    metric('Quality rate', `${(overall.qualityRate * 100).toFixed(1)}%`, rateClass(overall.qualityRate)),
+    metric('Avg weight', overall.avgWeight === null ? '-- kg' : `${overall.avgWeight.toFixed(2)} kg`),
+    metric('Avg circumference', overall.avgCircum === null ? '-- cm' : `${overall.avgCircum.toFixed(2)} cm`),
   ].join('');
 }
 
 function renderCards(provinces) {
   el('provinceCards').innerHTML = PROVINCES.map((province) => {
     const data = provinces[province.code];
+    const complete = data.maxRows > 0 ? Math.round((data.filled / data.maxRows) * 100) : 0;
     return `
       <article class="card">
         <h3>${province.label}<span class="${rateClass(data.qualityRate)}">${(data.qualityRate * 100).toFixed(0)}%</span></h3>
         <div class="rows">
-          ${row('รวมทั้งหมด', data.totalFruits.toLocaleString())}
-          ${row('คุณภาพดี', data.quality.toLocaleString())}
-          ${row('ตกเกรด', data.below.toLocaleString())}
-          ${row('เสียหาย', data.damaged.toLocaleString())}
-          ${row('บันทึกแล้ว', `${data.filled}/${data.maxRows}`)}
+          ${row('Total fruits', data.totalFruits.toLocaleString())}
+          ${row('Quality', data.quality.toLocaleString())}
+          ${row('Below standard', data.below.toLocaleString())}
+          ${row('Damaged', data.damaged.toLocaleString())}
+          ${row('Recorded', `${data.filled}/${data.maxRows}`)}
         </div>
+        <div class="progress" title="${complete}% complete"><span style="width:${complete}%"></span></div>
       </article>
     `;
   }).join('');
@@ -241,7 +241,7 @@ function renderCards(provinces) {
 function renderTable(provinces) {
   el('compareTable').innerHTML = `
     <thead>
-      <tr><th>จังหวัด</th><th>ผลผลิตรวม</th><th>คุณภาพดี</th><th>ตกเกรด</th><th>เสียหาย</th><th>อัตราคุณภาพ</th><th>บันทึกแล้ว</th></tr>
+      <tr><th>Province</th><th>Total</th><th>Quality</th><th>Below</th><th>Damaged</th><th>Rate</th><th>Recorded</th></tr>
     </thead>
     <tbody>
       ${PROVINCES.map((province) => {
@@ -264,10 +264,9 @@ function renderTable(provinces) {
 
 function showApp() {
   el('loginView').hidden = true;
-  el('heroSection').hidden = true;
   el('appView').hidden = false;
   el('logoutBtn').hidden = false;
-  el('userLine').textContent = `เข้าใช้งานโดย: ${state.user.province_label} (${state.user.role === 'admin' ? 'ผู้ดูแล' : 'เจ้าหน้าที่'})`;
+  el('userLine').textContent = `${state.user.province_label} | ${state.user.role}`;
 
   const isAdmin = state.user.role === 'admin';
   el('provinceWrap').hidden = !isAdmin;
@@ -276,10 +275,9 @@ function showApp() {
 
 function showLogin() {
   el('loginView').hidden = false;
-  el('heroSection').hidden = false;
   el('appView').hidden = true;
   el('logoutBtn').hidden = true;
-  el('userLine').textContent = 'ยังไม่ได้เข้าสู่ระบบ';
+  el('userLine').textContent = 'Not signed in';
 }
 
 function showTab(tab) {
