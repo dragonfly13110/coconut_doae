@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="th">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Coconut DOAE Quality Tracker</title>
+  <title>ระบบติดตามคุณภาพมะพร้าวน้ำหอม DOAE</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -11,13 +11,13 @@
     <div class="brand-block">
       <div class="brand-mark">C</div>
       <div>
-        <h1>Coconut DOAE</h1>
-        <p>Quality tracking for 4 provinces, 6 collection rounds</p>
+        <h1>ระบบติดตามคุณภาพมะพร้าว DOAE</h1>
+        <p>ติดตามคุณภาพมะพร้าวน้ำหอม 4 จังหวัด 6 รอบการเก็บข้อมูล</p>
       </div>
     </div>
     <div class="session-block">
-      <span id="userLine">Checking session...</span>
-      <button id="logoutBtn" class="button ghost small" hidden>Logout</button>
+      <span id="userLine">กำลังตรวจสอบสถานะ...</span>
+      <button id="logoutBtn" class="button ghost small" hidden>ออกจากระบบ</button>
     </div>
   </header>
 
@@ -26,97 +26,97 @@
       <div class="login-copy">
         <div class="photo-panel" aria-hidden="true"></div>
         <div class="copy-content">
-          <p class="eyebrow">Field data system</p>
-          <h2>Record coconut quality from each province without Google Apps Script.</h2>
-          <p>Use province code + PIN. Data saves to Cloudflare D1 and feeds the dashboard immediately.</p>
+          <p class="eyebrow">ระบบข้อมูลภาคสนาม</p>
+          <h2>บันทึกคุณภาพมะพร้าวน้ำหอมจากแต่ละจังหวัดได้ทันที</h2>
+          <p>เข้าสู่ระบบด้วยรหัสจังหวัดและ PIN ข้อมูลจะบันทึกลง Cloudflare D1 และส่งต่อไปยังแดชบอร์ดทันที</p>
         </div>
       </div>
 
       <section class="panel login-panel">
-        <p class="eyebrow">Secure access</p>
-        <h2>Province login</h2>
+        <p class="eyebrow">เข้าใช้งานระบบ</p>
+        <h2>เข้าสู่ระบบจังหวัด</h2>
         <form id="loginForm" class="form-stack">
           <label>
-            Province
+            จังหวัด
             <select id="loginProvince" required></select>
           </label>
           <label>
             PIN
-            <input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="6 digits" required>
+            <input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="กรอก PIN" required>
           </label>
-          <button class="button primary" type="submit">Login</button>
+          <button class="button primary" type="submit">เข้าสู่ระบบ</button>
         </form>
         <p id="loginStatus" class="status"></p>
       </section>
     </section>
 
     <section id="appView" class="workspace" hidden>
-      <nav class="tabs" aria-label="Primary">
-        <button class="tab active" data-tab="entry">Entry</button>
-        <button class="tab" data-tab="dashboard">Dashboard</button>
+      <nav class="tabs" aria-label="เมนูหลัก">
+        <button class="tab active" data-tab="entry">บันทึกข้อมูล</button>
+        <button class="tab" data-tab="dashboard">แดชบอร์ด</button>
       </nav>
 
       <section id="entryTab" class="panel">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Data entry</p>
-            <h2>Collection record</h2>
+            <p class="eyebrow">บันทึกข้อมูล</p>
+            <h2>แบบบันทึกผลการประเมิน</h2>
           </div>
-          <button id="loadBtn" class="button ghost">Load saved record</button>
+          <button id="loadBtn" class="button ghost">โหลดข้อมูลเดิม</button>
         </div>
 
         <form id="entryForm" class="entry-grid">
           <label>
-            Round
+            รอบการประเมิน
             <select id="round"></select>
           </label>
           <label id="provinceWrap">
-            Province
+            จังหวัด
             <select id="province"></select>
           </label>
           <label>
-            Plot
+            แปลง
             <select id="plot"></select>
           </label>
           <label>
-            Bunch
+            ทะลาย
             <select id="bunch">
-              <option value="1">Bunch 1</option>
-              <option value="2">Bunch 2</option>
+              <option value="1">ทะลายที่ 1</option>
+              <option value="2">ทะลายที่ 2</option>
             </select>
           </label>
 
           <div class="divider"></div>
 
           <label>
-            Quality fruits
+            ผลคุณภาพ
             <input id="quality" type="number" min="0" step="1" value="0">
           </label>
           <label>
-            Below standard
+            ผลต่ำกว่ามาตรฐาน
             <input id="below" type="number" min="0" step="1" value="0">
           </label>
           <label>
-            Damaged fruits
+            ผลเสียหาย
             <input id="damaged" type="number" min="0" step="1" value="0">
           </label>
           <label>
-            Total fruits
+            ผลรวม
             <input id="total" type="text" readonly value="0">
           </label>
           <label>
-            Avg weight (kg)
+            น้ำหนักเฉลี่ย (กก.)
             <input id="weight" type="number" min="0" step="0.01" placeholder="0.00">
           </label>
           <label>
-            Avg circumference (cm)
+            เส้นรอบวงเฉลี่ย (ซม.)
             <input id="circum" type="number" min="0" step="0.01" placeholder="0.00">
           </label>
           <label class="wide">
-            Notes
-            <input id="notes" type="text" placeholder="Optional field observation">
+            หมายเหตุ
+            <input id="notes" type="text" placeholder="บันทึกข้อสังเกตเพิ่มเติม">
           </label>
-          <button type="submit" class="button primary wide">Save record</button>
+          <button type="submit" class="button primary wide">บันทึกข้อมูล</button>
         </form>
         <p id="entryStatus" class="status"></p>
       </section>
@@ -124,20 +124,20 @@
       <section id="dashboardTab" class="panel" hidden>
         <div class="section-head">
           <div>
-            <p class="eyebrow">Dashboard</p>
-            <h2>Quality summary</h2>
+            <p class="eyebrow">แดชบอร์ด</p>
+            <h2>สรุปคุณภาพมะพร้าวน้ำหอม</h2>
           </div>
           <div class="dashboard-actions">
-            <a id="downloadExcel" class="button primary" href="/api/export">Download Excel</a>
-            <button id="refreshBtn" class="button ghost">Refresh</button>
+            <a id="downloadExcel" class="button primary" href="/api/export">ดาวน์โหลด Excel</a>
+            <button id="refreshBtn" class="button ghost">รีเฟรช</button>
           </div>
         </div>
 
-        <div class="view-switch" aria-label="Dashboard view">
-          <button class="view-btn active" data-view="cards">Cards</button>
-          <button class="view-btn" data-view="bars">Bars</button>
-          <button class="view-btn" data-view="trend">Trend</button>
-          <button class="view-btn" data-view="table">Table</button>
+        <div class="view-switch" aria-label="รูปแบบการแสดงผลแดชบอร์ด">
+          <button class="view-btn active" data-view="cards">ภาพรวม</button>
+          <button class="view-btn" data-view="bars">กราฟแท่ง</button>
+          <button class="view-btn" data-view="trend">แนวโน้ม</button>
+          <button class="view-btn" data-view="table">ตาราง</button>
         </div>
 
         <div id="roundButtons" class="rounds"></div>
