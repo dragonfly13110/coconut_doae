@@ -7,6 +7,7 @@ const token = process.env.CLOUDFLARE_API_TOKEN;
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
 const databaseName = process.env.D1_DATABASE_NAME || 'coconut_doae';
 const pepper = process.env.PIN_PEPPER || process.env.SESSION_SECRET || '';
+const adminPin = process.env.PIN_DOAE || process.env.ADMIN_PIN || randomPin();
 
 if (!token || !accountId) {
   throw new Error('CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required');
@@ -20,6 +21,16 @@ const database = await ensureDatabase(databaseName);
 await query(database.uuid, await readFile(new URL('../schema.sql', import.meta.url), 'utf8'));
 
 const pins = {};
+pins.doae = adminPin;
+await query(database.uuid, `
+  INSERT INTO users (province_code, province_label, pin_hash, role)
+  VALUES (?, ?, ?, 'admin')
+  ON CONFLICT(province_code) DO UPDATE SET
+    province_label = excluded.province_label,
+    pin_hash = excluded.pin_hash,
+    role = excluded.role
+`, ['doae', 'กรมส่งเสริมการเกษตร', await hashPin(adminPin, pepper)]);
+
 for (const province of CONFIG.provinces) {
   pins[province.code] = process.env[`PIN_${province.code.toUpperCase()}`] || randomPin();
   await query(database.uuid, `

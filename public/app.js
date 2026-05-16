@@ -5,6 +5,11 @@ const PROVINCES = [
   { code: 'samut_songkhram', label: 'สมุทรสงคราม' },
 ];
 
+const LOGIN_ACCOUNTS = [
+  { code: 'doae', label: 'กรมส่งเสริมการเกษตร (ส่วนกลาง)' },
+  ...PROVINCES,
+];
+
 const ROLE_LABELS = {
   admin: 'ผู้ดูแลระบบ',
   province: 'ผู้ใช้งานจังหวัด',
@@ -22,7 +27,7 @@ const el = (id) => document.getElementById(id);
 init();
 
 async function init() {
-  fillSelect(el('loginProvince'), PROVINCES, 'code', 'label');
+  fillSelect(el('loginProvince'), LOGIN_ACCOUNTS, 'code', 'label');
   fillSelect(el('province'), PROVINCES, 'code', 'label');
   fillNumberSelect(el('round'), 1, 6, 'รอบที่ ');
   fillNumberSelect(el('plot'), 1, 10, 'แปลงที่ ');
