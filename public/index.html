@@ -128,6 +128,17 @@
           <button type="submit" class="button primary wide">บันทึกข้อมูล</button>
         </form>
         <p id="entryStatus" class="status"></p>
+        <section class="completion-panel" aria-labelledby="completionTitle">
+          <div class="completion-head">
+            <div>
+              <p class="eyebrow">ตรวจความครบถ้วน</p>
+              <h3 id="completionTitle">สถานะการบันทึกข้อมูล</h3>
+            </div>
+            <div id="completionSummary" class="completion-summary"></div>
+          </div>
+          <div id="completionGrid" class="completion-grid"></div>
+          <p class="completion-help">สีเขียว = บันทึกแล้ว, สีเทา = ยังไม่ได้บันทึก, กดช่องเพื่อเปิดจุดนั้นในฟอร์ม</p>
+        </section>
       </section>
 
       <section id="dashboardTab" class="panel" hidden>

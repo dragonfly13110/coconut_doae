@@ -7,7 +7,11 @@ export async function onRequest({ request, env }) {
   try {
     const user = await requireUser(request, env);
     const rows = await loadEntries(env, user);
-    return json(summarizeEntries(rows.results || []));
+    const entries = rows.results || [];
+    return json({
+      ...summarizeEntries(entries),
+      entries,
+    });
   } catch (error) {
     return authErrorResponse(error) || json({ error: error.message }, { status: 500 });
   }

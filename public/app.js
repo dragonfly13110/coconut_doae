@@ -109,6 +109,7 @@ async function loadEntry() {
     const { entry } = await api(`/api/entry?${params}`);
     setEntry(entry || {});
     setStatus('entryStatus', entry ? 'โหลดข้อมูลเดิมแล้ว' : 'ยังไม่มีข้อมูลสำหรับจุดนี้', entry ? 'success' : '');
+    renderCompletion();
   } catch (error) {
     setStatus('entryStatus', error.message, 'error');
   }
@@ -136,6 +137,7 @@ async function saveEntry(event) {
     });
     setStatus('entryStatus', 'บันทึกข้อมูลแล้ว', 'success');
     await loadDashboard();
+    renderCompletion();
   } catch (error) {
     setStatus('entryStatus', error.message, 'error');
   }
@@ -146,6 +148,7 @@ async function loadDashboard() {
   state.data = await api('/api/dashboard');
   buildRoundButtons();
   renderDashboard();
+  renderCompletion();
 }
 
 function buildRoundButtons() {
@@ -187,6 +190,67 @@ function renderDashboard() {
   el('provinceCards').hidden = state.dashboardView !== 'cards';
   el('dashboardVisual').hidden = state.dashboardView === 'cards' || state.dashboardView === 'table';
   document.querySelector('.table-wrap').hidden = state.dashboardView !== 'table';
+}
+
+function renderCompletion() {
+  if (!state.data || !state.user) return;
+  const provinceCode = provinceForRequest();
+  const roundNumber = Number(el('round').value);
+  const round = state.data.rounds.find((item) => item.round === roundNumber);
+  const provinceData = round?.provinces?.[provinceCode];
+  const filled = provinceData?.filled || 0;
+  const maxRows = provinceData?.maxRows || 20;
+  const pct = maxRows > 0 ? Math.round((filled / maxRows) * 100) : 0;
+
+  el('completionSummary').innerHTML = `<strong>${filled}/${maxRows}</strong><span>${pct}%</span>`;
+
+  const recorded = getRecordedSet(roundNumber, provinceCode);
+  el('completionGrid').innerHTML = Array.from({ length: 10 }, (_, plotIndex) => {
+    const plot = plotIndex + 1;
+    return `
+      <div class="plot-check">
+        <div class="plot-check-title">แปลง ${plot}</div>
+        <div class="bunch-checks">
+          ${[1, 2].map((bunch) => {
+            const done = recorded.has(`${plot}:${bunch}`);
+            return `
+              <button
+                type="button"
+                class="bunch-check ${done ? 'done' : 'missing'}"
+                data-round="${roundNumber}"
+                data-province="${provinceCode}"
+                data-plot="${plot}"
+                data-bunch="${bunch}"
+                title="แปลง ${plot} ทะลาย ${bunch}: ${done ? 'บันทึกแล้ว' : 'ยังไม่ได้บันทึก'}"
+              >ท${bunch}</button>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  el('completionGrid').querySelectorAll('.bunch-check').forEach((button) => {
+    button.addEventListener('click', async () => {
+      el('round').value = button.dataset.round;
+      if (state.user.role === 'admin') el('province').value = button.dataset.province;
+      el('plot').value = button.dataset.plot;
+      el('bunch').value = button.dataset.bunch;
+      await loadEntry();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+}
+
+function getRecordedSet(roundNumber, provinceCode) {
+  const set = new Set();
+  (state.data.entries || [])
+    .filter((entry) => Number(entry.round) === roundNumber && entry.province_code === provinceCode)
+    .forEach((entry) => {
+      const total = (Number(entry.quality) || 0) + (Number(entry.below) || 0) + (Number(entry.damaged) || 0);
+      if (total > 0) set.add(`${entry.plot}:${entry.bunch}`);
+    });
+  return set;
 }
 
 function aggregate() {
