@@ -1,15 +1,26 @@
 export const CONFIG = {
   provinces: [
-    { code: 'nakhon_pathom', label: 'Nakhon Pathom', pinLabel: 'NP' },
-    { code: 'ratchaburi', label: 'Ratchaburi', pinLabel: 'RB' },
-    { code: 'samut_sakhon', label: 'Samut Sakhon', pinLabel: 'SSK' },
-    { code: 'samut_songkhram', label: 'Samut Songkhram', pinLabel: 'SSM' },
+    { code: 'nakhon_pathom', label: 'นครปฐม', pinLabel: 'NP' },
+    { code: 'ratchaburi', label: 'ราชบุรี', pinLabel: 'RB' },
+    { code: 'samut_sakhon', label: 'สมุทรสาคร', pinLabel: 'SSK' },
+    { code: 'samut_songkhram', label: 'สมุทรสงคราม', pinLabel: 'SSM' },
   ],
   maxPlots: 10,
   bunchesPerPlot: 2,
   totalRounds: 6,
   roundDays: 21,
   startDate: '2026-06-01',
+};
+
+const FIELD_LABELS = {
+  round: 'รอบการประเมิน',
+  plot: 'แปลง',
+  bunch: 'ทะลาย',
+  quality: 'จำนวนผลคุณภาพ',
+  below: 'จำนวนผลต่ำกว่ามาตรฐาน',
+  damaged: 'จำนวนผลเสียหาย',
+  weight: 'น้ำหนักเฉลี่ย',
+  circum: 'เส้นรอบวงเฉลี่ย',
 };
 
 const provinceCodes = new Set(CONFIG.provinces.map((province) => province.code));
@@ -23,7 +34,7 @@ export function getRoundDates() {
 
     return {
       number: index + 1,
-      label: `Round ${index + 1}`,
+      label: `รอบที่ ${index + 1}`,
       start: formatDate(roundStart),
       end: formatDate(roundEnd),
     };
@@ -69,10 +80,10 @@ export function normalizeEntryInput(input) {
   const weight = toNullableNumber(input.weight, 'weight');
   const circum = toNullableNumber(input.circum, 'circum');
 
-  if (round < 1 || round > CONFIG.totalRounds) throw new Error('invalid round');
-  if (!provinceCodes.has(provinceCode)) throw new Error('invalid province_code');
-  if (plot < 1 || plot > CONFIG.maxPlots) throw new Error('invalid plot');
-  if (bunch < 1 || bunch > CONFIG.bunchesPerPlot) throw new Error('invalid bunch');
+  if (round < 1 || round > CONFIG.totalRounds) throw new Error('รอบการประเมินไม่ถูกต้อง');
+  if (!provinceCodes.has(provinceCode)) throw new Error('จังหวัดไม่ถูกต้อง');
+  if (plot < 1 || plot > CONFIG.maxPlots) throw new Error('แปลงไม่ถูกต้อง');
+  if (bunch < 1 || bunch > CONFIG.bunchesPerPlot) throw new Error('ทะลายไม่ถูกต้อง');
 
   return {
     round,
@@ -192,20 +203,24 @@ function formatDate(date) {
 
 function toInt(value, name) {
   const number = Number(value);
-  if (!Number.isInteger(number)) throw new Error(`invalid ${name}`);
+  if (!Number.isInteger(number)) throw new Error(`${fieldLabel(name)}ไม่ถูกต้อง`);
   return number;
 }
 
 function toNonNegativeInt(value, name) {
   if (value === '' || value === null || value === undefined) return 0;
   const number = toInt(value, name);
-  if (number < 0) throw new Error(`invalid ${name}`);
+  if (number < 0) throw new Error(`${fieldLabel(name)}ไม่ถูกต้อง`);
   return number;
 }
 
 function toNullableNumber(value, name) {
   if (value === '' || value === null || value === undefined) return null;
   const number = Number(value);
-  if (!Number.isFinite(number) || number < 0) throw new Error(`invalid ${name}`);
+  if (!Number.isFinite(number) || number < 0) throw new Error(`${fieldLabel(name)}ไม่ถูกต้อง`);
   return number;
+}
+
+function fieldLabel(name) {
+  return FIELD_LABELS[name] || name;
 }
