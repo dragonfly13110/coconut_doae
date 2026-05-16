@@ -544,7 +544,6 @@ function renderBunchOverall(overall) {
 function renderBunchVisual(data) {
   el('bunchVisual').innerHTML = `
     ${bunchProvinceBars(data.provinces, 'avgFruits', 'ลูกต่อทะลายเฉลี่ย', 'ลูก')}
-    ${bunchPairBars(data.overall, 'เปรียบเทียบทะลายที่ 1 และ 2')}
   `;
 }
 
@@ -568,42 +567,6 @@ function bunchProvinceBars(provinces, key, title, unit) {
         }).join('')}
       </div>
     </section>
-  `;
-}
-
-function bunchPairBars(overall, title) {
-  const maxFruits = Math.max(overall.bunches[1].avgFruits || 0, overall.bunches[2].avgFruits || 0, 1);
-  const maxWeight = Math.max(overall.bunches[1].avgWeight || 0, overall.bunches[2].avgWeight || 0, 1);
-  const maxCircum = Math.max(overall.bunches[1].avgCircum || 0, overall.bunches[2].avgCircum || 0, 1);
-  return `
-    <section class="visual-panel">
-      <h3>${title}</h3>
-      <div class="bunch-pair-grid">
-        ${[1, 2].map((bunch) => {
-          const data = overall.bunches[bunch];
-          return `
-            <article class="bunch-pair-card">
-              <h4>ทะลายที่ ${bunch}</h4>
-              ${miniBar('ลูก/ทะลาย', data.avgFruits, maxFruits, 'ลูก')}
-              ${miniBar('น้ำหนัก', data.avgWeight, maxWeight, 'กก.')}
-              ${miniBar('เส้นรอบวง', data.avgCircum, maxCircum, 'ซม.')}
-              <p>บันทึก ${data.count.toLocaleString()} ทะลาย</p>
-            </article>
-          `;
-        }).join('')}
-      </div>
-    </section>
-  `;
-}
-
-function miniBar(label, value, maxValue, unit) {
-  const width = value ? Math.max((value / maxValue) * 100, 5) : 0;
-  return `
-    <div class="mini-bar">
-      <span>${label}</span>
-      <div class="bunch-track"><i style="width:${width}%"></i></div>
-      <strong>${value ? `${value.toFixed(1)} ${unit}` : '-'}</strong>
-    </div>
   `;
 }
 
