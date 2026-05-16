@@ -1,18 +1,18 @@
 const HEADERS = [
-  'Round',
-  'Province Code',
-  'Province',
-  'Plot',
-  'Bunch',
-  'Quality',
-  'Below Standard',
-  'Damaged',
-  'Total',
-  'Quality Rate',
-  'Avg Weight (kg)',
-  'Avg Circumference (cm)',
-  'Notes',
-  'Recorded At',
+  'รอบการประเมิน',
+  'รหัสจังหวัด',
+  'จังหวัด',
+  'แปลง',
+  'ทะลาย',
+  'ผลคุณภาพ',
+  'ผลต่ำกว่ามาตรฐาน',
+  'ผลเสียหาย',
+  'ผลรวม',
+  'อัตราผลคุณภาพ',
+  'น้ำหนักเฉลี่ย (กก.)',
+  'เส้นรอบวงเฉลี่ย (ซม.)',
+  'หมายเหตุ',
+  'วันเวลาที่บันทึก',
 ];
 
 export function entriesToExcelHtml(entries) {
@@ -42,7 +42,7 @@ export function entriesToExcelHtml(entries) {
   });
 
   return `<!doctype html>
-<html>
+<html lang="th">
 <head>
   <meta charset="utf-8">
   <style>
