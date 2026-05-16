@@ -24,6 +24,6 @@ test('entriesToExcelHtml creates Excel-readable table with escaped values', () =
   assert.match(html, /<table>/);
   assert.match(html, /Nakhon Pathom/);
   assert.match(html, /&lt;checked&gt;/);
-  assert.match(html, /Quality Rate/);
+  assert.match(html, /อัตราผลคุณภาพ/);
   assert.match(html, /90.91%/);
 });
