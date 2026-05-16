@@ -63,6 +63,7 @@
       <nav class="tabs" aria-label="เมนูหลัก">
         <button class="tab active" data-tab="entry">บันทึกข้อมูล</button>
         <button class="tab" data-tab="dashboard">แดชบอร์ด</button>
+        <button class="tab" data-tab="bunch">วิเคราะห์รายทะลาย</button>
       </nav>
 
       <section id="entryTab" class="panel">
@@ -159,6 +160,23 @@
         <div id="provinceCards" class="cards"></div>
         <div class="table-wrap">
           <table id="compareTable"></table>
+        </div>
+      </section>
+
+      <section id="bunchTab" class="panel" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">วิเคราะห์รายทะลาย</p>
+            <h2>ลูกต่อทะลาย น้ำหนัก และเส้นรอบวง</h2>
+          </div>
+          <button id="bunchRefreshBtn" class="button ghost">รีเฟรช</button>
+        </div>
+
+        <div id="analysisRounds" class="rounds"></div>
+        <div id="bunchOverall" class="stats"></div>
+        <div id="bunchVisual" class="bunch-visual"></div>
+        <div class="table-wrap">
+          <table id="bunchTable"></table>
         </div>
       </section>
     </section>

@@ -41,6 +41,7 @@ function bindEvents() {
   el('entryForm').addEventListener('submit', saveEntry);
   el('loadBtn').addEventListener('click', loadEntry);
   el('refreshBtn').addEventListener('click', loadDashboard);
+  el('bunchRefreshBtn').addEventListener('click', loadDashboard);
   ['quality', 'below', 'damaged'].forEach((id) => el(id).addEventListener('input', calcTotal));
   ['round', 'province', 'plot', 'bunch'].forEach((id) => el(id).addEventListener('change', loadEntry));
 
@@ -142,11 +143,16 @@ async function loadDashboard() {
   state.data = await api('/api/dashboard');
   buildRoundButtons();
   renderDashboard();
+  renderBunchAnalysis();
   renderCompletion();
 }
 
 function buildRoundButtons() {
-  const wrap = el('roundButtons');
+  buildRoundButtonsFor(el('roundButtons'));
+  buildRoundButtonsFor(el('analysisRounds'));
+}
+
+function buildRoundButtonsFor(wrap) {
   wrap.innerHTML = '';
   wrap.append(roundButton('ทุกรอบ', 'all'));
 
@@ -162,6 +168,7 @@ function roundButton(label, value) {
   button.addEventListener('click', () => {
     state.activeRound = value === 'all' ? 'all' : Number(value);
     renderDashboard();
+    renderBunchAnalysis();
   });
   return button;
 }
@@ -173,14 +180,17 @@ function renderDashboard() {
   renderVisual(agg.provinces);
   renderTable(agg.provinces);
   el('roundButtons').querySelectorAll('button').forEach((button) => {
-    const active = state.activeRound === 'all'
-      ? button.dataset.round === 'all'
-      : Number(button.dataset.round) === state.activeRound;
-    button.classList.toggle('active', active);
+    button.classList.toggle('active', isActiveRoundButton(button));
   });
   el('provinceCards').hidden = false;
   el('dashboardVisual').hidden = false;
   document.querySelector('.table-wrap').hidden = false;
+}
+
+function isActiveRoundButton(button) {
+  return state.activeRound === 'all'
+    ? button.dataset.round === 'all'
+    : Number(button.dataset.round) === state.activeRound;
 }
 
 function renderCompletion() {
@@ -452,6 +462,174 @@ function renderTable(provinces) {
   `;
 }
 
+function renderBunchAnalysis() {
+  if (!state.data) return;
+  const data = aggregateBunch();
+  renderBunchOverall(data.overall);
+  renderBunchVisual(data);
+  renderBunchTable(data.provinces);
+  el('analysisRounds').querySelectorAll('button').forEach((button) => {
+    button.classList.toggle('active', isActiveRoundButton(button));
+  });
+}
+
+function aggregateBunch() {
+  const provinces = Object.fromEntries(PROVINCES.map((province) => [
+    province.code,
+    { label: province.label, bunches: { 1: blankBunchSummary(), 2: blankBunchSummary() }, total: blankBunchSummary() },
+  ]));
+  const overall = { bunches: { 1: blankBunchSummary(), 2: blankBunchSummary() }, total: blankBunchSummary() };
+
+  (state.data.entries || []).forEach((entry) => {
+    if (state.activeRound !== 'all' && Number(entry.round) !== state.activeRound) return;
+    const province = provinces[entry.province_code];
+    const bunch = Number(entry.bunch);
+    if (!province || !province.bunches[bunch]) return;
+
+    const total = (Number(entry.quality) || 0) + (Number(entry.below) || 0) + (Number(entry.damaged) || 0);
+    if (total <= 0) return;
+
+    addBunchEntry(province.bunches[bunch], entry, total);
+    addBunchEntry(province.total, entry, total);
+    addBunchEntry(overall.bunches[bunch], entry, total);
+    addBunchEntry(overall.total, entry, total);
+  });
+
+  Object.values(provinces).forEach((province) => {
+    finalizeBunch(province.bunches[1]);
+    finalizeBunch(province.bunches[2]);
+    finalizeBunch(province.total);
+  });
+  finalizeBunch(overall.bunches[1]);
+  finalizeBunch(overall.bunches[2]);
+  finalizeBunch(overall.total);
+
+  return { provinces, overall };
+}
+
+function blankBunchSummary() {
+  return { count: 0, fruits: 0, weightSum: 0, weightCount: 0, circumSum: 0, circumCount: 0 };
+}
+
+function addBunchEntry(target, entry, total) {
+  target.count += 1;
+  target.fruits += total;
+  const weight = Number(entry.weight) || 0;
+  const circum = Number(entry.circum) || 0;
+  if (weight > 0) {
+    target.weightSum += weight;
+    target.weightCount += 1;
+  }
+  if (circum > 0) {
+    target.circumSum += circum;
+    target.circumCount += 1;
+  }
+}
+
+function finalizeBunch(summary) {
+  summary.avgFruits = summary.count > 0 ? summary.fruits / summary.count : null;
+  summary.avgWeight = summary.weightCount > 0 ? summary.weightSum / summary.weightCount : null;
+  summary.avgCircum = summary.circumCount > 0 ? summary.circumSum / summary.circumCount : null;
+}
+
+function renderBunchOverall(overall) {
+  el('bunchOverall').innerHTML = [
+    metric('ทะลายที่บันทึก', overall.total.count.toLocaleString()),
+    metric('ลูกต่อทะลายเฉลี่ย', formatNumber(overall.total.avgFruits, ' ลูก')),
+    metric('น้ำหนักเฉลี่ย', formatNumber(overall.total.avgWeight, ' กก.')),
+    metric('เส้นรอบวงเฉลี่ย', formatNumber(overall.total.avgCircum, ' ซม.')),
+  ].join('');
+}
+
+function renderBunchVisual(data) {
+  el('bunchVisual').innerHTML = `
+    ${bunchProvinceBars(data.provinces, 'avgFruits', 'ลูกต่อทะลายเฉลี่ย', 'ลูก')}
+    ${bunchPairBars(data.overall, 'เปรียบเทียบทะลายที่ 1 และ 2')}
+  `;
+}
+
+function bunchProvinceBars(provinces, key, title, unit) {
+  const maxValue = Math.max(...PROVINCES.map((province) => provinces[province.code].total[key] || 0), 1);
+  return `
+    <section class="visual-panel">
+      <h3>${title} รายจังหวัด</h3>
+      <div class="bunch-bar-list">
+        ${PROVINCES.map((province) => {
+          const data = provinces[province.code].total;
+          const value = data[key] || 0;
+          const width = Math.max((value / maxValue) * 100, value > 0 ? 5 : 0);
+          return `
+            <div class="bunch-bar-row">
+              <span>${province.label}</span>
+              <div class="bunch-track"><i style="width:${width}%"></i></div>
+              <strong>${value > 0 ? `${value.toFixed(1)} ${unit}` : '-'}</strong>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function bunchPairBars(overall, title) {
+  const maxFruits = Math.max(overall.bunches[1].avgFruits || 0, overall.bunches[2].avgFruits || 0, 1);
+  const maxWeight = Math.max(overall.bunches[1].avgWeight || 0, overall.bunches[2].avgWeight || 0, 1);
+  const maxCircum = Math.max(overall.bunches[1].avgCircum || 0, overall.bunches[2].avgCircum || 0, 1);
+  return `
+    <section class="visual-panel">
+      <h3>${title}</h3>
+      <div class="bunch-pair-grid">
+        ${[1, 2].map((bunch) => {
+          const data = overall.bunches[bunch];
+          return `
+            <article class="bunch-pair-card">
+              <h4>ทะลายที่ ${bunch}</h4>
+              ${miniBar('ลูก/ทะลาย', data.avgFruits, maxFruits, 'ลูก')}
+              ${miniBar('น้ำหนัก', data.avgWeight, maxWeight, 'กก.')}
+              ${miniBar('เส้นรอบวง', data.avgCircum, maxCircum, 'ซม.')}
+              <p>บันทึก ${data.count.toLocaleString()} ทะลาย</p>
+            </article>
+          `;
+        }).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function miniBar(label, value, maxValue, unit) {
+  const width = value ? Math.max((value / maxValue) * 100, 5) : 0;
+  return `
+    <div class="mini-bar">
+      <span>${label}</span>
+      <div class="bunch-track"><i style="width:${width}%"></i></div>
+      <strong>${value ? `${value.toFixed(1)} ${unit}` : '-'}</strong>
+    </div>
+  `;
+}
+
+function renderBunchTable(provinces) {
+  el('bunchTable').innerHTML = `
+    <thead>
+      <tr><th>จังหวัด</th><th>ทะลาย</th><th>บันทึก</th><th>ลูกต่อทะลาย</th><th>น้ำหนักเฉลี่ย</th><th>เส้นรอบวงเฉลี่ย</th></tr>
+    </thead>
+    <tbody>
+      ${PROVINCES.flatMap((province) => [1, 2].map((bunch) => {
+        const data = provinces[province.code].bunches[bunch];
+        return `
+          <tr>
+            <td>${province.label}</td>
+            <td>ทะลายที่ ${bunch}</td>
+            <td>${data.count.toLocaleString()}</td>
+            <td>${formatNumber(data.avgFruits, ' ลูก')}</td>
+            <td>${formatNumber(data.avgWeight, ' กก.')}</td>
+            <td>${formatNumber(data.avgCircum, ' ซม.')}</td>
+          </tr>
+        `;
+      })).join('')}
+    </tbody>
+  `;
+}
+
 function showApp() {
   el('loginView').hidden = true;
   el('appView').hidden = false;
@@ -473,6 +651,7 @@ function showLogin() {
 function showTab(tab) {
   el('entryTab').hidden = tab !== 'entry';
   el('dashboardTab').hidden = tab !== 'dashboard';
+  el('bunchTab').hidden = tab !== 'bunch';
   document.querySelectorAll('.tab').forEach((button) => {
     button.classList.toggle('active', button.dataset.tab === tab);
   });
@@ -521,6 +700,10 @@ function metric(label, value, className = '') {
 
 function row(label, value) {
   return `<div class="row"><span>${label}</span><strong>${value}</strong></div>`;
+}
+
+function formatNumber(value, suffix = '') {
+  return value === null || value === undefined ? '-' : `${value.toFixed(2)}${suffix}`;
 }
 
 function rateClass(rate) {
