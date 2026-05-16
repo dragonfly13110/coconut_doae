@@ -617,9 +617,11 @@ function showTab(tab) {
   el('entryTab').hidden = tab !== 'entry';
   el('dashboardTab').hidden = tab !== 'dashboard';
   el('bunchTab').hidden = tab !== 'bunch';
+  el('statsTab').hidden = tab !== 'stats';
   document.querySelectorAll('.tab').forEach((button) => {
     button.classList.toggle('active', button.dataset.tab === tab);
   });
+  if (tab === 'stats' && state.data) loadStats();
 }
 
 function setEntry(entry) {
@@ -679,6 +681,220 @@ function rateClass(rate) {
 
 function roleLabel(role) {
   return ROLE_LABELS[role] || role;
+}
+
+function loadStats() {
+  if (!state.data) return;
+  state.statsRound = state.statsRound || 'all';
+  buildStatsRoundButtons();
+  renderProvinceTrends();
+  renderHistograms();
+  renderStatsTable();
+}
+
+function buildStatsRoundButtons() {
+  const wrap = el('statsRounds');
+  wrap.innerHTML = '';
+  wrap.append(roundBtn('ทุกรอบ', 'all'));
+  for (const round of state.data.roundDates) {
+    wrap.append(roundBtn(`${round.label} | ${round.start} - ${round.end}`, String(round.number)));
+  }
+}
+
+function roundBtn(label, value) {
+  const button = document.createElement('button');
+  button.textContent = label;
+  button.dataset.round = value;
+  button.addEventListener('click', () => {
+    state.statsRound = value === 'all' ? 'all' : Number(value);
+    renderProvinceTrends();
+    renderHistograms();
+    renderStatsTable();
+    el('statsRounds').querySelectorAll('button').forEach((btn) => {
+      btn.classList.toggle('active', String(state.statsRound) === btn.dataset.round);
+    });
+  });
+  if (String(state.statsRound) === value) button.classList.add('active');
+  return button;
+}
+
+function filterEntries() {
+  const entries = state.data.entries || [];
+  if (state.statsRound === 'all') return entries;
+  return entries.filter((e) => Number(e.round) === state.statsRound);
+}
+
+function renderProvinceTrends() {
+  const entries = filterEntries();
+  const maxRounds = state.data.roundDates.length;
+  const trends = PROVINCES.map((province) => {
+    const points = [];
+    for (let r = 1; r <= maxRounds; r++) {
+      const roundEntries = entries.filter((e) => Number(e.round) === r && e.province_code === province.code);
+      let total = 0;
+      let quality = 0;
+      roundEntries.forEach((e) => {
+        const t = (Number(e.quality) || 0) + (Number(e.below) || 0) + (Number(e.damaged) || 0);
+        total += t;
+        quality += Number(e.quality) || 0;
+      });
+      points.push({ round: r, total, rate: total > 0 ? quality / total : null });
+    }
+    return { province, points };
+  });
+
+  const colors = ['var(--primary)', 'var(--blue)', 'var(--amber)', 'var(--red)'];
+
+  el('provinceTrendVisual').innerHTML = `
+    <section class="visual-panel">
+      <h3>อัตราผลคุณภาพรายจังหวัดตามรอบ</h3>
+      <div class="multi-trend">
+        <div class="multi-trend-chart">
+          ${trends.map((t, idx) => `
+            <div class="trend-line-row">
+              <span class="trend-line-name">${t.province.label}</span>
+              <div class="trend-line-track">
+                ${t.points.map((p) => `
+                  <div class="trend-point-wrap" title="รอบ ${p.round}: ${p.rate !== null ? (p.rate * 100).toFixed(0) + '%' : 'ไม่มีข้อมูล'}">
+                    <div class="trend-bubble ${p.rate !== null ? '' : 'no-data'}" style="${p.rate !== null ? `background:${colors[idx]}; bottom:${Math.max(p.rate * 100, 2)}%` : ''}"></div>
+                    <span>${p.round}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="legend">
+          ${trends.map((t, idx) => `
+            <span><i class="dot" style="background:${colors[idx]}"></i>${t.province.label}</span>
+          `).join('')}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderHistograms() {
+  const entries = filterEntries();
+  const weightHist = computeHistogram(entries, 'weight', 0.2, 'กก.');
+  const circumHist = computeHistogram(entries, 'circum', 5, 'ซม.');
+
+  el('histogramVisual').innerHTML = `
+    <section class="visual-panel">
+      <h3>การกระจายตัวของน้ำหนัก</h3>
+      ${histogramBars(weightHist, 'var(--blue)')}
+    </section>
+    <section class="visual-panel">
+      <h3>การกระจายตัวของเส้นรอบวง</h3>
+      ${histogramBars(circumHist, 'var(--primary)')}
+    </section>
+  `;
+}
+
+function computeHistogram(entries, key, binSize, unit) {
+  const values = entries
+    .map((e) => Number(e[key]))
+    .filter((v) => v > 0 && isFinite(v));
+  if (values.length === 0) return [];
+
+  const min = Math.floor(Math.min(...values) / binSize) * binSize;
+  const max = Math.ceil(Math.max(...values) / binSize) * binSize;
+  const bins = {};
+  for (let v = min; v < max; v += binSize) {
+    const label = `${v.toFixed(v < 1 && binSize < 1 ? 1 : 0)}-${(v + binSize).toFixed(v < 1 && binSize < 1 ? 1 : 0)} ${unit}`;
+    bins[label] = 0;
+  }
+  values.forEach((v) => {
+    const bucket = Math.floor(v / binSize) * binSize;
+    const label = `${bucket.toFixed(bucket < 1 && binSize < 1 ? 1 : 0)}-${(bucket + binSize).toFixed(bucket < 1 && binSize < 1 ? 1 : 0)} ${unit}`;
+    bins[label]++;
+  });
+  return Object.entries(bins).map(([label, count]) => ({ label, count }));
+}
+
+function histogramBars(hist, color) {
+  if (hist.length === 0) return '<p class="status">ยังไม่มีข้อมูล</p>';
+  const maxCount = Math.max(...hist.map((b) => b.count), 1);
+  return `
+    <div class="histogram-bars">
+      ${hist.map((b) => `
+        <div class="histogram-row">
+          <span>${b.label}</span>
+          <div class="histogram-track">
+            <i style="width:${(b.count / maxCount) * 100}%; background:${color}"></i>
+          </div>
+          <strong>${b.count}</strong>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderStatsTable() {
+  const entries = filterEntries();
+  const rows = [];
+  PROVINCES.forEach((province) => {
+    [1, 2].forEach((bunch) => {
+      const subset = entries.filter((e) => e.province_code === province.code && Number(e.bunch) === bunch);
+      const weights = subset.map((e) => Number(e.weight)).filter((v) => v > 0 && isFinite(v));
+      const circums = subset.map((e) => Number(e.circum)).filter((v) => v > 0 && isFinite(v));
+      rows.push({
+        province: province.label,
+        bunch: `ทะลายที่ ${bunch}`,
+        count: subset.filter((e) => {
+          const t = (Number(e.quality) || 0) + (Number(e.below) || 0) + (Number(e.damaged) || 0);
+          return t > 0;
+        }).length,
+        wMin: weights.length ? Math.min(...weights) : null,
+        wMax: weights.length ? Math.max(...weights) : null,
+        wAvg: weights.length ? weights.reduce((a, b) => a + b, 0) / weights.length : null,
+        wSd: stdDev(weights),
+        cMin: circums.length ? Math.min(...circums) : null,
+        cMax: circums.length ? Math.max(...circums) : null,
+        cAvg: circums.length ? circums.reduce((a, b) => a + b, 0) / circums.length : null,
+        cSd: stdDev(circums),
+      });
+    });
+  });
+
+  el('statsTable').innerHTML = `
+    <thead>
+      <tr>
+        <th>จังหวัด</th><th>ทะลาย</th><th>บันทึก</th>
+        <th>นน.ต่ำสุด</th><th>นน.สูงสุด</th><th>นน.เฉลี่ย</th><th>นน.SD</th>
+        <th>รอบวงต่ำสุด</th><th>รอบวงสูงสุด</th><th>รอบวงเฉลี่ย</th><th>รอบวง SD</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows.map((r) => `
+        <tr>
+          <td>${r.province}</td>
+          <td>${r.bunch}</td>
+          <td>${r.count}</td>
+          <td>${fmtNum(r.wMin, 'กก.')}</td>
+          <td>${fmtNum(r.wMax, 'กก.')}</td>
+          <td>${fmtNum(r.wAvg, 'กก.')}</td>
+          <td>${fmtNum(r.wSd, '')}</td>
+          <td>${fmtNum(r.cMin, 'ซม.')}</td>
+          <td>${fmtNum(r.cMax, 'ซม.')}</td>
+          <td>${fmtNum(r.cAvg, 'ซม.')}</td>
+          <td>${fmtNum(r.cSd, '')}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  `;
+}
+
+function stdDev(values) {
+  if (values.length < 2) return null;
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / (values.length - 1);
+  return Math.sqrt(variance);
+}
+
+function fmtNum(value, unit) {
+  if (value === null || value === undefined) return '-';
+  return `${Number(value).toFixed(2)}${unit ? ' ' + unit : ''}`;
 }
 
 async function api(path, options = {}) {

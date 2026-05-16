@@ -762,6 +762,120 @@ input[readonly] {
   grid-column: 1 / -1;
 }
 
+.multi-trend {
+  min-width: 0;
+}
+
+.multi-trend-chart {
+  display: grid;
+  gap: 10px;
+}
+
+.trend-line-row {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.trend-line-name {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.trend-line-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 6px;
+  height: 64px;
+  align-items: end;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: linear-gradient(0deg, var(--line) 1px, transparent 1px);
+  background-size: 100% 20%;
+}
+
+.trend-point-wrap {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  justify-items: center;
+  height: 100%;
+  position: relative;
+}
+
+.trend-point-wrap span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding-top: 4px;
+}
+
+.trend-bubble {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.trend-bubble.no-data {
+  background: var(--line) !important;
+  border-color: #fff;
+  box-shadow: none;
+}
+
+.histogram-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.histogram-bars {
+  display: grid;
+  gap: 10px;
+}
+
+.histogram-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 42px;
+  gap: 10px;
+  align-items: center;
+}
+
+.histogram-row span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: right;
+}
+
+.histogram-row strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.histogram-track {
+  height: 16px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7eee9;
+}
+
+.histogram-track i {
+  display: block;
+  height: 100%;
+  min-width: 3px;
+  border-radius: inherit;
+}
+
 .bunch-bar-list {
   display: grid;
   gap: 13px;
@@ -917,6 +1031,32 @@ th {
 
   .bunch-visual .visual-panel:first-child {
     grid-column: auto;
+  }
+
+  .multi-trend-chart {
+    gap: 14px;
+  }
+
+  .trend-line-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .trend-line-name {
+    text-align: center;
+  }
+
+  .histogram-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .histogram-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .histogram-row span {
+    text-align: left;
   }
 
   .metric-bar-line strong,

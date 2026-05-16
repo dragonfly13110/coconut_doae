@@ -64,6 +64,7 @@
         <button class="tab active" data-tab="entry">บันทึกข้อมูล</button>
         <button class="tab" data-tab="dashboard">แดชบอร์ด</button>
         <button class="tab" data-tab="bunch">วิเคราะห์รายทะลาย</button>
+        <button class="tab" data-tab="stats">สถิติเชิงลึก</button>
       </nav>
 
       <section id="entryTab" class="panel">
@@ -177,6 +178,22 @@
         <div id="bunchVisual" class="bunch-visual"></div>
         <div class="table-wrap">
           <table id="bunchTable"></table>
+        </div>
+      </section>
+
+      <section id="statsTab" class="panel" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">วิเคราะห์เชิงสถิติ</p>
+            <h2>แนวโน้มรายจังหวัด การกระจายตัว และค่าสถิติ</h2>
+          </div>
+        </div>
+
+        <div id="statsRounds" class="rounds"></div>
+        <div id="provinceTrendVisual"></div>
+        <div id="histogramVisual" class="histogram-grid"></div>
+        <div class="table-wrap">
+          <table id="statsTable"></table>
         </div>
       </section>
     </section>
