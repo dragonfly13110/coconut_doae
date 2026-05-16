@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap');
 
 :root {
   --bg: #eef4f1;
@@ -63,7 +63,7 @@ body {
   background: linear-gradient(135deg, var(--primary), var(--blue));
   color: #fff;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -85,7 +85,7 @@ h1 {
   margin: 0 0 3px;
   color: var(--primary) !important;
   font-size: 12px !important;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .shell-main {
@@ -143,7 +143,7 @@ h1 {
   background: rgba(255, 255, 255, 0.14);
   color: #fff;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .copy-content h2 {
@@ -192,7 +192,7 @@ h1 {
   background: linear-gradient(135deg, var(--primary), var(--blue));
   color: #fff;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .agency-card strong,
@@ -208,7 +208,7 @@ h1 {
   margin-top: 2px;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .login-panel h2,
@@ -220,7 +220,7 @@ h1 {
 .eyebrow {
   color: var(--primary);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -243,7 +243,7 @@ label {
   gap: 7px;
   color: var(--muted);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 input,
@@ -267,7 +267,7 @@ select:focus {
 input[readonly] {
   background: var(--primary-soft);
   color: var(--primary-strong);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .button {
@@ -276,7 +276,7 @@ input[readonly] {
   border: 1px solid var(--primary);
   border-radius: 9px;
   font: inherit;
-  font-weight: 800;
+  font-weight: 600;
   cursor: pointer;
   text-decoration: none;
 }
@@ -331,7 +331,7 @@ input[readonly] {
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-weight: 800;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -370,7 +370,7 @@ input[readonly] {
   color: var(--muted);
   font: inherit;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -385,7 +385,7 @@ input[readonly] {
   margin-top: 12px;
   color: var(--muted);
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .status.error { color: var(--red); }
@@ -418,7 +418,7 @@ input[readonly] {
   align-items: baseline;
   gap: 10px;
   color: var(--primary);
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .completion-summary strong {
@@ -442,7 +442,7 @@ input[readonly] {
   margin-bottom: 8px;
   color: var(--muted);
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .bunch-checks {
@@ -457,7 +457,7 @@ input[readonly] {
   border-radius: 9px;
   font: inherit;
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -499,7 +499,7 @@ input[readonly] {
   color: var(--muted);
   font: inherit;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -536,14 +536,14 @@ input[readonly] {
 .metric-label {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 600;
   text-transform: uppercase;
 }
 
 .metric-value {
   margin-top: 6px;
   font-size: clamp(25px, 4vw, 36px);
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .cards {
@@ -639,7 +639,7 @@ input[readonly] {
 .bar-total {
   color: var(--muted);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .bar-total { text-align: right; }
@@ -670,7 +670,7 @@ input[readonly] {
   margin-top: 14px;
   color: var(--muted);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .legend span {
@@ -706,7 +706,7 @@ input[readonly] {
 .trend-total {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .trend-bar {
@@ -746,7 +746,7 @@ th {
   background: #edf5f1;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 600;
   text-transform: uppercase;
 }
 
