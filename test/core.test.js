@@ -35,6 +35,7 @@ test('round dates are generated from start date and round length', () => {
   const rounds = getRoundDates();
 
   assert.equal(rounds.length, 6);
+  assert.equal(rounds[0].label, 'รอบที่ 1');
   assert.equal(rounds[0].start, '2026-06-01');
   assert.equal(rounds[0].end, '2026-06-21');
   assert.equal(rounds[5].start, '2026-09-14');
@@ -62,7 +63,7 @@ test('normalizes entry input and rejects invalid location', () => {
 
   assert.throws(
     () => normalizeEntryInput({ ...entry, plot: 99 }),
-    /invalid plot/,
+    /แปลงไม่ถูกต้อง/,
   );
 });
 
