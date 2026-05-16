@@ -7,14 +7,14 @@ export function json(data, init = {}) {
 }
 
 export function methodNotAllowed() {
-  return json({ error: 'method not allowed' }, { status: 405 });
+  return json({ error: 'ไม่รองรับวิธีเรียกใช้งานนี้' }, { status: 405 });
 }
 
 export async function readJson(request) {
   try {
     return await request.json();
   } catch {
-    throw new Error('invalid json');
+    throw new Error('รูปแบบข้อมูล JSON ไม่ถูกต้อง');
   }
 }
 
@@ -36,7 +36,7 @@ export async function requireUser(request, env) {
 export function authErrorResponse(error) {
   if (error && error.status === 401) {
     return json(
-      { error: 'unauthorized' },
+      { error: 'กรุณาเข้าสู่ระบบใหม่' },
       { status: 401, headers: { 'set-cookie': clearSessionCookie() } },
     );
   }
@@ -44,7 +44,7 @@ export function authErrorResponse(error) {
 }
 
 function unauthorized() {
-  const error = new Error('unauthorized');
+  const error = new Error('กรุณาเข้าสู่ระบบใหม่');
   error.status = 401;
   return error;
 }
