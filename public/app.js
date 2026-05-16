@@ -1,9 +1,14 @@
 const PROVINCES = [
-  { code: 'nakhon_pathom', label: 'Nakhon Pathom' },
-  { code: 'ratchaburi', label: 'Ratchaburi' },
-  { code: 'samut_sakhon', label: 'Samut Sakhon' },
-  { code: 'samut_songkhram', label: 'Samut Songkhram' },
+  { code: 'nakhon_pathom', label: 'นครปฐม' },
+  { code: 'ratchaburi', label: 'ราชบุรี' },
+  { code: 'samut_sakhon', label: 'สมุทรสาคร' },
+  { code: 'samut_songkhram', label: 'สมุทรสงคราม' },
 ];
+
+const ROLE_LABELS = {
+  admin: 'ผู้ดูแลระบบ',
+  province: 'ผู้ใช้งานจังหวัด',
+};
 
 const state = {
   user: null,
@@ -19,8 +24,8 @@ init();
 async function init() {
   fillSelect(el('loginProvince'), PROVINCES, 'code', 'label');
   fillSelect(el('province'), PROVINCES, 'code', 'label');
-  fillNumberSelect(el('round'), 1, 6, 'Round ');
-  fillNumberSelect(el('plot'), 1, 10, 'Plot ');
+  fillNumberSelect(el('round'), 1, 6, 'รอบที่ ');
+  fillNumberSelect(el('plot'), 1, 10, 'แปลงที่ ');
   bindEvents();
   await loadMe();
 }
@@ -47,7 +52,7 @@ function bindEvents() {
 
 async function login(event) {
   event.preventDefault();
-  setStatus('loginStatus', 'Checking PIN...', '');
+  setStatus('loginStatus', 'กำลังตรวจสอบ PIN...', '');
   try {
     const response = await api('/api/login', {
       method: 'POST',
@@ -62,7 +67,7 @@ async function login(event) {
     await loadDashboard();
     await loadEntry();
   } catch (error) {
-    setStatus('loginStatus', `Login failed: ${error.message}`, 'error');
+    setStatus('loginStatus', `เข้าสู่ระบบไม่สำเร็จ: ${error.message}`, 'error');
   }
 }
 
@@ -87,7 +92,7 @@ async function loadMe() {
 
 async function loadEntry() {
   if (!state.user) return;
-  setStatus('entryStatus', 'Loading saved record...', '');
+  setStatus('entryStatus', 'กำลังโหลดข้อมูลเดิม...', '');
   const params = new URLSearchParams({
     round: el('round').value,
     province_code: provinceForRequest(),
@@ -98,7 +103,7 @@ async function loadEntry() {
   try {
     const { entry } = await api(`/api/entry?${params}`);
     setEntry(entry || {});
-    setStatus('entryStatus', entry ? 'Saved record loaded.' : 'No record yet for this location.', entry ? 'success' : '');
+    setStatus('entryStatus', entry ? 'โหลดข้อมูลเดิมแล้ว' : 'ยังไม่มีข้อมูลสำหรับจุดนี้', entry ? 'success' : '');
   } catch (error) {
     setStatus('entryStatus', error.message, 'error');
   }
@@ -106,7 +111,7 @@ async function loadEntry() {
 
 async function saveEntry(event) {
   event.preventDefault();
-  setStatus('entryStatus', 'Saving record...', '');
+  setStatus('entryStatus', 'กำลังบันทึกข้อมูล...', '');
 
   try {
     await api('/api/entry', {
@@ -124,7 +129,7 @@ async function saveEntry(event) {
         notes: el('notes').value,
       },
     });
-    setStatus('entryStatus', 'Record saved.', 'success');
+    setStatus('entryStatus', 'บันทึกข้อมูลแล้ว', 'success');
     await loadDashboard();
   } catch (error) {
     setStatus('entryStatus', error.message, 'error');
@@ -141,7 +146,7 @@ async function loadDashboard() {
 function buildRoundButtons() {
   const wrap = el('roundButtons');
   wrap.innerHTML = '';
-  wrap.append(roundButton('All rounds', 'all'));
+  wrap.append(roundButton('ทุกรอบ', 'all'));
 
   for (const round of state.data.roundDates) {
     wrap.append(roundButton(`${round.label} | ${round.start} - ${round.end}`, String(round.number)));
@@ -225,10 +230,10 @@ function finalize(summary) {
 
 function renderOverall(overall) {
   el('overall').innerHTML = [
-    metric('Total fruits', overall.totalFruits.toLocaleString()),
-    metric('Quality rate', `${(overall.qualityRate * 100).toFixed(1)}%`, rateClass(overall.qualityRate)),
-    metric('Avg weight', overall.avgWeight === null ? '-- kg' : `${overall.avgWeight.toFixed(2)} kg`),
-    metric('Avg circumference', overall.avgCircum === null ? '-- cm' : `${overall.avgCircum.toFixed(2)} cm`),
+    metric('ผลรวมทั้งหมด', overall.totalFruits.toLocaleString()),
+    metric('อัตราผลคุณภาพ', `${(overall.qualityRate * 100).toFixed(1)}%`, rateClass(overall.qualityRate)),
+    metric('น้ำหนักเฉลี่ย', overall.avgWeight === null ? '-- กก.' : `${overall.avgWeight.toFixed(2)} กก.`),
+    metric('เส้นรอบวงเฉลี่ย', overall.avgCircum === null ? '-- ซม.' : `${overall.avgCircum.toFixed(2)} ซม.`),
   ].join('');
 }
 
@@ -240,13 +245,13 @@ function renderCards(provinces) {
       <article class="card">
         <h3>${province.label}<span class="${rateClass(data.qualityRate)}">${(data.qualityRate * 100).toFixed(0)}%</span></h3>
         <div class="rows">
-          ${row('Total fruits', data.totalFruits.toLocaleString())}
-          ${row('Quality', data.quality.toLocaleString())}
-          ${row('Below standard', data.below.toLocaleString())}
-          ${row('Damaged', data.damaged.toLocaleString())}
-          ${row('Recorded', `${data.filled}/${data.maxRows}`)}
+          ${row('ผลรวม', data.totalFruits.toLocaleString())}
+          ${row('ผลคุณภาพ', data.quality.toLocaleString())}
+          ${row('ต่ำกว่ามาตรฐาน', data.below.toLocaleString())}
+          ${row('เสียหาย', data.damaged.toLocaleString())}
+          ${row('บันทึกแล้ว', `${data.filled}/${data.maxRows}`)}
         </div>
-        <div class="progress" title="${complete}% complete"><span style="width:${complete}%"></span></div>
+        <div class="progress" title="บันทึกแล้ว ${complete}%"><span style="width:${complete}%"></span></div>
       </article>
     `;
   }).join('');
@@ -262,7 +267,7 @@ function renderBars(provinces) {
   const maxTotal = Math.max(...PROVINCES.map((province) => provinces[province.code].totalFruits), 1);
   el('dashboardVisual').innerHTML = `
     <section class="visual-panel">
-      <h3>Province composition</h3>
+      <h3>สัดส่วนข้อมูลรายจังหวัด</h3>
       <div class="bar-list">
         ${PROVINCES.map((province) => {
           const data = provinces[province.code];
@@ -285,9 +290,9 @@ function renderBars(provinces) {
         }).join('')}
       </div>
       <div class="legend">
-        <span><i class="dot quality"></i>Quality</span>
-        <span><i class="dot below"></i>Below</span>
-        <span><i class="dot damaged"></i>Damaged</span>
+        <span><i class="dot quality"></i>ผลคุณภาพ</span>
+        <span><i class="dot below"></i>ต่ำกว่ามาตรฐาน</span>
+        <span><i class="dot damaged"></i>เสียหาย</span>
       </div>
     </section>
   `;
@@ -297,7 +302,7 @@ function renderTrend() {
   const rounds = state.data.rounds.map((round) => {
     const rate = round.overall.qualityRate || 0;
     return {
-      label: `R${round.round}`,
+      label: `รอบที่ ${round.round}`,
       total: round.overall.totalFruits || 0,
       rate,
       height: Math.max(rate * 100, round.overall.totalFruits > 0 ? 3 : 0),
@@ -306,7 +311,7 @@ function renderTrend() {
 
   el('dashboardVisual').innerHTML = `
     <section class="visual-panel">
-      <h3>Quality rate by round</h3>
+      <h3>อัตราผลคุณภาพตามรอบการประเมิน</h3>
       <div class="trend-chart">
         ${rounds.map((round) => `
           <div class="trend-item">
@@ -324,7 +329,7 @@ function renderTrend() {
 function renderTable(provinces) {
   el('compareTable').innerHTML = `
     <thead>
-      <tr><th>Province</th><th>Total</th><th>Quality</th><th>Below</th><th>Damaged</th><th>Rate</th><th>Recorded</th></tr>
+      <tr><th>จังหวัด</th><th>ผลรวม</th><th>ผลคุณภาพ</th><th>ต่ำกว่ามาตรฐาน</th><th>เสียหาย</th><th>อัตราคุณภาพ</th><th>บันทึกแล้ว</th></tr>
     </thead>
     <tbody>
       ${PROVINCES.map((province) => {
@@ -349,7 +354,7 @@ function showApp() {
   el('loginView').hidden = true;
   el('appView').hidden = false;
   el('logoutBtn').hidden = false;
-  el('userLine').textContent = `${state.user.province_label} | ${state.user.role}`;
+  el('userLine').textContent = `${state.user.province_label} | ${roleLabel(state.user.role)}`;
 
   const isAdmin = state.user.role === 'admin';
   el('provinceWrap').hidden = !isAdmin;
@@ -360,7 +365,7 @@ function showLogin() {
   el('loginView').hidden = false;
   el('appView').hidden = true;
   el('logoutBtn').hidden = true;
-  el('userLine').textContent = 'Not signed in';
+  el('userLine').textContent = 'ยังไม่ได้เข้าสู่ระบบ';
 }
 
 function showTab(tab) {
@@ -420,6 +425,10 @@ function rateClass(rate) {
   if (rate >= 0.7) return 'rate-green';
   if (rate >= 0.5) return 'rate-yellow';
   return 'rate-red';
+}
+
+function roleLabel(role) {
+  return ROLE_LABELS[role] || role;
 }
 
 async function api(path, options = {}) {
