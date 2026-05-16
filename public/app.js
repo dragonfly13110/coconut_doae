@@ -321,6 +321,7 @@ function renderVisual(provinces) {
   el('dashboardVisual').innerHTML = `
     ${barsMarkup(provinces)}
     ${trendMarkup()}
+    ${metricCompareMarkup(provinces)}
   `;
 }
 
@@ -382,6 +383,46 @@ function trendMarkup() {
             <div class="trend-total">${round.total.toLocaleString()}</div>
           </div>
         `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function metricCompareMarkup(provinces) {
+  const maxWeight = Math.max(...PROVINCES.map((province) => provinces[province.code].avgWeight || 0), 1);
+  const maxCircum = Math.max(...PROVINCES.map((province) => provinces[province.code].avgCircum || 0), 1);
+  return `
+    <section class="visual-panel metric-compare-panel">
+      <h3>เทียบขนาดผลเฉลี่ยรายจังหวัด</h3>
+      <div class="metric-compare">
+        ${PROVINCES.map((province) => {
+          const data = provinces[province.code];
+          const weight = data.avgWeight || 0;
+          const circum = data.avgCircum || 0;
+          const weightWidth = Math.max((weight / maxWeight) * 100, weight > 0 ? 5 : 0);
+          const circumWidth = Math.max((circum / maxCircum) * 100, circum > 0 ? 5 : 0);
+          return `
+            <div class="metric-row">
+              <div class="metric-name">${province.label}</div>
+              <div class="metric-bars">
+                <div class="metric-bar-line">
+                  <span>น้ำหนัก</span>
+                  <div class="metric-track"><i class="weight" style="width:${weightWidth}%"></i></div>
+                  <strong>${weight > 0 ? `${weight.toFixed(2)} กก.` : '-'}</strong>
+                </div>
+                <div class="metric-bar-line">
+                  <span>เส้นรอบวง</span>
+                  <div class="metric-track"><i class="circum" style="width:${circumWidth}%"></i></div>
+                  <strong>${circum > 0 ? `${circum.toFixed(2)} ซม.` : '-'}</strong>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      <div class="legend">
+        <span><i class="dot weight"></i>น้ำหนักเฉลี่ย</span>
+        <span><i class="dot circum"></i>เส้นรอบวงเฉลี่ย</span>
       </div>
     </section>
   `;

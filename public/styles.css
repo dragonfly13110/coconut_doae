@@ -614,6 +614,10 @@ input[readonly] {
   margin-bottom: 16px;
 }
 
+.metric-compare-panel {
+  grid-column: 1 / -1;
+}
+
 #dashboardVisual .visual-panel {
   margin-bottom: 0;
 }
@@ -663,6 +667,11 @@ input[readonly] {
 .dot.damaged,
 .trend-bar .rate-red { background: var(--red); }
 
+.dot.weight,
+.metric-track .weight { background: var(--blue); }
+.dot.circum,
+.metric-track .circum { background: var(--primary); }
+
 .legend {
   display: flex;
   flex-wrap: wrap;
@@ -684,6 +693,61 @@ input[readonly] {
   width: 10px;
   height: 10px;
   border-radius: 999px;
+}
+
+.metric-compare {
+  display: grid;
+  gap: 14px;
+}
+
+.metric-row {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.metric-name {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.metric-bars {
+  display: grid;
+  gap: 8px;
+}
+
+.metric-bar-line {
+  display: grid;
+  grid-template-columns: 86px minmax(120px, 1fr) 84px;
+  gap: 10px;
+  align-items: center;
+}
+
+.metric-bar-line span,
+.metric-bar-line strong {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.metric-bar-line strong {
+  color: var(--ink);
+  text-align: right;
+}
+
+.metric-track {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7eee9;
+}
+
+.metric-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
 }
 
 .trend-chart {
@@ -791,6 +855,15 @@ th {
 
   .trend-chart {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .metric-row,
+  .metric-bar-line {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-bar-line strong {
+    text-align: left;
   }
 
   .completion-head {
