@@ -47,12 +47,6 @@ function bindEvents() {
   document.querySelectorAll('.tab').forEach((button) => {
     button.addEventListener('click', () => showTab(button.dataset.tab));
   });
-  document.querySelectorAll('.view-btn').forEach((button) => {
-    button.addEventListener('click', () => {
-      state.dashboardView = button.dataset.view;
-      renderDashboard();
-    });
-  });
 }
 
 async function login(event) {
@@ -184,12 +178,9 @@ function renderDashboard() {
       : Number(button.dataset.round) === state.activeRound;
     button.classList.toggle('active', active);
   });
-  document.querySelectorAll('.view-btn').forEach((button) => {
-    button.classList.toggle('active', button.dataset.view === state.dashboardView);
-  });
-  el('provinceCards').hidden = state.dashboardView !== 'cards';
-  el('dashboardVisual').hidden = state.dashboardView === 'cards' || state.dashboardView === 'table';
-  document.querySelector('.table-wrap').hidden = state.dashboardView !== 'table';
+  el('provinceCards').hidden = false;
+  el('dashboardVisual').hidden = false;
+  document.querySelector('.table-wrap').hidden = false;
 }
 
 function renderCompletion() {
@@ -327,14 +318,15 @@ function renderCards(provinces) {
 }
 
 function renderVisual(provinces) {
-  if (state.dashboardView === 'bars') return renderBars(provinces);
-  if (state.dashboardView === 'trend') return renderTrend();
-  el('dashboardVisual').innerHTML = '';
+  el('dashboardVisual').innerHTML = `
+    ${barsMarkup(provinces)}
+    ${trendMarkup()}
+  `;
 }
 
-function renderBars(provinces) {
+function barsMarkup(provinces) {
   const maxTotal = Math.max(...PROVINCES.map((province) => provinces[province.code].totalFruits), 1);
-  el('dashboardVisual').innerHTML = `
+  return `
     <section class="visual-panel">
       <h3>สัดส่วนข้อมูลรายจังหวัด</h3>
       <div class="bar-list">
@@ -367,7 +359,7 @@ function renderBars(provinces) {
   `;
 }
 
-function renderTrend() {
+function trendMarkup() {
   const rounds = state.data.rounds.map((round) => {
     const rate = round.overall.qualityRate || 0;
     return {
@@ -378,7 +370,7 @@ function renderTrend() {
     };
   });
 
-  el('dashboardVisual').innerHTML = `
+  return `
     <section class="visual-panel">
       <h3>อัตราผลคุณภาพตามรอบการประเมิน</h3>
       <div class="trend-chart">
