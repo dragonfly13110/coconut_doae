@@ -1,3 +1,5 @@
+import { normalizeEntryInput, calculateProgressPercent, getProgressColorClass } from './shared/entryValidation.js';
+
 const PROVINCES = [
   { code: 'nakhon_pathom', label: 'นครปฐม' },
   { code: 'ratchaburi', label: 'ราชบุรี' },
@@ -112,29 +114,48 @@ async function loadEntry() {
 
 async function saveEntry(event) {
   event.preventDefault();
+  
+  // **1. Validate early with shared logic**
+  let validated;
+  try {
+    validated = normalizeEntryInput({
+      round: el('round').value,
+      province_code: provinceForRequest(),
+      plot: el('plot').value,
+      bunch: el('bunch').value,
+      quality: el('quality').value,
+      below: el('below').value,
+      damaged: el('damaged').value,
+      weight: el('weight').value,
+      circum: el('circum').value,
+      notes: el('notes').value,
+    });
+  } catch (validationError) {
+    setStatus('entryStatus', validationError.message, 'error');
+    return; // Stop here, don't hit API
+  }
+
+  // **2. Set loading state**
+  setLoading(true);
   setStatus('entryStatus', 'กำลังบันทึกข้อมูล...', '');
 
   try {
     await api('/api/entry', {
       method: 'POST',
-      body: {
-        round: el('round').value,
-        province_code: provinceForRequest(),
-        plot: el('plot').value,
-        bunch: el('bunch').value,
-        quality: el('quality').value,
-        below: el('below').value,
-        damaged: el('damaged').value,
-        weight: el('weight').value,
-        circum: el('circum').value,
-        notes: el('notes').value,
-      },
+      body: validated,
     });
-    setStatus('entryStatus', 'บันทึกข้อมูลแล้ว', 'success');
+    setStatus('entryStatus', 'บันทึกข้อมูลสำเร็จ ✅', 'success');
+    setTimeout(() => {
+      if (el('entryStatus').textContent.includes('สำเร็จ')) {
+        setStatus('entryStatus', '', '');
+      }
+    }, 3000);
     await loadDashboard();
     renderCompletion();
   } catch (error) {
     setStatus('entryStatus', error.message, 'error');
+  } finally {
+    setLoading(false);
   }
 }
 
@@ -310,7 +331,11 @@ function renderOverall(overall) {
 function renderCards(provinces) {
   el('provinceCards').innerHTML = PROVINCES.map((province) => {
     const data = provinces[province.code];
-    const complete = data.maxRows > 0 ? Math.round((data.filled / data.maxRows) * 100) : 0;
+    const filled = data.filled || 0;
+    const maxRows = data.maxRows || 0;
+    const progressPercent = typeof data.progressPercent === 'number' ? data.progressPercent : calculateProgressPercent(filled, maxRows);
+    const progressClass = getProgressColorClass(progressPercent);
+
     return `
       <article class="card">
         <h3>${province.label}<span class="${rateClass(data.qualityRate)}">${(data.qualityRate * 100).toFixed(0)}%</span></h3>
@@ -319,9 +344,17 @@ function renderCards(provinces) {
           ${row('ผลคุณภาพ', data.quality.toLocaleString())}
           ${row('ต่ำกว่ามาตรฐาน', data.below.toLocaleString())}
           ${row('เสียหาย', data.damaged.toLocaleString())}
-          ${row('บันทึกแล้ว', `${data.filled}/${data.maxRows}`)}
+          ${row('บันทึกแล้ว', `${filled}/${maxRows}`)}
         </div>
-        <div class="progress" title="บันทึกแล้ว ${complete}%"><span style="width:${complete}%"></span></div>
+        <div class="progress-container">
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill ${progressClass}" style="width:${progressPercent}%"></div>
+          </div>
+          <div class="progress-text">
+            <span class="progress-label">กรอกแล้ว</span>
+            <span class="progress-pct ${progressClass}">${progressPercent}%</span>
+          </div>
+        </div>
       </article>
     `;
   }).join('');
@@ -910,4 +943,18 @@ async function api(path, options = {}) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
   return data;
+}
+
+function setLoading(isLoading) {
+  const btn = el('entryForm').querySelector('button[type="submit"]');
+  const inputs = el('entryForm').querySelectorAll('input, select, textarea');
+  if (isLoading) {
+    btn.classList.add('loading');
+    btn.disabled = true;
+    inputs.forEach(inp => inp.disabled = true);
+  } else {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    inputs.forEach(inp => inp.disabled = false);
+  }
 }

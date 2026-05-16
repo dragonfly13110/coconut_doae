@@ -297,7 +297,47 @@ input[readonly] {
   font-size: 13px;
 }
 
-.button:hover { filter: brightness(0.96); }
+/* Loading States */
+button.loading {
+  position: relative;
+  color: transparent !important;
+  background: linear-gradient(135deg, #c5d6cc, #a5bfb5) !important;
+  cursor: wait;
+  pointer-events: none;
+}
+
+button.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin-top: -10px;
+  margin-left: -10px;
+  border: 3px solid #fff;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
 
 .wide { grid-column: 1 / -1; }
 .divider {
@@ -575,18 +615,60 @@ input[readonly] {
 
 .row strong { color: var(--ink); }
 
-.progress {
-  height: 8px;
+.progress-container {
   margin-top: 14px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #e7eee9;
 }
 
-.progress span {
-  display: block;
+.progress-bar-bg {
+  height: 10px;
+  border-radius: 999px;
+  background: #e7eee9;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
   height: 100%;
+  border-radius: inherit;
+  transition: width 0.4s ease;
+}
+
+.progress-bar-fill.progress-green {
   background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+}
+
+.progress-bar-fill.progress-yellow {
+  background: linear-gradient(135deg, var(--amber), #d4902a);
+}
+
+.progress-bar-fill.progress-red {
+  background: linear-gradient(135deg, var(--red), #c94040);
+}
+
+.progress-text {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.progress-label {
+  color: var(--muted);
+}
+
+.progress-pct {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.progress-pct.progress-green { color: var(--primary); }
+.progress-pct.progress-yellow { color: var(--amber); }
+.progress-pct.progress-red { color: var(--red); }
+
+/* Old progress style - remove */
+.progress {
+  display: none;
 }
 
 .table-wrap {

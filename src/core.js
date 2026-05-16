@@ -1,16 +1,6 @@
-export const CONFIG = {
-  provinces: [
-    { code: 'nakhon_pathom', label: 'นครปฐม', pinLabel: 'NP' },
-    { code: 'ratchaburi', label: 'ราชบุรี', pinLabel: 'RB' },
-    { code: 'samut_sakhon', label: 'สมุทรสาคร', pinLabel: 'SSK' },
-    { code: 'samut_songkhram', label: 'สมุทรสงคราม', pinLabel: 'SSM' },
-  ],
-  maxPlots: 10,
-  bunchesPerPlot: 2,
-  totalRounds: 6,
-  roundDays: 21,
-  startDate: '2026-06-01',
-};
+import { CONFIG as SHARED_CONFIG, normalizeEntryInput as sharedNormalize, calculateProgressPercent as sharedCalcProgress } from '../shared/entryValidation.js';
+
+export const CONFIG = SHARED_CONFIG;
 
 const FIELD_LABELS = {
   round: 'รอบการประเมิน',
@@ -70,34 +60,8 @@ export function createInitialEntries() {
 }
 
 export function normalizeEntryInput(input) {
-  const round = toInt(input.round, 'round');
-  const provinceCode = String(input.province_code || '').trim();
-  const plot = toInt(input.plot, 'plot');
-  const bunch = toInt(input.bunch, 'bunch');
-  const quality = toNonNegativeInt(input.quality, 'quality');
-  const below = toNonNegativeInt(input.below, 'below');
-  const damaged = toNonNegativeInt(input.damaged, 'damaged');
-  const weight = toNullableNumber(input.weight, 'weight');
-  const circum = toNullableNumber(input.circum, 'circum');
-
-  if (round < 1 || round > CONFIG.totalRounds) throw new Error('รอบการประเมินไม่ถูกต้อง');
-  if (!provinceCodes.has(provinceCode)) throw new Error('จังหวัดไม่ถูกต้อง');
-  if (plot < 1 || plot > CONFIG.maxPlots) throw new Error('แปลงไม่ถูกต้อง');
-  if (bunch < 1 || bunch > CONFIG.bunchesPerPlot) throw new Error('ทะลายไม่ถูกต้อง');
-
-  return {
-    round,
-    province_code: provinceCode,
-    plot,
-    bunch,
-    quality,
-    below,
-    damaged,
-    total: quality + below + damaged,
-    weight,
-    circum,
-    notes: String(input.notes || '').trim(),
-  };
+  // Delegate to shared validation logic
+  return sharedNormalize(input);
 }
 
 export function summarizeEntries(entries) {
@@ -119,6 +83,10 @@ export function summarizeEntries(entries) {
     for (const province of CONFIG.provinces) {
       round.provinces[province.code] = blankSummary();
       round.provinces[province.code].maxRows = CONFIG.maxPlots * CONFIG.bunchesPerPlot;
+      round.provinces[province.code].progressPercent = sharedCalcProgress(
+        round.provinces[province.code].filled,
+        round.provinces[province.code].maxRows
+      );
     }
 
     for (const entry of entries) {
