@@ -753,9 +753,13 @@ input[readonly] {
 
 .bunch-visual {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
   margin-bottom: 16px;
+}
+
+.bunch-visual .visual-panel:first-child {
+  grid-column: 1 / -1;
 }
 
 .bunch-bar-list {
@@ -909,6 +913,10 @@ th {
   .bunch-visual,
   .bunch-bar-row {
     grid-template-columns: 1fr;
+  }
+
+  .bunch-visual .visual-panel:first-child {
+    grid-column: auto;
   }
 
   .metric-bar-line strong,

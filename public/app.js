@@ -544,6 +544,8 @@ function renderBunchOverall(overall) {
 function renderBunchVisual(data) {
   el('bunchVisual').innerHTML = `
     ${bunchProvinceBars(data.provinces, 'avgFruits', 'ลูกต่อทะลายเฉลี่ย', 'ลูก')}
+    ${bunchProvinceBars(data.provinces, 'avgWeight', 'น้ำหนักเฉลี่ยรายจังหวัด', 'กก.')}
+    ${bunchProvinceBars(data.provinces, 'avgCircum', 'เส้นรอบวงเฉลี่ยรายจังหวัด', 'ซม.')}
   `;
 }
 
