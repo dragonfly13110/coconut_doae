@@ -52,12 +52,14 @@ body {
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 42px;
+  width: 52px;
   height: 42px;
   border-radius: 8px;
   background: var(--primary);
   color: #fff;
+  font-size: 12px;
   font-weight: 900;
+  letter-spacing: 0;
 }
 
 h1, h2, p { margin: 0; }
@@ -72,6 +74,13 @@ h1 {
   margin-top: 3px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.agency-line {
+  margin: 0 0 3px;
+  color: var(--primary) !important;
+  font-size: 12px !important;
+  font-weight: 900;
 }
 
 .shell-main {
@@ -118,6 +127,20 @@ h1 {
   padding: 44px;
 }
 
+.agency-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  margin-bottom: 18px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .copy-content h2 {
   margin-top: 10px;
   max-width: 560px;
@@ -142,6 +165,45 @@ h1 {
   display: flex;
   flex-direction: column;
   justify-content: center;
+}
+
+.agency-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.mini-emblem {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.agency-card strong,
+.agency-card span {
+  display: block;
+}
+
+.agency-card strong {
+  font-size: 15px;
+}
+
+.agency-card span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .login-panel h2,
