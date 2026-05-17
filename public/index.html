@@ -184,17 +184,25 @@
       <section id="statsTab" class="panel" hidden>
         <div class="section-head">
           <div>
-            <p class="eyebrow">วิเคราะห์เชิงสถิติ</p>
+            <p class="eyebrow">วิเคราะห์เชิงเปรียบเทียบ</p>
             <h2>แนวโน้มรายจังหวัด การกระจายตัว และค่าสถิติ</h2>
+          </div>
+          <div class="section-head-right">
+            <button id="exportSummaryBtn" class="button ghost small">📥 Export สรุป</button>
+            <button id="exportOutlierBtn" class="button ghost small" style="display:none">📥 Export ข้อมูลผิดปกติ</button>
           </div>
         </div>
 
+        <div id="statsSummaryCards" class="summary-cards"></div>
+        <div id="statsModeControl" class="segmented-control"></div>
         <div id="statsRounds" class="rounds"></div>
-        <div id="provinceTrendVisual"></div>
-        <div id="histogramVisual" class="histogram-grid"></div>
-        <div class="table-wrap">
-          <table id="statsTable"></table>
-        </div>
+        <div id="statsModeContent"></div>
+
+        <section id="outlierPanel" class="visual-panel" hidden>
+          <h3>🔍 ข้อมูลที่ควรตรวจสอบ (Outlier & Data Quality)</h3>
+          <div id="outlierSummary"></div>
+          <div id="outlierTable" class="table-wrap"></div>
+        </section>
       </section>
     </section>
   </main>

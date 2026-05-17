@@ -1065,6 +1065,147 @@ th {
 .rate-yellow { color: var(--amber); }
 .rate-red { color: var(--red); }
 
+/* ===== Segmented Control ===== */
+.segmented-control {
+  display: inline-flex;
+  gap: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+
+.segmented-control button {
+  padding: 8px 18px;
+  border: none;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.segmented-control button.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.segmented-control button:not(:last-child) {
+  border-right: 1px solid var(--line);
+}
+
+/* ===== Summary Cards ===== */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.summary-card {
+  padding: 16px;
+  background: var(--sage-bg);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+
+.summary-card .card-value {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.summary-card .card-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.summary-card .card-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.summary-card .warn {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+/* ===== Badge ===== */
+.badge-warn {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff3cd;
+  color: #856404;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* ===== Comparison Bar Chart ===== */
+.comp-bar-chart {
+  display: grid;
+  gap: 12px;
+}
+
+.comp-bar-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) 48px;
+  gap: 8px;
+  align-items: center;
+}
+
+.comp-bar-row span {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.comp-bar-row strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.comp-bar-track {
+  height: 22px;
+  border-radius: 999px;
+  background: #e7eee9;
+  overflow: hidden;
+}
+
+.comp-bar-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.3s;
+}
+
+/* ===== Histogram Stats Row ===== */
+.histogram-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.histogram-stats strong {
+  color: var(--ink);
+}
+
+/* ===== Section Head Right ===== */
+.section-head-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 @media (max-width: 880px) {
   .shell-header {
     align-items: flex-start;
