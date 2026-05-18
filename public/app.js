@@ -54,7 +54,6 @@ function bindEvents() {
   el('entryForm').addEventListener('submit', saveEntry);
   el('loadBtn').addEventListener('click', loadEntry);
   el('refreshBtn').addEventListener('click', loadDashboard);
-  el('bunchRefreshBtn').addEventListener('click', loadDashboard);
   ['quality', 'below', 'damaged'].forEach((id) => el(id).addEventListener('input', calcTotal));
   ['round', 'province', 'plot', 'bunch'].forEach((id) => el(id).addEventListener('change', loadEntry));
 
@@ -660,7 +659,6 @@ function showLogin() {
 function showTab(tab) {
   el('entryTab').hidden = tab !== 'entry';
   el('dashboardTab').hidden = tab !== 'dashboard';
-  el('bunchTab').hidden = tab !== 'bunch';
   el('statsTab').hidden = tab !== 'stats';
   document.querySelectorAll('.tab').forEach((button) => {
     button.classList.toggle('active', button.dataset.tab === tab);
@@ -997,7 +995,6 @@ function buildModeControl() {
   const modes = [
     { value: 'round', label: 'ตามรอบ' },
     { value: 'province', label: 'ตามจังหวัด' },
-    { value: 'bunch', label: 'ตามทะลาย' },
     { value: 'dist', label: 'การกระจาย' },
   ];
   const wrap = el('statsModeControl');
@@ -1025,7 +1022,6 @@ function renderModeContent(stats) {
   switch (state.statsMode) {
     case 'round': renderRoundComparison(stats); break;
     case 'province': renderProvinceTrends(stats); break;
-    case 'bunch': renderBunchComparison(stats); break;
     case 'dist': renderDistribution(stats); break;
   }
 }
