@@ -1,4 +1,9 @@
 import { normalizeEntryInput, calculateProgressPercent, getProgressColorClass } from './shared/entryValidation.js';
+import {
+  buildProvinceRoundBunchStats,
+  buildSummaryCsvRows,
+  computeHistogram as buildHistogram,
+} from './shared/stats.js';
 
 const PROVINCES = [
   { code: 'nakhon_pathom', label: 'นครปฐม' },
@@ -755,6 +760,7 @@ function computeAllStats(entries) {
     byBunch: { 1: blankGroupStats(), 2: blankGroupStats() },
     byProvinceRound: {},
     byProvinceBunch: {},
+    byProvinceRoundBunch: {},
   };
 
   PROVINCES.forEach((p) => { ctx.byProvince[p.code] = blankGroupStats(); });
@@ -813,6 +819,7 @@ function computeAllStats(entries) {
   }
 
   finalizeGroupStats(ctx);
+  ctx.byProvinceRoundBunch = buildProvinceRoundBunchStats(entries, PROVINCES, 6, 2);
   detectOutliers(entries, ctx);
 
   return ctx;
@@ -1229,8 +1236,8 @@ function renderDistribution(stats) {
   if (selectedProvince !== 'all') distEntries = distEntries.filter((e) => e.province_code === selectedProvince);
   if (selectedBunch !== 'all') distEntries = distEntries.filter((e) => Number(e.bunch) === Number(selectedBunch));
 
-  const weightHist = computeHistogram(distEntries, 'weight', 0.2, 'กก.');
-  const circumHist = computeHistogram(distEntries, 'circum', 5, 'ซม.');
+  const weightHist = buildHistogram(distEntries, 'weight', 0.2, 'กก.');
+  const circumHist = buildHistogram(distEntries, 'circum', 5, 'ซม.');
 
   const wVals = distEntries.map((e) => Number(e.weight)).filter((v) => isFinite(v) && v > 0);
   const cVals = distEntries.map((e) => Number(e.circum)).filter((v) => isFinite(v) && v > 0);
@@ -1299,27 +1306,6 @@ function percentile(sorted, p) {
   return sorted[lo] * (hi - idx) + sorted[hi] * (idx - lo);
 }
 
-function computeHistogram(entries, key, binSize, unit) {
-  const values = entries
-    .map((e) => Number(e[key]))
-    .filter((v) => v > 0 && isFinite(v));
-  if (values.length === 0) return [];
-
-  const min = Math.floor(Math.min(...values) / binSize) * binSize;
-  const max = Math.ceil(Math.max(...values) / binSize) * binSize;
-  const bins = {};
-  for (let v = min; v < max; v += binSize) {
-    const label = `${v.toFixed(v < 1 && binSize < 1 ? 1 : 0)}-${(v + binSize).toFixed(v < 1 && binSize < 1 ? 1 : 0)} ${unit}`;
-    bins[label] = 0;
-  }
-  values.forEach((v) => {
-    const bucket = Math.floor(v / binSize) * binSize;
-    const label = `${bucket.toFixed(bucket < 1 && binSize < 1 ? 1 : 0)}-${(bucket + binSize).toFixed(bucket < 1 && binSize < 1 ? 1 : 0)} ${unit}`;
-    bins[label]++;
-  });
-  return Object.entries(bins).map(([label, count]) => ({ label, count }));
-}
-
 function histogramBars(hist, color, med) {
   if (hist.length === 0) return '<p class="status">ยังไม่มีข้อมูล</p>';
   const maxCount = Math.max(...hist.map((b) => b.count), 1);
@@ -1348,7 +1334,7 @@ function renderOutlierPanel(stats) {
     return;
   }
 
-  outlet.hidden = !state.showOutliers;
+  outlet.hidden = false;
   exportBtn.style.display = '';
 
   el('outlierSummary').innerHTML = `
@@ -1381,6 +1367,7 @@ function renderOutlierPanel(stats) {
       </tbody>
     </table>
   `;
+  el('outlierTable').hidden = !state.showOutliers;
 
   el('outlierToggle').onclick = () => {
     state.showOutliers = !state.showOutliers;
@@ -1437,23 +1424,7 @@ function renderStatsTable(stats) {
 
 function exportSummaryCSV(stats) {
   const headers = ['จังหวัด', 'รอบ', 'ทะลาย', 'จำนวนบันทึก', 'จำนวนผลรวม', 'อัตราผลคุณภาพ', 'นน.เฉลี่ย', 'นน.SD', 'รอบวงเฉลี่ย', 'รอบวง SD'];
-  const rows = [];
-  PROVINCES.forEach((p) => {
-    for (let r = 1; r <= 6; r++) {
-      for (let b = 1; b <= 2; b++) {
-        const key = `${p.code}-${b}`;
-        const g = stats.byProvinceBunch[key] || blankGroupStats();
-        rows.push([
-          p.label, `รอบที่ ${r}`, `ทะลายที่ ${b}`,
-          g.n, g.totalFruits, g.qualityRate.toFixed(3),
-          g.avgWeight !== null ? g.avgWeight.toFixed(2) : '',
-          g.sdWeight !== null ? g.sdWeight.toFixed(2) : '',
-          g.avgCircum !== null ? g.avgCircum.toFixed(2) : '',
-          g.sdCircum !== null ? g.sdCircum.toFixed(2) : '',
-        ]);
-      }
-    }
-  });
+  const rows = buildSummaryCsvRows(stats, PROVINCES, 6, 2);
   exportCSV('coconut_summary', headers, rows);
 }
 
