@@ -18,5 +18,9 @@ export async function onRequest({ request, env }) {
 }
 
 function loadEntries(env, user) {
-  return env.DB.prepare('SELECT * FROM entries ORDER BY round, province_code, plot, bunch').all();
+  if (user.role === 'admin') {
+    return env.DB.prepare('SELECT * FROM entries ORDER BY round, province_code, plot, bunch').all();
+  } else {
+    return env.DB.prepare('SELECT * FROM entries WHERE province_code = ? ORDER BY round, plot, bunch').bind(user.province_code).all();
+  }
 }

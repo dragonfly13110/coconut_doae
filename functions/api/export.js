@@ -5,13 +5,21 @@ export async function onRequest({ request, env }) {
   if (request.method !== 'GET') return methodNotAllowed();
 
   try {
-    await requireUser(request, env);
-    const rows = await env.DB.prepare(`
+    const user = await requireUser(request, env);
+    let query = `
       SELECT e.*, u.province_label
       FROM entries e
       LEFT JOIN users u ON u.province_code = e.province_code
-      ORDER BY e.round, e.province_code, e.plot, e.bunch
-    `).all();
+    `;
+    let stmt;
+    if (user.role === 'admin') {
+      query += ` ORDER BY e.round, e.province_code, e.plot, e.bunch`;
+      stmt = env.DB.prepare(query);
+    } else {
+      query += ` WHERE e.province_code = ? ORDER BY e.round, e.plot, e.bunch`;
+      stmt = env.DB.prepare(query).bind(user.province_code);
+    }
+    const rows = await stmt.all();
     const body = entriesToExcelHtml(rows.results || []);
 
     return new Response(body, {

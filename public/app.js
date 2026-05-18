@@ -29,6 +29,12 @@ const state = {
   dashboardView: 'cards',
 };
 
+function activeProvinces() {
+  if (!state.user) return [];
+  if (state.user.role === 'admin') return PROVINCES;
+  return PROVINCES.filter((p) => p.code === state.user.province_code);
+}
+
 const el = (id) => document.getElementById(id);
 
 init();
@@ -281,12 +287,12 @@ function getRecordedSet(roundNumber, provinceCode) {
 }
 
 function aggregate() {
-  const provinces = Object.fromEntries(PROVINCES.map((province) => [province.code, blankSummary()]));
+  const provinces = Object.fromEntries(activeProvinces().map((province) => [province.code, blankSummary()]));
   const overall = blankSummary();
 
   for (const round of state.data.rounds) {
     if (state.activeRound !== 'all' && round.round !== state.activeRound) continue;
-    for (const province of PROVINCES) {
+    for (const province of activeProvinces()) {
       addSummary(provinces[province.code], round.provinces[province.code]);
       addSummary(overall, round.provinces[province.code]);
     }
@@ -334,7 +340,7 @@ function renderOverall(overall) {
 }
 
 function renderCards(provinces) {
-  el('provinceCards').innerHTML = PROVINCES.map((province) => {
+  el('provinceCards').innerHTML = activeProvinces().map((province) => {
     const data = provinces[province.code];
     const filled = data.filled || 0;
     const maxRows = data.maxRows || 0;
@@ -374,12 +380,12 @@ function renderVisual(provinces) {
 }
 
 function barsMarkup(provinces) {
-  const maxTotal = Math.max(...PROVINCES.map((province) => provinces[province.code].totalFruits), 1);
+  const maxTotal = Math.max(...activeProvinces().map((province) => provinces[province.code].totalFruits), 1);
   return `
     <section class="visual-panel">
       <h3>สัดส่วนข้อมูลรายจังหวัด</h3>
       <div class="bar-list">
-        ${PROVINCES.map((province) => {
+        ${activeProvinces().map((province) => {
           const data = provinces[province.code];
           const total = data.totalFruits || 0;
           const width = Math.max((total / maxTotal) * 100, total > 0 ? 6 : 0);
@@ -437,13 +443,13 @@ function trendMarkup() {
 }
 
 function metricCompareMarkup(provinces) {
-  const maxWeight = Math.max(...PROVINCES.map((province) => provinces[province.code].avgWeight || 0), 1);
-  const maxCircum = Math.max(...PROVINCES.map((province) => provinces[province.code].avgCircum || 0), 1);
+  const maxWeight = Math.max(...activeProvinces().map((province) => provinces[province.code].avgWeight || 0), 1);
+  const maxCircum = Math.max(...activeProvinces().map((province) => provinces[province.code].avgCircum || 0), 1);
   return `
     <section class="visual-panel metric-compare-panel">
       <h3>เทียบขนาดผลเฉลี่ยรายจังหวัด</h3>
       <div class="metric-compare">
-        ${PROVINCES.map((province) => {
+        ${activeProvinces().map((province) => {
           const data = provinces[province.code];
           const weight = data.avgWeight || 0;
           const circum = data.avgCircum || 0;
@@ -482,7 +488,7 @@ function renderTable(provinces) {
       <tr><th>จังหวัด</th><th>ผลรวม</th><th>ผลคุณภาพ</th><th>ต่ำกว่ามาตรฐาน</th><th>เสียหาย</th><th>อัตราคุณภาพ</th><th>บันทึกแล้ว</th></tr>
     </thead>
     <tbody>
-      ${PROVINCES.map((province) => {
+      ${activeProvinces().map((province) => {
         const data = provinces[province.code];
         return `
           <tr>
@@ -512,7 +518,7 @@ function renderBunchAnalysis() {
 }
 
 function aggregateBunch() {
-  const provinces = Object.fromEntries(PROVINCES.map((province) => [
+  const provinces = Object.fromEntries(activeProvinces().map((province) => [
     province.code,
     { label: province.label, bunches: { 1: blankBunchSummary(), 2: blankBunchSummary() }, total: blankBunchSummary() },
   ]));
@@ -588,12 +594,12 @@ function renderBunchVisual(data) {
 }
 
 function bunchProvinceBars(provinces, key, title, unit) {
-  const maxValue = Math.max(...PROVINCES.map((province) => provinces[province.code].total[key] || 0), 1);
+  const maxValue = Math.max(...activeProvinces().map((province) => provinces[province.code].total[key] || 0), 1);
   return `
     <section class="visual-panel">
       <h3>${title} รายจังหวัด</h3>
       <div class="bunch-bar-list">
-        ${PROVINCES.map((province) => {
+        ${activeProvinces().map((province) => {
           const data = provinces[province.code].total;
           const value = data[key] || 0;
           const width = Math.max((value / maxValue) * 100, value > 0 ? 5 : 0);
@@ -616,7 +622,7 @@ function renderBunchTable(provinces) {
       <tr><th>จังหวัด</th><th>ทะลาย</th><th>บันทึก</th><th>ลูกต่อทะลาย</th><th>น้ำหนักเฉลี่ย</th><th>เส้นรอบวงเฉลี่ย</th></tr>
     </thead>
     <tbody>
-      ${PROVINCES.flatMap((province) => [1, 2].map((bunch) => {
+      ${activeProvinces().flatMap((province) => [1, 2].map((bunch) => {
         const data = provinces[province.code].bunches[bunch];
         return `
           <tr>
@@ -774,7 +780,7 @@ function computeAllStats(entries) {
     byProvinceRoundBunch: {},
   };
 
-  PROVINCES.forEach((p) => { ctx.byProvince[p.code] = blankGroupStats(); });
+  activeProvinces().forEach((p) => { ctx.byProvince[p.code] = blankGroupStats(); });
   for (let r = 1; r <= 6; r++) { ctx.byRound[r] = blankGroupStats(); }
 
   const weights = [];
@@ -865,7 +871,7 @@ function finalizeGroupStats(ctx) {
       g.sdCircum = stdDev(g.circumVals);
     }
   };
-  PROVINCES.forEach((p) => finalize(ctx.byProvince[p.code]));
+  activeProvinces().forEach((p) => finalize(ctx.byProvince[p.code]));
   for (let r = 1; r <= 6; r++) finalize(ctx.byRound[r]);
   finalize(ctx.byBunch[1]);
   finalize(ctx.byBunch[2]);
@@ -1034,7 +1040,7 @@ function renderRoundComparison(stats) {
     return;
   }
 
-  const provinceData = PROVINCES.map((p) => {
+  const provinceData = activeProvinces().map((p) => {
     const g = subStats.byProvince[p.code];
     const nWarn = g.n < 5;
     return {
@@ -1112,7 +1118,7 @@ function renderProvinceTrends(stats) {
   const maxRounds = state.data.roundDates.length;
   const colors = ['var(--primary)', 'var(--blue)', 'var(--amber)', 'var(--red)'];
 
-  const trends = PROVINCES.map((p) => {
+  const trends = activeProvinces().map((p) => {
     const points = [];
     for (let r = 1; r <= maxRounds; r++) {
       const key = `${p.code}-${r}`;

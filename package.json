@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "dev": "npx wrangler pages dev public --d1 DB=coconut_doae",
+    "dev": "npx wrangler pages dev public --d1 DB=coconut_doae --persist-to=.wrangler/state/v3",
     "deploy": "npx wrangler pages deploy public --project-name coconut-doae"
   },
   "devDependencies": {
