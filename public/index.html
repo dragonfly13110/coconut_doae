@@ -63,6 +63,7 @@
       <nav class="tabs" aria-label="เมนูหลัก">
         <button class="tab active" data-tab="entry">บันทึกข้อมูล</button>
         <button class="tab" data-tab="dashboard">แดชบอร์ด</button>
+        <button class="tab" data-tab="economy">มูลค่าเศรษฐกิจ</button>
         <button class="tab" data-tab="stats">สถิติเชิงลึก</button>
       </nav>
 
@@ -162,8 +163,55 @@
           <table id="compareTable"></table>
         </div>
       </section>
+      <section id="economyTab" class="panel" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">วิเคราะห์มูลค่า</p>
+            <h2>ประเมินมูลค่าทางเศรษฐกิจและการสูญเสีย</h2>
+          </div>
+          <div class="section-head-right">
+            <button id="econRefreshBtn" class="button ghost">รีเฟรช</button>
+          </div>
+        </div>
 
+        <!-- Pricing Configurator Panel -->
+        <section class="visual-panel economy-config-panel" style="margin-bottom:20px; padding:20px; background:rgba(255,255,255,0.7); border-radius:12px; border:1px solid rgba(226,237,231,0.8)">
+          <h3 style="margin-bottom:12px; font-size:15px; color:var(--text-color); display:flex; align-items:center; gap:8px">⚙️ ตั้งค่าราคาและสมมติฐานการประเมิน (บาทต่อลูก)</h3>
+          <div class="econ-inputs" style="display:flex; gap:16px; flex-wrap:wrap">
+            <label style="flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; font-size:13px">
+              ผลคุณภาพ (เกรดพรีเมียม / ส่งออก)
+              <input id="pricePremium" type="number" min="0" value="20" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold">
+            </label>
+            <label style="flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; font-size:13px">
+              ผลต่ำกว่ามาตรฐาน (เกรดแปรรูป)
+              <input id="priceBelow" type="number" min="0" value="8" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold">
+            </label>
+            <label style="flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; font-size:13px; opacity:0.7">
+              ผลเสียหาย (เน่า/เสีย)
+              <input id="priceDamaged" type="number" readonly value="0" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold; background:#eee; cursor:not-allowed">
+            </label>
+            <button id="econRecalcBtn" class="button primary" style="align-self:flex-end; padding:10px 24px; font-weight:bold; border-radius:6px">คำนวณมูลค่าใหม่</button>
+          </div>
+        </section>
 
+        <!-- Dynamic Financial Cards -->
+        <div id="econSummaryCards" class="stats" style="margin-bottom:24px"></div>
+
+        <!-- Comparative Charts and Tables -->
+        <div class="economy-grid" style="display:grid; grid-template-columns:1fr; gap:20px; margin-top:20px">
+          <section class="visual-panel">
+            <h3>📈 เปรียบเทียบรายได้จริง vs มูลค่าสูญเสียโอกาส (รายจังหวัด)</h3>
+            <div id="econVisual" class="bunch-visual" style="margin-top:16px"></div>
+          </section>
+          
+          <section class="visual-panel">
+            <h3>📋 ตารางประเมินผลการเงินระดับจังหวัด</h3>
+            <div class="table-wrap" style="margin-top:16px">
+              <table id="econTable"></table>
+            </div>
+          </section>
+        </div>
+      </section>
 
       <section id="statsTab" class="panel" hidden>
         <div class="section-head">

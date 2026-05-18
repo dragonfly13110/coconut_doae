@@ -54,6 +54,8 @@ function bindEvents() {
   el('entryForm').addEventListener('submit', saveEntry);
   el('loadBtn').addEventListener('click', loadEntry);
   el('refreshBtn').addEventListener('click', loadDashboard);
+  el('econRefreshBtn').addEventListener('click', renderEconomy);
+  el('econRecalcBtn').addEventListener('click', renderEconomy);
   ['quality', 'below', 'damaged'].forEach((id) => el(id).addEventListener('input', calcTotal));
   ['round', 'province', 'plot', 'bunch'].forEach((id) => el(id).addEventListener('change', loadEntry));
 
@@ -659,11 +661,13 @@ function showLogin() {
 function showTab(tab) {
   el('entryTab').hidden = tab !== 'entry';
   el('dashboardTab').hidden = tab !== 'dashboard';
+  el('economyTab').hidden = tab !== 'economy';
   el('statsTab').hidden = tab !== 'stats';
   document.querySelectorAll('.tab').forEach((button) => {
     button.classList.toggle('active', button.dataset.tab === tab);
   });
   if (tab === 'stats' && state.data) loadStats();
+  if (tab === 'economy' && state.data) renderEconomy();
 }
 
 function setEntry(entry) {
@@ -1510,4 +1514,165 @@ function setLoading(isLoading) {
     btn.disabled = false;
     inputs.forEach(inp => inp.disabled = false);
   }
+}
+
+function renderEconomy() {
+  if (!state.data) return;
+  const provinces = activeProvinces();
+  const pPremium = Number(el('pricePremium').value) || 0;
+  const pBelow = Number(el('priceBelow').value) || 0;
+
+  const allEntries = state.data.entries || [];
+  let grandPremium = 0;
+  let grandBelow = 0;
+  let grandDamaged = 0;
+  let grandRealized = 0;
+  let grandLost = 0;
+
+  const provData = provinces.map(prov => {
+    const provEntries = allEntries.filter(e => e.province_code === prov.code);
+    let premium = 0;
+    let below = 0;
+    let damaged = 0;
+    provEntries.forEach(e => {
+      premium += Number(e.quality) || 0;
+      below += Number(e.below) || 0;
+      damaged += Number(e.damaged) || 0;
+    });
+
+    const realized = (premium * pPremium) + (below * pBelow);
+    const lost = damaged * pPremium;
+    const potential = realized + lost;
+    const lossRate = potential > 0 ? (lost / potential) * 100 : 0;
+
+    grandPremium += premium;
+    grandBelow += below;
+    grandDamaged += damaged;
+    grandRealized += realized;
+    grandLost += lost;
+
+    return {
+      label: prov.label,
+      code: prov.code,
+      totalN: premium + below + damaged,
+      premium,
+      below,
+      damaged,
+      realized,
+      lost,
+      potential,
+      lossRate
+    };
+  });
+
+  const grandPotential = grandRealized + grandLost;
+  const grandLossRate = grandPotential > 0 ? (grandLost / grandPotential) * 100 : 0;
+
+  // Render Summary Cards
+  el('econSummaryCards').innerHTML = `
+    <div class="summary-card" style="border-left: 4px solid var(--primary); padding: 16px; background: rgba(255,255,255,0.85); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+      <div class="card-value" style="color:var(--primary); font-size: 26px; font-weight: 800;">${grandRealized.toLocaleString()} ฿</div>
+      <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">มูลค่าเศรษฐกิจจริง</div>
+      <div class="card-sub" style="font-size:12px; color:var(--muted); margin-top:6px; line-height: 1.5">
+        ส่งออก: <strong>${grandPremium.toLocaleString()} ลูก</strong> (${(grandPremium * pPremium).toLocaleString()} ฿)<br>
+        แปรรูป: <strong>${grandBelow.toLocaleString()} ลูก</strong> (${(grandBelow * pBelow).toLocaleString()} ฿)
+      </div>
+    </div>
+    <div class="summary-card" style="border-left: 4px solid var(--red); padding: 16px; background: rgba(255,255,255,0.85); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+      <div class="card-value rate-red" style="font-size: 26px; font-weight: 800;">${grandLost.toLocaleString()} ฿</div>
+      <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">มูลค่าการสูญเสียโอกาส</div>
+      <div class="card-sub" style="font-size:12px; color:var(--muted); margin-top:6px; line-height: 1.5">
+        เสียหายสะสม: <strong>${grandDamaged.toLocaleString()} ลูก</strong> (เกรดส่งออก)<br>
+        สัดส่วนการสูญเสียทางการเงิน: <span class="rate-red" style="font-weight:700">${grandLossRate.toFixed(1)}%</span>
+      </div>
+    </div>
+    <div class="summary-card" style="border-left: 4px solid var(--blue); padding: 16px; background: rgba(255,255,255,0.85); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+      <div class="card-value" style="color:var(--blue); font-size: 26px; font-weight: 800;">${grandPotential.toLocaleString()} ฿</div>
+      <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">ศักยภาพรายได้รวมสูงสุด</div>
+      <div class="card-sub" style="font-size:12px; color:var(--muted); margin-top:6px; line-height: 1.5">
+        เป้าหมายสูงสุดหากไม่มีความเสียหาย<br>
+        (ตามแผนขับเคลื่อนแปลงใหญ่มะพร้าว)
+      </div>
+    </div>
+  `;
+
+  // Render Table
+  el('econTable').innerHTML = `
+    <thead>
+      <tr>
+        <th style="font-weight:bold; color:#2c3e50">จังหวัด</th>
+        <th style="font-weight:bold; text-align:right; color:#2c3e50">ผลผลิตรวม (ลูก)</th>
+        <th style="font-weight:bold; text-align:right; color:#2c3e50">รายได้จริง (฿)</th>
+        <th style="font-weight:bold; text-align:right; color:#2c3e50">สูญเสียโอกาส (฿)</th>
+        <th style="font-weight:bold; text-align:right; color:#2c3e50">ศักยภาพรวม (฿)</th>
+        <th style="font-weight:bold; text-align:center; color:#2c3e50">สัดส่วนสูญเสีย</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${provData.map(d => `
+        <tr>
+          <td><strong>${d.label}</strong></td>
+          <td style="text-align:right; font-weight:500">${d.totalN.toLocaleString()}</td>
+          <td style="text-align:right; color:var(--primary); font-weight:700">${d.realized.toLocaleString()} ฿</td>
+          <td style="text-align:right; color:var(--red); font-weight:700">${d.lost.toLocaleString()} ฿</td>
+          <td style="text-align:right; color:var(--blue); font-weight:700">${d.potential.toLocaleString()} ฿</td>
+          <td style="text-align:center">
+            <span class="${d.lossRate > 15 ? 'badge-warn' : 'badge-success'}" style="padding:4px 10px; border-radius:12px; font-size:11px; font-weight:bold">
+              ${d.lossRate.toFixed(1)}%
+            </span>
+          </td>
+        </tr>
+      `).join('')}
+      <tr style="border-top: 2px solid var(--primary); font-weight: bold; background: rgba(226, 237, 231, 0.4)">
+        <td>รวมทุกพื้นที่</td>
+        <td style="text-align:right">${(grandPremium + grandBelow + grandDamaged).toLocaleString()}</td>
+        <td style="text-align:right; color:var(--primary)">${grandRealized.toLocaleString()} ฿</td>
+        <td style="text-align:right; color:var(--red)">${grandLost.toLocaleString()} ฿</td>
+        <td style="text-align:right; color:var(--blue)">${grandPotential.toLocaleString()} ฿</td>
+        <td style="text-align:center">
+          <span style="font-size:13px; font-weight:bold; color:${grandLossRate > 15 ? 'var(--red)' : 'var(--primary)'}">
+            ${grandLossRate.toFixed(1)}%
+          </span>
+        </td>
+      </tr>
+    </tbody>
+  `;
+
+  // Render Visual Chart
+  const maxPotential = Math.max(...provData.map(d => d.potential), 1);
+  el('econVisual').innerHTML = `
+    <div class="comp-bar-chart" style="display:flex; flex-direction:column; gap:20px; padding: 10px 0;">
+      ${provData.map((d, idx) => {
+        const realizedWidth = (d.realized / maxPotential) * 100;
+        const lostWidth = (d.lost / maxPotential) * 100;
+        return `
+          <div class="comp-bar-row" style="display: grid; grid-template-columns: 120px 1fr 110px; align-items: center; gap: 16px;">
+            <strong style="color:#2c3e50; font-size: 13px">${d.label}</strong>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <!-- Realized Income Bar -->
+              <div style="display:flex; align-items:center; gap:12px">
+                <span style="font-size:10px; color:var(--muted); width:60px; shrink:0; text-align:right">รายได้จริง</span>
+                <div style="flex:1; height:10px; background:#e2ede7; border-radius:6px; overflow:hidden">
+                  <div style="height:100%; width:${realizedWidth}%; background:linear-gradient(90deg, #2ecc71, var(--primary)); border-radius:6px"></div>
+                </div>
+                <small style="font-size:11px; font-weight:700; width:90px; text-align:right; color:var(--primary)">${d.realized.toLocaleString()} ฿</small>
+              </div>
+              <!-- Lost Opportunity Bar -->
+              <div style="display:flex; align-items:center; gap:12px">
+                <span style="font-size:10px; color:var(--muted); width:60px; shrink:0; text-align:right">สูญเสียโอกาส</span>
+                <div style="flex:1; height:10px; background:#fce8e6; border-radius:6px; overflow:hidden">
+                  <div style="height:100%; width:${lostWidth}%; background:linear-gradient(90deg, #e74c3c, var(--red)); border-radius:6px"></div>
+                </div>
+                <small style="font-size:11px; font-weight:700; width:90px; text-align:right; color:var(--red)">${d.lost.toLocaleString()} ฿</small>
+              </div>
+            </div>
+            <div style="text-align:right; border-left: 1px solid #eee; padding-left: 12px;">
+              <div style="font-size: 10px; color: var(--muted); font-weight: bold;">ศักยภาพรวม</div>
+              <div style="font-size: 12px; font-weight: 800; color: var(--blue); margin-top:2px;">${d.potential.toLocaleString()} ฿</div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
 }
