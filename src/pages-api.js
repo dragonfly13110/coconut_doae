@@ -55,8 +55,17 @@ export async function ensureDbInitialized(db) {
         ON CONFLICT(province_code) DO UPDATE SET pin_hash = excluded.pin_hash;
       `;
 
-      await db.exec(schemaSql);
-      await db.exec(seedSql);
+      const runSql = async (sql) => {
+        const statements = sql
+          .split(';')
+          .map(s => s.trim())
+          .filter(s => s.length > 0);
+        for (const stmt of statements) {
+          await db.prepare(stmt).run();
+        }
+      };
+      await runSql(schemaSql);
+      await runSql(seedSql);
     } else {
       throw error;
     }
