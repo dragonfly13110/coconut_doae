@@ -54,6 +54,7 @@ function bindEvents() {
   el('entryForm').addEventListener('submit', saveEntry);
   el('loadBtn').addEventListener('click', loadEntry);
   el('refreshBtn').addEventListener('click', loadDashboard);
+  el('bunchRefreshBtn').addEventListener('click', loadDashboard);
   el('econRefreshBtn').addEventListener('click', renderEconomy);
   el('econRecalcBtn').addEventListener('click', renderEconomy);
   ['quality', 'below', 'damaged'].forEach((id) => el(id).addEventListener('input', calcTotal));
@@ -661,6 +662,7 @@ function showLogin() {
 function showTab(tab) {
   el('entryTab').hidden = tab !== 'entry';
   el('dashboardTab').hidden = tab !== 'dashboard';
+  el('bunchTab').hidden = tab !== 'bunch';
   el('economyTab').hidden = tab !== 'economy';
   el('statsTab').hidden = tab !== 'stats';
   document.querySelectorAll('.tab').forEach((button) => {
