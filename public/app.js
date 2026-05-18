@@ -711,6 +711,17 @@ function formatNumber(value, suffix = '') {
   return value === null || value === undefined ? '-' : `${value.toFixed(2)}${suffix}`;
 }
 
+function formatMeanSd(mean, sd, unit) {
+  if (mean === null || mean === undefined) return '-';
+  const sdText = sd === null || sd === undefined ? '-' : sd.toFixed(2);
+  return `${mean.toFixed(2)} ± ${sdText} ${unit}`;
+}
+
+function formatComparison(left, right, unit) {
+  if (left === null || left === undefined || right === null || right === undefined) return '-';
+  return `${left.toFixed(2)} vs ${right.toFixed(2)} ${unit}`;
+}
+
 function rateClass(rate) {
   if (rate >= 0.7) return 'rate-green';
   if (rate >= 0.5) return 'rate-yellow';
@@ -1059,7 +1070,7 @@ function renderRoundComparison(stats) {
       </div>
       <div style="margin-top:12px;font-size:12px;color:var(--muted)">
         ${provinceData.map((d) => `
-          <span style="margin-right:16px">${d.label}: n=${d.n}, นน.${d.avgWeight !== null ? d.avgWeight.toFixed(2)+'±'+d.sdWeight.toFixed(2) : '-'} กก., รอบวง${d.avgCircum !== null ? d.avgCircum.toFixed(2)+'±'+d.sdCircum.toFixed(2) : '-'} ซม.</span>
+          <span style="margin-right:16px">${d.label}: n=${d.n}, นน.${formatMeanSd(d.avgWeight, d.sdWeight, 'กก.')}, รอบวง${formatMeanSd(d.avgCircum, d.sdCircum, 'ซม.')}</span>
         `).join('<br>')}
       </div>
     </section>
@@ -1086,8 +1097,8 @@ function renderAllRoundTable(stats) {
                 <td>${r.n}</td>
                 <td>${r.totalFruits}</td>
                 <td class="${rateClass(r.qualityRate)}">${(r.qualityRate * 100).toFixed(1)}%</td>
-                <td>${r.avgWeight !== null ? r.avgWeight.toFixed(2) + ' ± ' + r.sdWeight.toFixed(2) + ' กก.' : '-'}</td>
-                <td>${r.avgCircum !== null ? r.avgCircum.toFixed(2) + ' ± ' + r.sdCircum.toFixed(2) + ' ซม.' : '-'}</td>
+                <td>${formatMeanSd(r.avgWeight, r.sdWeight, 'กก.')}</td>
+                <td>${formatMeanSd(r.avgCircum, r.sdCircum, 'ซม.')}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -1181,20 +1192,20 @@ function renderBunchComparison(stats) {
               return `
                 <tr><td rowspan="2"><strong>${p.label}</strong></td>
                   <td>ทะลายที่ 1</td><td>${b1.n}</td><td>${b1.totalFruits}</td><td class="${rateClass(b1.qualityRate)}">${(b1.qualityRate * 100).toFixed(1)}%</td>
-                  <td>${b1.avgWeight !== null ? b1.avgWeight.toFixed(2) + ' ± ' + b1.sdWeight.toFixed(2) + ' กก.' : '-'}</td>
-                  <td>${b1.avgCircum !== null ? b1.avgCircum.toFixed(2) + ' ± ' + b1.sdCircum.toFixed(2) + ' ซม.' : '-'}</td></tr>
+                  <td>${formatMeanSd(b1.avgWeight, b1.sdWeight, 'กก.')}</td>
+                  <td>${formatMeanSd(b1.avgCircum, b1.sdCircum, 'ซม.')}</td></tr>
                 <tr>
                   <td>ทะลายที่ 2</td><td>${b2.n}</td><td>${b2.totalFruits}</td><td class="${rateClass(b2.qualityRate)}">${(b2.qualityRate * 100).toFixed(1)}%</td>
-                  <td>${b2.avgWeight !== null ? b2.avgWeight.toFixed(2) + ' ± ' + b2.sdWeight.toFixed(2) + ' กก.' : '-'}</td>
-                  <td>${b2.avgCircum !== null ? b2.avgCircum.toFixed(2) + ' ± ' + b2.sdCircum.toFixed(2) + ' ซม.' : '-'}</td></tr>
+                  <td>${formatMeanSd(b2.avgWeight, b2.sdWeight, 'กก.')}</td>
+                  <td>${formatMeanSd(b2.avgCircum, b2.sdCircum, 'ซม.')}</td></tr>
               `;
             }).join('')}
             <tr style="border-top:2px solid var(--primary);font-weight:700">
               <td colspan="2">รวมทุกจังหวัด</td><td>ทะลาย 1: ${overallB1.n} / ทะลาย 2: ${overallB2.n}</td>
               <td>ท1: ${overallB1.totalFruits} / ท2: ${overallB2.totalFruits}</td>
               <td>ท1: <span class="${rateClass(overallB1.qualityRate)}">${(overallB1.qualityRate * 100).toFixed(1)}%</span> / ท2: <span class="${rateClass(overallB2.qualityRate)}">${(overallB2.qualityRate * 100).toFixed(1)}%</span></td>
-              <td>${overallB1.avgWeight !== null ? overallB1.avgWeight.toFixed(2) + ' vs ' + overallB2.avgWeight.toFixed(2) + ' กก.' : '-'}</td>
-              <td>${overallB1.avgCircum !== null ? overallB1.avgCircum.toFixed(2) + ' vs ' + overallB2.avgCircum.toFixed(2) + ' ซม.' : '-'}</td>
+              <td>${formatComparison(overallB1.avgWeight, overallB2.avgWeight, 'กก.')}</td>
+              <td>${formatComparison(overallB1.avgCircum, overallB2.avgCircum, 'ซม.')}</td>
             </tr>
           </tbody>
         </table>

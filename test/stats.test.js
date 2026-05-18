@@ -27,6 +27,20 @@ test('summary CSV rows keep province, round, and bunch groups separate', () => {
   ]);
 });
 
+test('summary CSV rows leave SD blank when a group has only one measurement', () => {
+  const entries = [
+    { province_code: 'nakhon_pathom', round: 1, bunch: 1, quality: 10, below: 0, damaged: 0, weight: 1.2, circum: 40 },
+  ];
+  const byProvinceRoundBunch = buildProvinceRoundBunchStats(entries, provinces, 1, 1);
+
+  const [row] = buildSummaryCsvRows({ byProvinceRoundBunch }, provinces, 1, 1);
+
+  assert.equal(row[6], '1.20');
+  assert.equal(row[7], '');
+  assert.equal(row[8], '40.00');
+  assert.equal(row[9], '');
+});
+
 test('histogram creates one valid bin when all values are identical', () => {
   const hist = computeHistogram(
     [{ weight: 1.2 }, { weight: 1.2 }, { weight: 1.2 }],
