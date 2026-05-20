@@ -11,6 +11,8 @@ const HEADERS = [
   'อัตราผลคุณภาพ',
   'น้ำหนักเฉลี่ย (กก.)',
   'เส้นรอบวงเฉลี่ย (ซม.)',
+  'ราคาเฉลี่ยผลมาตรฐาน (บาท)',
+  'ราคาเฉลี่ยผลตกเกรด (บาท)',
   'หมายเหตุ',
   'วันเวลาที่บันทึก',
 ];
@@ -36,6 +38,8 @@ export function entriesToExcelHtml(entries) {
       rate,
       entry.weight ?? '',
       entry.circum ?? '',
+      entry.price_standard ?? '',
+      entry.price_below ?? '',
       entry.notes ?? '',
       entry.recorded_at ?? '',
     ];

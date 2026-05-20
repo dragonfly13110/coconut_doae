@@ -29,6 +29,8 @@ const FIELD_LABELS = {
   damaged: 'จำนวนผลเสียหาย',
   weight: 'น้ำหนักเฉลี่ย',
   circum: 'เส้นรอบวงเฉลี่ย',
+  price_standard: 'ราคาเฉลี่ยผลมาตรฐาน',
+  price_below: 'ราคาเฉลี่ยผลตกเกรด',
 };
 
 function toInt(value, name) {
@@ -66,6 +68,8 @@ export function normalizeEntryInput(input) {
   const damaged = toNonNegativeInt(input.damaged, 'damaged');
   const weight = toNullableNumber(input.weight, 'weight');
   const circum = toNullableNumber(input.circum, 'circum');
+  const price_standard = toNullableNumber(input.price_standard, 'price_standard');
+  const price_below = toNullableNumber(input.price_below, 'price_below');
 
   if (round < 1 || round > CONFIG.totalRounds) throw new Error('รอบการประเมินไม่ถูกต้อง');
   if (!provinceCodes.has(provinceCode)) throw new Error('จังหวัดไม่ถูกต้อง');
@@ -84,6 +88,8 @@ export function normalizeEntryInput(input) {
     weight,
     circum,
     notes: String(input.notes || '').trim(),
+    price_standard,
+    price_below,
   };
 }
 

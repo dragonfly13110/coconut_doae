@@ -7,6 +7,17 @@ export async function ensureDbInitialized(db) {
     if (stmt && typeof stmt.first === 'function') {
       await stmt.first();
     }
+    // Check if the price columns exist, if not, add them (self-healing for existing DBs)
+    try {
+      await db.prepare('SELECT price_standard FROM entries LIMIT 1').first();
+    } catch (err) {
+      try {
+        await db.prepare('ALTER TABLE entries ADD COLUMN price_standard REAL').run();
+        await db.prepare('ALTER TABLE entries ADD COLUMN price_below REAL').run();
+      } catch (alterError) {
+        // ignore
+      }
+    }
   } catch (error) {
     if (error.message.includes('no such table') || error.message.includes('SQLITE_ERROR')) {
       const schemaSql = `
@@ -38,6 +49,8 @@ export async function ensureDbInitialized(db) {
           notes TEXT NOT NULL DEFAULT '',
           recorded_at TEXT,
           recorded_by INTEGER,
+          price_standard REAL,
+          price_below REAL,
           PRIMARY KEY (round, province_code, plot, bunch),
           FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL
         );

@@ -49,6 +49,8 @@ export function createInitialEntries() {
             weight: null,
             circum: null,
             notes: '',
+            price_standard: null,
+            price_below: null,
             recorded_at: null,
           });
         }

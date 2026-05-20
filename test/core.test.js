@@ -27,6 +27,8 @@ test('creates one empty entry per round, province, plot, and bunch', () => {
     weight: null,
     circum: null,
     notes: '',
+    price_standard: null,
+    price_below: null,
     recorded_at: null,
   });
 });

@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS entries (
   notes TEXT NOT NULL DEFAULT '',
   recorded_at TEXT,
   recorded_by INTEGER,
+  price_standard REAL,
+  price_below REAL,
   PRIMARY KEY (round, province_code, plot, bunch),
   FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL
 );

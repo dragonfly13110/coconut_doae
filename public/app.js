@@ -141,6 +141,8 @@ async function saveEntry(event) {
       damaged: el('damaged').value,
       weight: el('weight').value,
       circum: el('circum').value,
+      price_standard: el('price_standard').value,
+      price_below: el('price_below').value,
       notes: el('notes').value,
     });
   } catch (validationError) {
@@ -678,6 +680,8 @@ function setEntry(entry) {
   el('damaged').value = entry.damaged ?? 0;
   el('weight').value = entry.weight ?? '';
   el('circum').value = entry.circum ?? '';
+  el('price_standard').value = entry.price_standard ?? '';
+  el('price_below').value = entry.price_below ?? '';
   el('notes').value = entry.notes ?? '';
   calcTotal();
 }
@@ -1521,15 +1525,34 @@ function setLoading(isLoading) {
 function renderEconomy() {
   if (!state.data) return;
   const provinces = activeProvinces();
+  const allEntries = state.data.entries || [];
+
+  // Calculate average prices across all entries with data for auto-initialization
+  const entriesWithData = allEntries.filter(e => (Number(e.quality) || 0) + (Number(e.below) || 0) + (Number(e.damaged) || 0) > 0);
+  const defaultPremium = entriesWithData.length > 0
+    ? entriesWithData.reduce((sum, e) => sum + (e.price_standard !== null && e.price_standard !== undefined ? Number(e.price_standard) : 20), 0) / entriesWithData.length
+    : 20;
+  const defaultBelow = entriesWithData.length > 0
+    ? entriesWithData.reduce((sum, e) => sum + (e.price_below !== null && e.price_below !== undefined ? Number(e.price_below) : 8), 0) / entriesWithData.length
+    : 8;
+
+  if (!state.pricesInitialized) {
+    el('pricePremium').value = defaultPremium.toFixed(1);
+    el('priceBelow').value = defaultBelow.toFixed(1);
+    state.pricesInitialized = true;
+  }
+
   const pPremium = Number(el('pricePremium').value) || 0;
   const pBelow = Number(el('priceBelow').value) || 0;
 
-  const allEntries = state.data.entries || [];
   let grandPremium = 0;
   let grandBelow = 0;
   let grandDamaged = 0;
   let grandRealized = 0;
   let grandLost = 0;
+
+  let grandPremiumValue = 0;
+  let grandBelowValue = 0;
 
   let grandSamplePremium = 0;
   let grandSampleBelow = 0;
@@ -1544,16 +1567,32 @@ function renderEconomy() {
     const area = areaInput ? (Number(areaInput.value) || 0) : 0;
     const yieldPerRai = yieldInput ? (Number(yieldInput.value) || 0) : 0;
 
-    // 2. Aggregate sample counts for this province
+    // 2. Aggregate sample counts and financial values using plot-specific prices
     let premium = 0;
     let below = 0;
     let damaged = 0;
+    let samplePremiumValue = 0;
+    let sampleBelowValue = 0;
+    let sampleLost = 0;
+
     provEntries.forEach(e => {
-      premium += Number(e.quality) || 0;
-      below += Number(e.below) || 0;
-      damaged += Number(e.damaged) || 0;
+      const q = Number(e.quality) || 0;
+      const bl = Number(e.below) || 0;
+      const dm = Number(e.damaged) || 0;
+
+      const epPremium = (e.price_standard !== null && e.price_standard !== undefined) ? Number(e.price_standard) : pPremium;
+      const epBelow = (e.price_below !== null && e.price_below !== undefined) ? Number(e.price_below) : pBelow;
+
+      premium += q;
+      below += bl;
+      damaged += dm;
+
+      samplePremiumValue += (q * epPremium);
+      sampleBelowValue += (bl * epBelow);
+      sampleLost += (dm * epPremium);
     });
     const sampleTotal = premium + below + damaged;
+    const sampleRealized = samplePremiumValue + sampleBelowValue;
 
     // 3. Count rounds that have at least one recorded entry for this province
     const activeRoundsCount = new Set(
@@ -1569,14 +1608,23 @@ function renderEconomy() {
     let projectedPremium = 0;
     let projectedBelow = 0;
     let projectedDamaged = 0;
+    let realized = 0;
+    let lost = 0;
+    let projectedPremiumValue = 0;
+    let projectedBelowValue = 0;
+
     if (sampleTotal > 0) {
       projectedPremium = Math.round((premium / sampleTotal) * projectedTotalYield);
       projectedBelow = Math.round((below / sampleTotal) * projectedTotalYield);
       projectedDamaged = Math.round((damaged / sampleTotal) * projectedTotalYield);
+
+      const scaleFactor = projectedTotalYield / sampleTotal;
+      realized = sampleRealized * scaleFactor;
+      lost = sampleLost * scaleFactor;
+      projectedPremiumValue = samplePremiumValue * scaleFactor;
+      projectedBelowValue = sampleBelowValue * scaleFactor;
     }
 
-    const realized = (projectedPremium * pPremium) + (projectedBelow * pBelow);
-    const lost = projectedDamaged * pPremium;
     const potential = realized + lost;
     const lossRate = potential > 0 ? (lost / potential) * 100 : 0;
 
@@ -1585,6 +1633,8 @@ function renderEconomy() {
     grandDamaged += projectedDamaged;
     grandRealized += realized;
     grandLost += lost;
+    grandPremiumValue += projectedPremiumValue;
+    grandBelowValue += projectedBelowValue;
 
     grandSamplePremium += premium;
     grandSampleBelow += below;
@@ -1617,16 +1667,16 @@ function renderEconomy() {
   // Render Summary Cards
   el('econSummaryCards').innerHTML = `
     <div class="summary-card" style="border-left: 4px solid var(--primary); padding: 16px; background: rgba(255,255,255,0.85); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-      <div class="card-value" style="color:var(--primary); font-size: 26px; font-weight: 800;">${grandRealized.toLocaleString()} ฿</div>
+      <div class="card-value" style="color:var(--primary); font-size: 26px; font-weight: 800;">${Math.round(grandRealized).toLocaleString()} ฿</div>
       <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">ประมาณการรายได้จริงของพื้นที่</div>
       <div class="card-sub" style="font-size:12px; color:var(--muted); margin-top:6px; line-height: 1.5">
-        ส่งออกประมาณการ: <strong>${grandPremium.toLocaleString()} ลูก</strong> (${(grandPremium * pPremium).toLocaleString()} ฿)<br>
-        แปรรูปประมาณการ: <strong>${grandBelow.toLocaleString()} ลูก</strong> (${(grandBelow * pBelow).toLocaleString()} ฿)<br>
+        ส่งออกประมาณการ: <strong>${grandPremium.toLocaleString()} ลูก</strong> (${Math.round(grandPremiumValue).toLocaleString()} ฿)<br>
+        แปรรูปประมาณการ: <strong>${grandBelow.toLocaleString()} ลูก</strong> (${Math.round(grandBelowValue).toLocaleString()} ฿)<br>
         <span style="font-size:11px; opacity:0.8; font-weight:normal">(อิงกลุ่มตัวอย่าง: ส่งออก ${grandSamplePremium.toLocaleString()} / แปรรูป ${grandSampleBelow.toLocaleString()} ลูก)</span>
       </div>
     </div>
     <div class="summary-card" style="border-left: 4px solid var(--red); padding: 16px; background: rgba(255,255,255,0.85); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-      <div class="card-value rate-red" style="font-size: 26px; font-weight: 800;">${grandLost.toLocaleString()} ฿</div>
+      <div class="card-value rate-red" style="font-size: 26px; font-weight: 800;">${Math.round(grandLost).toLocaleString()} ฿</div>
       <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">ประมาณการสูญเสียโอกาส</div>
       <div class="card-sub" style="font-size:12px; color:var(--muted); margin-top:6px; line-height: 1.5">
         เสียหายสะสมประมาณการ: <strong>${grandDamaged.toLocaleString()} ลูก</strong><br>
@@ -1635,7 +1685,7 @@ function renderEconomy() {
       </div>
     </div>
     <div class="summary-card" style="border-left: 4px solid var(--blue); padding: 16px; background: rgba(255,255,255,0.85); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-      <div class="card-value" style="color:var(--blue); font-size: 26px; font-weight: 800;">${grandPotential.toLocaleString()} ฿</div>
+      <div class="card-value" style="color:var(--blue); font-size: 26px; font-weight: 800;">${Math.round(grandPotential).toLocaleString()} ฿</div>
       <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">ประมาณการศักยภาพรวมสูงสุด</div>
       <div class="card-sub" style="font-size:12px; color:var(--muted); margin-top:6px; line-height: 1.5">
         เป้าหมายรายได้รวมสูงสุดของพื้นที่หากไม่มีความเสียหาย<br>
@@ -1663,9 +1713,9 @@ function renderEconomy() {
           <td><strong>${d.label}</strong></td>
           <td style="text-align:right; font-weight:500">${d.area.toLocaleString()} ไร่</td>
           <td style="text-align:right; font-weight:500">${d.totalN.toLocaleString()} ลูก</td>
-          <td style="text-align:right; color:var(--primary); font-weight:700">${d.realized.toLocaleString()} ฿</td>
-          <td style="text-align:right; color:var(--red); font-weight:700">${d.lost.toLocaleString()} ฿</td>
-          <td style="text-align:right; color:var(--blue); font-weight:700">${d.potential.toLocaleString()} ฿</td>
+          <td style="text-align:right; color:var(--primary); font-weight:700">${Math.round(d.realized).toLocaleString()} ฿</td>
+          <td style="text-align:right; color:var(--red); font-weight:700">${Math.round(d.lost).toLocaleString()} ฿</td>
+          <td style="text-align:right; color:var(--blue); font-weight:700">${Math.round(d.potential).toLocaleString()} ฿</td>
           <td style="text-align:center">
             <span class="${d.lossRate > 15 ? 'badge-warn' : 'badge-success'}" style="padding:4px 10px; border-radius:12px; font-size:11px; font-weight:bold">
               ${d.lossRate.toFixed(1)}%
@@ -1677,9 +1727,9 @@ function renderEconomy() {
         <td>รวมทุกพื้นที่</td>
         <td style="text-align:right">${provData.reduce((sum, d) => sum + d.area, 0).toLocaleString()} ไร่</td>
         <td style="text-align:right">${(grandPremium + grandBelow + grandDamaged).toLocaleString()}</td>
-        <td style="text-align:right; color:var(--primary)">${grandRealized.toLocaleString()} ฿</td>
-        <td style="text-align:right; color:var(--red)">${grandLost.toLocaleString()} ฿</td>
-        <td style="text-align:right; color:var(--blue)">${grandPotential.toLocaleString()} ฿</td>
+        <td style="text-align:right; color:var(--primary)">${Math.round(grandRealized).toLocaleString()} ฿</td>
+        <td style="text-align:right; color:var(--red)">${Math.round(grandLost).toLocaleString()} ฿</td>
+        <td style="text-align:right; color:var(--blue)">${Math.round(grandPotential).toLocaleString()} ฿</td>
         <td style="text-align:center">
           <span style="font-size:13px; font-weight:bold; color:${grandLossRate > 15 ? 'var(--red)' : 'var(--primary)'}">
             ${grandLossRate.toFixed(1)}%
@@ -1706,7 +1756,7 @@ function renderEconomy() {
                 <div style="flex:1; height:10px; background:#e2ede7; border-radius:6px; overflow:hidden">
                   <div style="height:100%; width:${realizedWidth}%; background:linear-gradient(90deg, #2ecc71, var(--primary)); border-radius:6px"></div>
                 </div>
-                <small style="font-size:11px; font-weight:700; width:90px; text-align:right; color:var(--primary)">${d.realized.toLocaleString()} ฿</small>
+                <small style="font-size:11px; font-weight:700; width:90px; text-align:right; color:var(--primary)">${Math.round(d.realized).toLocaleString()} ฿</small>
               </div>
               <!-- Lost Opportunity Bar -->
               <div style="display:flex; align-items:center; gap:12px">
@@ -1714,12 +1764,12 @@ function renderEconomy() {
                 <div style="flex:1; height:10px; background:#fce8e6; border-radius:6px; overflow:hidden">
                   <div style="height:100%; width:${lostWidth}%; background:linear-gradient(90deg, #e74c3c, var(--red)); border-radius:6px"></div>
                 </div>
-                <small style="font-size:11px; font-weight:700; width:90px; text-align:right; color:var(--red)">${d.lost.toLocaleString()} ฿</small>
+                <small style="font-size:11px; font-weight:700; width:90px; text-align:right; color:var(--red)">${Math.round(d.lost).toLocaleString()} ฿</small>
               </div>
             </div>
             <div style="text-align:right; border-left: 1px solid #eee; padding-left: 12px;">
               <div style="font-size: 10px; color: var(--muted); font-weight: bold;">ศักยภาพรวมประมาณ</div>
-              <div style="font-size: 12px; font-weight: 800; color: var(--blue); margin-top:2px;">${d.potential.toLocaleString()} ฿</div>
+              <div style="font-size: 12px; font-weight: 800; color: var(--blue); margin-top:2px;">${Math.round(d.potential).toLocaleString()} ฿</div>
             </div>
           </div>
         `;
