@@ -1531,8 +1531,20 @@ function renderEconomy() {
   let grandRealized = 0;
   let grandLost = 0;
 
+  let grandSamplePremium = 0;
+  let grandSampleBelow = 0;
+  let grandSampleDamaged = 0;
+
   const provData = provinces.map(prov => {
     const provEntries = allEntries.filter(e => e.province_code === prov.code);
+    
+    // 1. Get user configuration inputs for scaling
+    const areaInput = el(`area_${prov.code}`);
+    const yieldInput = el(`yield_${prov.code}`);
+    const area = areaInput ? (Number(areaInput.value) || 0) : 0;
+    const yieldPerRai = yieldInput ? (Number(yieldInput.value) || 0) : 0;
+
+    // 2. Aggregate sample counts for this province
     let premium = 0;
     let below = 0;
     let damaged = 0;
@@ -1541,29 +1553,61 @@ function renderEconomy() {
       below += Number(e.below) || 0;
       damaged += Number(e.damaged) || 0;
     });
+    const sampleTotal = premium + below + damaged;
 
-    const realized = (premium * pPremium) + (below * pBelow);
-    const lost = damaged * pPremium;
+    // 3. Count rounds that have at least one recorded entry for this province
+    const activeRoundsCount = new Set(
+      provEntries
+        .filter(e => (Number(e.quality) || 0) + (Number(e.below) || 0) + (Number(e.damaged) || 0) > 0)
+        .map(e => e.round)
+    ).size || 1;
+
+    // 4. Calculate total projected target yield for the active rounds
+    const projectedTotalYield = area * yieldPerRai * activeRoundsCount;
+
+    // 5. Extrapolate quantities using sample proportions
+    let projectedPremium = 0;
+    let projectedBelow = 0;
+    let projectedDamaged = 0;
+    if (sampleTotal > 0) {
+      projectedPremium = Math.round((premium / sampleTotal) * projectedTotalYield);
+      projectedBelow = Math.round((below / sampleTotal) * projectedTotalYield);
+      projectedDamaged = Math.round((damaged / sampleTotal) * projectedTotalYield);
+    }
+
+    const realized = (projectedPremium * pPremium) + (projectedBelow * pBelow);
+    const lost = projectedDamaged * pPremium;
     const potential = realized + lost;
     const lossRate = potential > 0 ? (lost / potential) * 100 : 0;
 
-    grandPremium += premium;
-    grandBelow += below;
-    grandDamaged += damaged;
+    grandPremium += projectedPremium;
+    grandBelow += projectedBelow;
+    grandDamaged += projectedDamaged;
     grandRealized += realized;
     grandLost += lost;
+
+    grandSamplePremium += premium;
+    grandSampleBelow += below;
+    grandSampleDamaged += damaged;
 
     return {
       label: prov.label,
       code: prov.code,
-      totalN: premium + below + damaged,
-      premium,
-      below,
-      damaged,
+      totalN: projectedPremium + projectedBelow + projectedDamaged,
+      premium: projectedPremium,
+      below: projectedBelow,
+      damaged: projectedDamaged,
       realized,
       lost,
       potential,
-      lossRate
+      lossRate,
+      area,
+      yieldPerRai,
+      activeRoundsCount,
+      samplePremium: premium,
+      sampleBelow: below,
+      sampleDamaged: damaged,
+      sampleTotal
     };
   });
 
@@ -1574,26 +1618,28 @@ function renderEconomy() {
   el('econSummaryCards').innerHTML = `
     <div class="summary-card" style="border-left: 4px solid var(--primary); padding: 16px; background: rgba(255,255,255,0.85); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
       <div class="card-value" style="color:var(--primary); font-size: 26px; font-weight: 800;">${grandRealized.toLocaleString()} ฿</div>
-      <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">มูลค่าเศรษฐกิจจริง</div>
+      <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">ประมาณการรายได้จริงของพื้นที่</div>
       <div class="card-sub" style="font-size:12px; color:var(--muted); margin-top:6px; line-height: 1.5">
-        ส่งออก: <strong>${grandPremium.toLocaleString()} ลูก</strong> (${(grandPremium * pPremium).toLocaleString()} ฿)<br>
-        แปรรูป: <strong>${grandBelow.toLocaleString()} ลูก</strong> (${(grandBelow * pBelow).toLocaleString()} ฿)
+        ส่งออกประมาณการ: <strong>${grandPremium.toLocaleString()} ลูก</strong> (${(grandPremium * pPremium).toLocaleString()} ฿)<br>
+        แปรรูปประมาณการ: <strong>${grandBelow.toLocaleString()} ลูก</strong> (${(grandBelow * pBelow).toLocaleString()} ฿)<br>
+        <span style="font-size:11px; opacity:0.8; font-weight:normal">(อิงกลุ่มตัวอย่าง: ส่งออก ${grandSamplePremium.toLocaleString()} / แปรรูป ${grandSampleBelow.toLocaleString()} ลูก)</span>
       </div>
     </div>
     <div class="summary-card" style="border-left: 4px solid var(--red); padding: 16px; background: rgba(255,255,255,0.85); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
       <div class="card-value rate-red" style="font-size: 26px; font-weight: 800;">${grandLost.toLocaleString()} ฿</div>
-      <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">มูลค่าการสูญเสียโอกาส</div>
+      <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">ประมาณการสูญเสียโอกาส</div>
       <div class="card-sub" style="font-size:12px; color:var(--muted); margin-top:6px; line-height: 1.5">
-        เสียหายสะสม: <strong>${grandDamaged.toLocaleString()} ลูก</strong> (เกรดส่งออก)<br>
-        สัดส่วนการสูญเสียทางการเงิน: <span class="rate-red" style="font-weight:700">${grandLossRate.toFixed(1)}%</span>
+        เสียหายสะสมประมาณการ: <strong>${grandDamaged.toLocaleString()} ลูก</strong><br>
+        สัดส่วนการสูญเสียทางการเงิน: <span class="rate-red" style="font-weight:700">${grandLossRate.toFixed(1)}%</span><br>
+        <span style="font-size:11px; opacity:0.8; font-weight:normal">(อิงกลุ่มตัวอย่างเสียหาย: ${grandSampleDamaged.toLocaleString()} ลูก)</span>
       </div>
     </div>
     <div class="summary-card" style="border-left: 4px solid var(--blue); padding: 16px; background: rgba(255,255,255,0.85); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
       <div class="card-value" style="color:var(--blue); font-size: 26px; font-weight: 800;">${grandPotential.toLocaleString()} ฿</div>
-      <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">ศักยภาพรายได้รวมสูงสุด</div>
+      <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">ประมาณการศักยภาพรวมสูงสุด</div>
       <div class="card-sub" style="font-size:12px; color:var(--muted); margin-top:6px; line-height: 1.5">
-        เป้าหมายสูงสุดหากไม่มีความเสียหาย<br>
-        (ตามแผนขับเคลื่อนแปลงใหญ่มะพร้าว)
+        เป้าหมายรายได้รวมสูงสุดของพื้นที่หากไม่มีความเสียหาย<br>
+        (ตามเป้าหมายแผนขับเคลื่อนแปลงใหญ่มะพร้าวน้ำหอม)
       </div>
     </div>
   `;
@@ -1603,9 +1649,10 @@ function renderEconomy() {
     <thead>
       <tr>
         <th style="font-weight:bold; color:#2c3e50">จังหวัด</th>
-        <th style="font-weight:bold; text-align:right; color:#2c3e50">ผลผลิตรวม (ลูก)</th>
-        <th style="font-weight:bold; text-align:right; color:#2c3e50">รายได้จริง (฿)</th>
-        <th style="font-weight:bold; text-align:right; color:#2c3e50">สูญเสียโอกาส (฿)</th>
+        <th style="font-weight:bold; text-align:right; color:#2c3e50">พื้นที่คำนวณ (ไร่)</th>
+        <th style="font-weight:bold; text-align:right; color:#2c3e50">ผลผลิตประมาณการ (ลูก)</th>
+        <th style="font-weight:bold; text-align:right; color:#2c3e50">ประมาณรายได้จริง (฿)</th>
+        <th style="font-weight:bold; text-align:right; color:#2c3e50">ประมาณสูญเสียโอกาส (฿)</th>
         <th style="font-weight:bold; text-align:right; color:#2c3e50">ศักยภาพรวม (฿)</th>
         <th style="font-weight:bold; text-align:center; color:#2c3e50">สัดส่วนสูญเสีย</th>
       </tr>
@@ -1614,7 +1661,8 @@ function renderEconomy() {
       ${provData.map(d => `
         <tr>
           <td><strong>${d.label}</strong></td>
-          <td style="text-align:right; font-weight:500">${d.totalN.toLocaleString()}</td>
+          <td style="text-align:right; font-weight:500">${d.area.toLocaleString()} ไร่</td>
+          <td style="text-align:right; font-weight:500">${d.totalN.toLocaleString()} ลูก</td>
           <td style="text-align:right; color:var(--primary); font-weight:700">${d.realized.toLocaleString()} ฿</td>
           <td style="text-align:right; color:var(--red); font-weight:700">${d.lost.toLocaleString()} ฿</td>
           <td style="text-align:right; color:var(--blue); font-weight:700">${d.potential.toLocaleString()} ฿</td>
@@ -1627,6 +1675,7 @@ function renderEconomy() {
       `).join('')}
       <tr style="border-top: 2px solid var(--primary); font-weight: bold; background: rgba(226, 237, 231, 0.4)">
         <td>รวมทุกพื้นที่</td>
+        <td style="text-align:right">${provData.reduce((sum, d) => sum + d.area, 0).toLocaleString()} ไร่</td>
         <td style="text-align:right">${(grandPremium + grandBelow + grandDamaged).toLocaleString()}</td>
         <td style="text-align:right; color:var(--primary)">${grandRealized.toLocaleString()} ฿</td>
         <td style="text-align:right; color:var(--red)">${grandLost.toLocaleString()} ฿</td>
@@ -1653,7 +1702,7 @@ function renderEconomy() {
             <div style="display:flex; flex-direction:column; gap:8px">
               <!-- Realized Income Bar -->
               <div style="display:flex; align-items:center; gap:12px">
-                <span style="font-size:10px; color:var(--muted); width:60px; shrink:0; text-align:right">รายได้จริง</span>
+                <span style="font-size:10px; color:var(--muted); width:70px; shrink:0; text-align:right">รายได้จริงประมาณ</span>
                 <div style="flex:1; height:10px; background:#e2ede7; border-radius:6px; overflow:hidden">
                   <div style="height:100%; width:${realizedWidth}%; background:linear-gradient(90deg, #2ecc71, var(--primary)); border-radius:6px"></div>
                 </div>
@@ -1661,7 +1710,7 @@ function renderEconomy() {
               </div>
               <!-- Lost Opportunity Bar -->
               <div style="display:flex; align-items:center; gap:12px">
-                <span style="font-size:10px; color:var(--muted); width:60px; shrink:0; text-align:right">สูญเสียโอกาส</span>
+                <span style="font-size:10px; color:var(--muted); width:70px; shrink:0; text-align:right">สูญเสียโอกาสประมาณ</span>
                 <div style="flex:1; height:10px; background:#fce8e6; border-radius:6px; overflow:hidden">
                   <div style="height:100%; width:${lostWidth}%; background:linear-gradient(90deg, #e74c3c, var(--red)); border-radius:6px"></div>
                 </div>
@@ -1669,7 +1718,7 @@ function renderEconomy() {
               </div>
             </div>
             <div style="text-align:right; border-left: 1px solid #eee; padding-left: 12px;">
-              <div style="font-size: 10px; color: var(--muted); font-weight: bold;">ศักยภาพรวม</div>
+              <div style="font-size: 10px; color: var(--muted); font-weight: bold;">ศักยภาพรวมประมาณ</div>
               <div style="font-size: 12px; font-weight: 800; color: var(--blue); margin-top:2px;">${d.potential.toLocaleString()} ฿</div>
             </div>
           </div>

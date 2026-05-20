@@ -186,17 +186,17 @@
         <div class="section-head">
           <div>
             <p class="eyebrow">วิเคราะห์มูลค่า</p>
-            <h2>ประเมินมูลค่าทางเศรษฐกิจและการสูญเสีย</h2>
+            <h2>ประเมินมูลค่าทางเศรษฐกิจและการสูญเสีย (สถิติขยายผล)</h2>
           </div>
           <div class="section-head-right">
             <button id="econRefreshBtn" class="button ghost">รีเฟรช</button>
           </div>
         </div>
 
-        <!-- Pricing Configurator Panel -->
+        <!-- Pricing & Extrapolation Configurator Panel -->
         <section class="visual-panel economy-config-panel" style="margin-bottom:20px; padding:20px; background:rgba(255,255,255,0.7); border-radius:12px; border:1px solid rgba(226,237,231,0.8)">
-          <h3 style="margin-bottom:12px; font-size:15px; color:var(--text-color); display:flex; align-items:center; gap:8px">⚙️ ตั้งค่าราคาและสมมติฐานการประเมิน (บาทต่อลูก)</h3>
-          <div class="econ-inputs" style="display:flex; gap:16px; flex-wrap:wrap">
+          <h3 style="margin-bottom:12px; font-size:15px; color:var(--text-color); display:flex; align-items:center; gap:8px">⚙️ ตั้งค่าราคามะพร้าว (บาทต่อลูก)</h3>
+          <div class="econ-inputs" style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px">
             <label style="flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; font-size:13px">
               ผลคุณภาพ (เกรดพรีเมียม / ส่งออก)
               <input id="pricePremium" type="number" min="0" value="20" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold">
@@ -209,7 +209,70 @@
               ผลเสียหาย (เน่า/เสีย)
               <input id="priceDamaged" type="number" readonly value="0" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold; background:#eee; cursor:not-allowed">
             </label>
-            <button id="econRecalcBtn" class="button primary" style="align-self:flex-end; padding:10px 24px; font-weight:bold; border-radius:6px">คำนวณมูลค่าใหม่</button>
+          </div>
+
+          <h3 style="margin-bottom:12px; font-size:15px; color:var(--text-color); display:flex; align-items:center; gap:8px">🚜 พื้นที่และผลผลิตเฉลี่ยของโครงการแปลงใหญ่รายจังหวัด (เพื่อขยายผลสถิติ)</h3>
+          <div class="province-assumptions-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:20px">
+            <!-- Nakhon Pathom -->
+            <div style="background:rgba(255,255,255,0.6); padding:12px; border-radius:8px; border:1px solid rgba(0,0,0,0.05)">
+              <div style="font-weight:bold; margin-bottom:8px; font-size:13px; color:var(--primary)">นครปฐม</div>
+              <div style="display:flex; gap:8px">
+                <label style="font-size:11px; flex:1">
+                  พื้นที่ (ไร่)
+                  <input id="area_nakhon_pathom" type="number" min="0" value="5000" style="padding:6px; border-radius:4px; border:1px solid #ccc; font-size:12px">
+                </label>
+                <label style="font-size:11px; flex:1">
+                  ผลผลิต (ลูก/ไร่/รอบ)
+                  <input id="yield_nakhon_pathom" type="number" min="0" value="400" style="padding:6px; border-radius:4px; border:1px solid #ccc; font-size:12px">
+                </label>
+              </div>
+            </div>
+            <!-- Ratchaburi -->
+            <div style="background:rgba(255,255,255,0.6); padding:12px; border-radius:8px; border:1px solid rgba(0,0,0,0.05)">
+              <div style="font-weight:bold; margin-bottom:8px; font-size:13px; color:var(--primary)">ราชบุรี</div>
+              <div style="display:flex; gap:8px">
+                <label style="font-size:11px; flex:1">
+                  พื้นที่ (ไร่)
+                  <input id="area_ratchaburi" type="number" min="0" value="8000" style="padding:6px; border-radius:4px; border:1px solid #ccc; font-size:12px">
+                </label>
+                <label style="font-size:11px; flex:1">
+                  ผลผลิต (ลูก/ไร่/รอบ)
+                  <input id="yield_ratchaburi" type="number" min="0" value="400" style="padding:6px; border-radius:4px; border:1px solid #ccc; font-size:12px">
+                </label>
+              </div>
+            </div>
+            <!-- Samut Sakhon -->
+            <div style="background:rgba(255,255,255,0.6); padding:12px; border-radius:8px; border:1px solid rgba(0,0,0,0.05)">
+              <div style="font-weight:bold; margin-bottom:8px; font-size:13px; color:var(--primary)">สมุทรสาคร</div>
+              <div style="display:flex; gap:8px">
+                <label style="font-size:11px; flex:1">
+                  พื้นที่ (ไร่)
+                  <input id="area_samut_sakhon" type="number" min="0" value="4000" style="padding:6px; border-radius:4px; border:1px solid #ccc; font-size:12px">
+                </label>
+                <label style="font-size:11px; flex:1">
+                  ผลผลิต (ลูก/ไร่/รอบ)
+                  <input id="yield_samut_sakhon" type="number" min="0" value="400" style="padding:6px; border-radius:4px; border:1px solid #ccc; font-size:12px">
+                </label>
+              </div>
+            </div>
+            <!-- Samut Songkhram -->
+            <div style="background:rgba(255,255,255,0.6); padding:12px; border-radius:8px; border:1px solid rgba(0,0,0,0.05)">
+              <div style="font-weight:bold; margin-bottom:8px; font-size:13px; color:var(--primary)">สมุทรสงคราม</div>
+              <div style="display:flex; gap:8px">
+                <label style="font-size:11px; flex:1">
+                  พื้นที่ (ไร่)
+                  <input id="area_samut_songkhram" type="number" min="0" value="3500" style="padding:6px; border-radius:4px; border:1px solid #ccc; font-size:12px">
+                </label>
+                <label style="font-size:11px; flex:1">
+                  ผลผลิต (ลูก/ไร่/รอบ)
+                  <input id="yield_samut_songkhram" type="number" min="0" value="400" style="padding:6px; border-radius:4px; border:1px solid #ccc; font-size:12px">
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end">
+            <button id="econRecalcBtn" class="button primary" style="padding:10px 24px; font-weight:bold; border-radius:6px">คำนวณมูลค่าประมาณการใหม่</button>
           </div>
         </section>
 
@@ -219,12 +282,12 @@
         <!-- Comparative Charts and Tables -->
         <div class="economy-grid" style="display:grid; grid-template-columns:1fr; gap:20px; margin-top:20px">
           <section class="visual-panel">
-            <h3>📈 เปรียบเทียบรายได้จริง vs มูลค่าสูญเสียโอกาส (รายจังหวัด)</h3>
+            <h3>📈 เปรียบเทียบประมาณการรายได้จริง vs ประมาณการมูลค่าสูญเสียโอกาส (รายจังหวัด)</h3>
             <div id="econVisual" class="bunch-visual" style="margin-top:16px"></div>
           </section>
           
           <section class="visual-panel">
-            <h3>📋 ตารางประเมินผลการเงินระดับจังหวัด</h3>
+            <h3>📋 ตารางประมาณการมูลค่าเศรษฐกิจและการเงินระดับจังหวัด</h3>
             <div class="table-wrap" style="margin-top:16px">
               <table id="econTable"></table>
             </div>
