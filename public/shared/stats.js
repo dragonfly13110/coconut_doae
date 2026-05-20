@@ -8,10 +8,16 @@ export function blankGroupStats() {
     qualityRate: 0,
     weightVals: [],
     circumVals: [],
+    priceStandardVals: [],
+    priceBelowVals: [],
     avgWeight: null,
     sdWeight: null,
     avgCircum: null,
     sdCircum: null,
+    avgPriceStandard: null,
+    sdPriceStandard: null,
+    avgPriceBelow: null,
+    sdPriceBelow: null,
     missingWeight: 0,
     missingCircum: 0,
   };
@@ -100,6 +106,8 @@ function accumGroup(group, entry) {
   const total = quality + below + damaged;
   const weight = Number(entry.weight);
   const circum = Number(entry.circum);
+  const ps = entry.price_standard !== null && entry.price_standard !== undefined && entry.price_standard !== '' ? Number(entry.price_standard) : null;
+  const pb = entry.price_below !== null && entry.price_below !== undefined && entry.price_below !== '' ? Number(entry.price_below) : null;
 
   if (total > 0) group.n += 1;
   group.totalFruits += total;
@@ -112,6 +120,9 @@ function accumGroup(group, entry) {
 
   if (Number.isFinite(circum) && circum > 0) group.circumVals.push(circum);
   else if (total > 0) group.missingCircum += 1;
+
+  if (ps !== null && Number.isFinite(ps) && ps >= 0) group.priceStandardVals.push(ps);
+  if (pb !== null && Number.isFinite(pb) && pb >= 0) group.priceBelowVals.push(pb);
 }
 
 function finalizeGroupStats(group) {
@@ -123,6 +134,20 @@ function finalizeGroupStats(group) {
   if (group.circumVals.length) {
     group.avgCircum = group.circumVals.reduce((sum, value) => sum + value, 0) / group.circumVals.length;
     group.sdCircum = stdDev(group.circumVals);
+  }
+  if (group.priceStandardVals && group.priceStandardVals.length) {
+    group.avgPriceStandard = group.priceStandardVals.reduce((sum, value) => sum + value, 0) / group.priceStandardVals.length;
+    group.sdPriceStandard = stdDev(group.priceStandardVals);
+  } else {
+    group.avgPriceStandard = null;
+    group.sdPriceStandard = null;
+  }
+  if (group.priceBelowVals && group.priceBelowVals.length) {
+    group.avgPriceBelow = group.priceBelowVals.reduce((sum, value) => sum + value, 0) / group.priceBelowVals.length;
+    group.sdPriceBelow = stdDev(group.priceBelowVals);
+  } else {
+    group.avgPriceBelow = null;
+    group.sdPriceBelow = null;
   }
 }
 

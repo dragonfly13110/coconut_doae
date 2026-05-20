@@ -302,6 +302,55 @@ function aggregate() {
     }
   }
 
+  // Calculate pricing statistics directly from entries for matching round
+  const allEntries = state.data.entries || [];
+  activeProvinces().forEach((province) => {
+    provinces[province.code].priceStandardSum = 0;
+    provinces[province.code].priceStandardCount = 0;
+    provinces[province.code].priceBelowSum = 0;
+    provinces[province.code].priceBelowCount = 0;
+    provinces[province.code].avgPriceStandard = null;
+    provinces[province.code].avgPriceBelow = null;
+  });
+
+  overall.priceStandardSum = 0;
+  overall.priceStandardCount = 0;
+  overall.priceBelowSum = 0;
+  overall.priceBelowCount = 0;
+  overall.avgPriceStandard = null;
+  overall.avgPriceBelow = null;
+
+  allEntries.forEach((entry) => {
+    if (state.activeRound !== 'all' && Number(entry.round) !== state.activeRound) return;
+    const pCode = entry.province_code;
+    if (!provinces[pCode]) return;
+
+    const ps = entry.price_standard !== null && entry.price_standard !== undefined && entry.price_standard !== '' ? Number(entry.price_standard) : null;
+    const pb = entry.price_below !== null && entry.price_below !== undefined && entry.price_below !== '' ? Number(entry.price_below) : null;
+
+    if (ps !== null && isFinite(ps) && ps >= 0) {
+      provinces[pCode].priceStandardSum += ps;
+      provinces[pCode].priceStandardCount += 1;
+      overall.priceStandardSum += ps;
+      overall.priceStandardCount += 1;
+    }
+    if (pb !== null && isFinite(pb) && pb >= 0) {
+      provinces[pCode].priceBelowSum += pb;
+      provinces[pCode].priceBelowCount += 1;
+      overall.priceBelowSum += pb;
+      overall.priceBelowCount += 1;
+    }
+  });
+
+  activeProvinces().forEach((province) => {
+    const p = provinces[province.code];
+    p.avgPriceStandard = p.priceStandardCount > 0 ? p.priceStandardSum / p.priceStandardCount : null;
+    p.avgPriceBelow = p.priceBelowCount > 0 ? p.priceBelowSum / p.priceBelowCount : null;
+  });
+
+  overall.avgPriceStandard = overall.priceStandardCount > 0 ? overall.priceStandardSum / overall.priceStandardCount : null;
+  overall.avgPriceBelow = overall.priceBelowCount > 0 ? overall.priceBelowSum / overall.priceBelowCount : null;
+
   Object.values(provinces).forEach(finalize);
   finalize(overall);
   return { provinces, overall };
@@ -340,6 +389,8 @@ function renderOverall(overall) {
     metric('อัตราผลคุณภาพ', `${(overall.qualityRate * 100).toFixed(1)}%`, rateClass(overall.qualityRate)),
     metric('น้ำหนักเฉลี่ย', overall.avgWeight === null ? '-- กก.' : `${overall.avgWeight.toFixed(2)} กก.`),
     metric('เส้นรอบวงเฉลี่ย', overall.avgCircum === null ? '-- ซม.' : `${overall.avgCircum.toFixed(2)} ซม.`),
+    metric('ราคามาตรฐานเฉลี่ย', overall.avgPriceStandard === null ? '-- ฿' : `${overall.avgPriceStandard.toFixed(2)} ฿`),
+    metric('ราคาตกเกรดเฉลี่ย', overall.avgPriceBelow === null ? '-- ฿' : `${overall.avgPriceBelow.toFixed(2)} ฿`),
   ].join('');
 }
 
@@ -359,6 +410,8 @@ function renderCards(provinces) {
           ${row('ผลคุณภาพ', data.quality.toLocaleString())}
           ${row('ต่ำกว่ามาตรฐาน', data.below.toLocaleString())}
           ${row('เสียหาย', data.damaged.toLocaleString())}
+          ${row('ราคามาตรฐานเฉลี่ย', data.avgPriceStandard === null ? '-- ฿' : `${data.avgPriceStandard.toFixed(1)} ฿`)}
+          ${row('ราคาตกเกรดเฉลี่ย', data.avgPriceBelow === null ? '-- ฿' : `${data.avgPriceBelow.toFixed(1)} ฿`)}
           ${row('บันทึกแล้ว', `${filled}/${maxRows}`)}
         </div>
         <div class="progress-container">
@@ -556,7 +609,18 @@ function aggregateBunch() {
 }
 
 function blankBunchSummary() {
-  return { count: 0, fruits: 0, weightSum: 0, weightCount: 0, circumSum: 0, circumCount: 0 };
+  return {
+    count: 0,
+    fruits: 0,
+    weightSum: 0,
+    weightCount: 0,
+    circumSum: 0,
+    circumCount: 0,
+    priceStandardSum: 0,
+    priceStandardCount: 0,
+    priceBelowSum: 0,
+    priceBelowCount: 0
+  };
 }
 
 function addBunchEntry(target, entry, total) {
@@ -564,6 +628,9 @@ function addBunchEntry(target, entry, total) {
   target.fruits += total;
   const weight = Number(entry.weight) || 0;
   const circum = Number(entry.circum) || 0;
+  const ps = entry.price_standard !== null && entry.price_standard !== undefined && entry.price_standard !== '' ? Number(entry.price_standard) : null;
+  const pb = entry.price_below !== null && entry.price_below !== undefined && entry.price_below !== '' ? Number(entry.price_below) : null;
+
   if (weight > 0) {
     target.weightSum += weight;
     target.weightCount += 1;
@@ -572,12 +639,22 @@ function addBunchEntry(target, entry, total) {
     target.circumSum += circum;
     target.circumCount += 1;
   }
+  if (ps !== null && isFinite(ps) && ps >= 0) {
+    target.priceStandardSum += ps;
+    target.priceStandardCount += 1;
+  }
+  if (pb !== null && isFinite(pb) && pb >= 0) {
+    target.priceBelowSum += pb;
+    target.priceBelowCount += 1;
+  }
 }
 
 function finalizeBunch(summary) {
   summary.avgFruits = summary.count > 0 ? summary.fruits / summary.count : null;
   summary.avgWeight = summary.weightCount > 0 ? summary.weightSum / summary.weightCount : null;
   summary.avgCircum = summary.circumCount > 0 ? summary.circumSum / summary.circumCount : null;
+  summary.avgPriceStandard = summary.priceStandardCount > 0 ? summary.priceStandardSum / summary.priceStandardCount : null;
+  summary.avgPriceBelow = summary.priceBelowCount > 0 ? summary.priceBelowSum / summary.priceBelowCount : null;
 }
 
 function renderBunchOverall(overall) {
@@ -586,6 +663,8 @@ function renderBunchOverall(overall) {
     metric('ลูกต่อทะลายเฉลี่ย', formatNumber(overall.total.avgFruits, ' ลูก')),
     metric('น้ำหนักเฉลี่ย', formatNumber(overall.total.avgWeight, ' กก.')),
     metric('เส้นรอบวงเฉลี่ย', formatNumber(overall.total.avgCircum, ' ซม.')),
+    metric('ราคามาตรฐานเฉลี่ย', formatNumber(overall.total.avgPriceStandard, ' ฿')),
+    metric('ราคาตกเกรดเฉลี่ย', formatNumber(overall.total.avgPriceBelow, ' ฿')),
   ].join('');
 }
 
@@ -594,6 +673,8 @@ function renderBunchVisual(data) {
     ${bunchProvinceBars(data.provinces, 'avgFruits', 'ลูกต่อทะลายเฉลี่ย', 'ลูก')}
     ${bunchProvinceBars(data.provinces, 'avgWeight', 'น้ำหนักเฉลี่ยรายจังหวัด', 'กก.')}
     ${bunchProvinceBars(data.provinces, 'avgCircum', 'เส้นรอบวงเฉลี่ยรายจังหวัด', 'ซม.')}
+    ${bunchProvinceBars(data.provinces, 'avgPriceStandard', 'ราคามาตรฐานเฉลี่ยรายจังหวัด', '฿')}
+    ${bunchProvinceBars(data.provinces, 'avgPriceBelow', 'ราคาตกเกรดเฉลี่ยรายจังหวัด', '฿')}
   `;
 }
 
@@ -623,7 +704,11 @@ function bunchProvinceBars(provinces, key, title, unit) {
 function renderBunchTable(provinces) {
   el('bunchTable').innerHTML = `
     <thead>
-      <tr><th>จังหวัด</th><th>ทะลาย</th><th>บันทึก</th><th>ลูกต่อทะลาย</th><th>น้ำหนักเฉลี่ย</th><th>เส้นรอบวงเฉลี่ย</th></tr>
+      <tr>
+        <th>จังหวัด</th><th>ทะลาย</th><th>บันทึก</th><th>ลูกต่อทะลาย</th>
+        <th>น้ำหนักเฉลี่ย</th><th>เส้นรอบวงเฉลี่ย</th>
+        <th>ราคามาตรฐานเฉลี่ย</th><th>ราคาตกเกรดเฉลี่ย</th>
+      </tr>
     </thead>
     <tbody>
       ${activeProvinces().flatMap((province) => [1, 2].map((bunch) => {
@@ -636,6 +721,8 @@ function renderBunchTable(provinces) {
             <td>${formatNumber(data.avgFruits, ' ลูก')}</td>
             <td>${formatNumber(data.avgWeight, ' กก.')}</td>
             <td>${formatNumber(data.avgCircum, ' ซม.')}</td>
+            <td>${formatNumber(data.avgPriceStandard, ' ฿')}</td>
+            <td>${formatNumber(data.avgPriceBelow, ' ฿')}</td>
           </tr>
         `;
       })).join('')}
@@ -777,6 +864,10 @@ function computeAllStats(entries) {
     sdWeight: null,
     avgCircum: null,
     sdCircum: null,
+    avgPriceStandard: null,
+    sdPriceStandard: null,
+    avgPriceBelow: null,
+    sdPriceBelow: null,
     missingWeight: 0,
     missingCircum: 0,
     outliers: [],
@@ -793,6 +884,8 @@ function computeAllStats(entries) {
 
   const weights = [];
   const circums = [];
+  const priceStandards = [];
+  const priceBelows = [];
 
   entries.forEach((e) => {
     const q = Number(e.quality) || 0;
@@ -801,8 +894,12 @@ function computeAllStats(entries) {
     const totalF = q + bl + dm;
     const w = Number(e.weight);
     const c = Number(e.circum);
+    const ps = e.price_standard !== null && e.price_standard !== undefined && e.price_standard !== '' ? Number(e.price_standard) : null;
+    const pb = e.price_below !== null && e.price_below !== undefined && e.price_below !== '' ? Number(e.price_below) : null;
     const hasValidW = isFinite(w) && w > 0;
     const hasValidC = isFinite(c) && c > 0;
+    const hasValidPS = ps !== null && isFinite(ps) && ps >= 0;
+    const hasValidPB = pb !== null && isFinite(pb) && pb >= 0;
 
     if (totalF > 0) ctx.n += 1;
     ctx.totalFruits += totalF;
@@ -815,21 +912,24 @@ function computeAllStats(entries) {
     if (hasValidC) { circums.push(c); }
     else if (totalF > 0) { ctx.missingCircum += 1; }
 
+    if (hasValidPS) { priceStandards.push(ps); }
+    if (hasValidPB) { priceBelows.push(pb); }
+
     const pCode = e.province_code;
     const round = Number(e.round);
     const bunch = Number(e.bunch);
 
-    accumGroup(ctx.byProvince[pCode], q, bl, dm, w, c, hasValidW, hasValidC);
-    accumGroup(ctx.byRound[round], q, bl, dm, w, c, hasValidW, hasValidC);
-    accumGroup(ctx.byBunch[bunch], q, bl, dm, w, c, hasValidW, hasValidC);
+    accumGroup(ctx.byProvince[pCode], q, bl, dm, w, c, hasValidW, hasValidC, ps, pb, hasValidPS, hasValidPB);
+    accumGroup(ctx.byRound[round], q, bl, dm, w, c, hasValidW, hasValidC, ps, pb, hasValidPS, hasValidPB);
+    accumGroup(ctx.byBunch[bunch], q, bl, dm, w, c, hasValidW, hasValidC, ps, pb, hasValidPS, hasValidPB);
 
     const prKey = `${pCode}-${round}`;
     if (!ctx.byProvinceRound[prKey]) ctx.byProvinceRound[prKey] = blankGroupStats();
-    accumGroup(ctx.byProvinceRound[prKey], q, bl, dm, w, c, hasValidW, hasValidC);
+    accumGroup(ctx.byProvinceRound[prKey], q, bl, dm, w, c, hasValidW, hasValidC, ps, pb, hasValidPS, hasValidPB);
 
     const pbKey = `${pCode}-${bunch}`;
     if (!ctx.byProvinceBunch[pbKey]) ctx.byProvinceBunch[pbKey] = blankGroupStats();
-    accumGroup(ctx.byProvinceBunch[pbKey], q, bl, dm, w, c, hasValidW, hasValidC);
+    accumGroup(ctx.byProvinceBunch[pbKey], q, bl, dm, w, c, hasValidW, hasValidC, ps, pb, hasValidPS, hasValidPB);
   });
 
   ctx.qualityRate = ctx.totalFruits > 0 ? ctx.totalQuality / ctx.totalFruits : 0;
@@ -842,6 +942,14 @@ function computeAllStats(entries) {
     ctx.avgCircum = circums.reduce((a, b) => a + b, 0) / circums.length;
     ctx.sdCircum = stdDev(circums);
   }
+  if (priceStandards.length) {
+    ctx.avgPriceStandard = priceStandards.reduce((a, b) => a + b, 0) / priceStandards.length;
+    ctx.sdPriceStandard = stdDev(priceStandards);
+  }
+  if (priceBelows.length) {
+    ctx.avgPriceBelow = priceBelows.reduce((a, b) => a + b, 0) / priceBelows.length;
+    ctx.sdPriceBelow = stdDev(priceBelows);
+  }
 
   finalizeGroupStats(ctx);
   ctx.byProvinceRoundBunch = buildProvinceRoundBunchStats(entries, PROVINCES, 6, 2);
@@ -851,10 +959,31 @@ function computeAllStats(entries) {
 }
 
 function blankGroupStats() {
-  return { n: 0, totalFruits: 0, quality: 0, below: 0, damaged: 0, qualityRate: 0, weightVals: [], circumVals: [], avgWeight: null, sdWeight: null, avgCircum: null, sdCircum: null, missingWeight: 0, missingCircum: 0 };
+  return {
+    n: 0,
+    totalFruits: 0,
+    quality: 0,
+    below: 0,
+    damaged: 0,
+    qualityRate: 0,
+    weightVals: [],
+    circumVals: [],
+    priceStandardVals: [],
+    priceBelowVals: [],
+    avgWeight: null,
+    sdWeight: null,
+    avgCircum: null,
+    sdCircum: null,
+    avgPriceStandard: null,
+    sdPriceStandard: null,
+    avgPriceBelow: null,
+    sdPriceBelow: null,
+    missingWeight: 0,
+    missingCircum: 0
+  };
 }
 
-function accumGroup(g, q, bl, dm, w, c, hasW, hasC) {
+function accumGroup(g, q, bl, dm, w, c, hasW, hasC, ps, pb, hasPS, hasPB) {
   const total = q + bl + dm;
   if (total > 0) g.n += 1;
   g.totalFruits += total;
@@ -865,6 +994,8 @@ function accumGroup(g, q, bl, dm, w, c, hasW, hasC) {
   else if (total > 0) g.missingWeight += 1;
   if (hasC) g.circumVals.push(c);
   else if (total > 0) g.missingCircum += 1;
+  if (hasPS) g.priceStandardVals.push(ps);
+  if (hasPB) g.priceBelowVals.push(pb);
 }
 
 function finalizeGroupStats(ctx) {
@@ -877,6 +1008,20 @@ function finalizeGroupStats(ctx) {
     if (g.circumVals.length) {
       g.avgCircum = g.circumVals.reduce((a, b) => a + b, 0) / g.circumVals.length;
       g.sdCircum = stdDev(g.circumVals);
+    }
+    if (g.priceStandardVals && g.priceStandardVals.length) {
+      g.avgPriceStandard = g.priceStandardVals.reduce((a, b) => a + b, 0) / g.priceStandardVals.length;
+      g.sdPriceStandard = stdDev(g.priceStandardVals);
+    } else {
+      g.avgPriceStandard = null;
+      g.sdPriceStandard = null;
+    }
+    if (g.priceBelowVals && g.priceBelowVals.length) {
+      g.avgPriceBelow = g.priceBelowVals.reduce((a, b) => a + b, 0) / g.priceBelowVals.length;
+      g.sdPriceBelow = stdDev(g.priceBelowVals);
+    } else {
+      g.avgPriceBelow = null;
+      g.sdPriceBelow = null;
     }
   };
   activeProvinces().forEach((p) => finalize(ctx.byProvince[p.code]));
@@ -998,6 +1143,16 @@ function renderSummaryCards(stats) {
       <div class="card-label">เส้นรอบวงเฉลี่ย</div>
       <div class="card-sub">${stats.missingCircum > 0 ? `<span class="warn">หาย ${stats.missingCircum}/${stats.n+stats.missingCircum}</span>` : 'ครบทุกบันทึก'}</div>
     </div>
+    <div class="summary-card">
+      <div class="card-value">${stats.avgPriceStandard !== null ? stats.avgPriceStandard.toFixed(2) : '-'} <span style="font-size:13px;font-weight:400;color:var(--muted)">±${stats.sdPriceStandard !== null ? stats.sdPriceStandard.toFixed(2) : '-'} ฿</span></div>
+      <div class="card-label">ราคาเฉลี่ยผลมาตรฐาน</div>
+      <div class="card-sub">จากที่บันทึกจริงรายแปลง</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-value">${stats.avgPriceBelow !== null ? stats.avgPriceBelow.toFixed(2) : '-'} <span style="font-size:13px;font-weight:400;color:var(--muted)">±${stats.sdPriceBelow !== null ? stats.sdPriceBelow.toFixed(2) : '-'} ฿</span></div>
+      <div class="card-label">ราคาเฉลี่ยผลตกเกรด</div>
+      <div class="card-sub">จากที่บันทึกจริงรายแปลง</div>
+    </div>
   `;
 }
 
@@ -1101,7 +1256,13 @@ function renderAllRoundTable(stats) {
       <h3>ภาพรวมทุกรอบ</h3>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>รอบ</th><th>จำนวนบันทึก</th><th>จำนวนผลรวม</th><th>อัตราผลคุณภาพ</th><th>น้ำหนักเฉลี่ย ± SD</th><th>เส้นรอบวงเฉลี่ย ± SD</th></tr></thead>
+          <thead>
+            <tr>
+              <th>รอบ</th><th>จำนวนบันทึก</th><th>จำนวนผลรวม</th><th>อัตราผลคุณภาพ</th>
+              <th>น้ำหนักเฉลี่ย ± SD</th><th>เส้นรอบวงเฉลี่ย ± SD</th>
+              <th>ราคามาตรฐาน ± SD</th><th>ราคาตกเกรด ± SD</th>
+            </tr>
+          </thead>
           <tbody>
             ${rows.map((r) => `
               <tr>
@@ -1111,6 +1272,8 @@ function renderAllRoundTable(stats) {
                 <td class="${rateClass(r.qualityRate)}">${(r.qualityRate * 100).toFixed(1)}%</td>
                 <td>${formatMeanSd(r.avgWeight, r.sdWeight, 'กก.')}</td>
                 <td>${formatMeanSd(r.avgCircum, r.sdCircum, 'ซม.')}</td>
+                <td>${formatMeanSd(r.avgPriceStandard, r.sdPriceStandard, '฿')}</td>
+                <td>${formatMeanSd(r.avgPriceBelow, r.sdPriceBelow, '฿')}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -1410,6 +1573,7 @@ function renderStatsTable(stats) {
             <th>จังหวัด</th><th>ทะลาย</th><th>จำนวนบันทึก</th><th>จำนวนผลรวม</th><th>อัตราผลคุณภาพ</th>
             <th>นน.เฉลี่ย</th><th>นน.SD</th><th>นน.ต่ำสุด</th><th>นน.สูงสุด</th>
             <th>รอบวงเฉลี่ย</th><th>รอบวง SD</th><th>รอบวงต่ำสุด</th><th>รอบวงสูงสุด</th>
+            <th>ราคามาตรฐานเฉลี่ย</th><th>ราคาตกเกรดเฉลี่ย</th>
           </tr>
         </thead>
         <tbody>
@@ -1433,6 +1597,8 @@ function renderStatsTable(stats) {
                   <td>${g.sdCircum !== null ? g.sdCircum.toFixed(2) : '-'}</td>
                   <td>${g.circumVals.length ? Math.min(...g.circumVals).toFixed(2) + ' ซม.' : '-'}</td>
                   <td>${g.circumVals.length ? Math.max(...g.circumVals).toFixed(2) + ' ซม.' : '-'}</td>
+                  <td>${g.avgPriceStandard !== null ? g.avgPriceStandard.toFixed(2) + ' ฿' : '-'}</td>
+                  <td>${g.avgPriceBelow !== null ? g.avgPriceBelow.toFixed(2) + ' ฿' : '-'}</td>
                 </tr>
               `;
             }).join('');
