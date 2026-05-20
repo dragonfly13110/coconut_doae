@@ -148,7 +148,51 @@
             <div id="completionSummary" class="completion-summary"></div>
           </div>
           <div id="completionGrid" class="completion-grid"></div>
-          <p class="completion-help">สีเขียว = บันทึกแล้ว, สีเทา = ยังไม่ได้บันทึก, กดช่องเพื่อเปิดจุดนั้นในฟอร์ม</p>
+          <p class="completion-help">🟢 สีเขียว = บันทึกครบถ้วนสมบูรณ์, 🟠 สีส้ม = บันทึกสัดส่วนแล้วแต่ข้อมูลอื่นยังไม่ครบ (ลืมลงน้ำหนัก/รอบวง/ราคา), ⚫ สีเทา = ยังไม่ได้บันทึก, กดช่องเพื่อเปิดจุดนั้นในฟอร์ม</p>
+        </section>
+
+        <!-- Data Entry Instructions / Guidelines -->
+        <section class="instructions-panel" style="margin-top: 22px; padding: 20px; border: 1px solid rgba(22, 122, 85, 0.15); border-radius: 12px; background: #f4faf7;">
+          <h3 style="color: var(--primary-strong); font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+            📖 คู่มือและวิธีการบันทึกข้อมูลคุณภาพมะพร้าว
+          </h3>
+          <div style="font-size: 13px; color: #2c3e50; line-height: 1.6;">
+            <ol style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px;">
+              <li>
+                <strong>เลือกระบุตำแหน่งเก็บข้อมูล:</strong> เลือกรอบการประเมิน จังหวัด แปลง (1-10) และทะลาย (1 หรือ 2) ให้ถูกต้องตรงกับจุดที่ตรวจวัดจริง
+              </li>
+              <li>
+                <strong>กรอกข้อมูลสัดส่วนผลผลิต:</strong> 
+                <ul>
+                  <li>กรอกจำนวน <em>ผลคุณภาพ (เกรดส่งออก)</em>, <em>ผลต่ำกว่ามาตรฐาน (เกรดแปรรูป)</em> และ <em>ผลเสียหาย</em> ตามที่นับได้จริง</li>
+                  <li>ระบบจะคำนวณ <strong>ผลรวม</strong> ให้โดยอัตโนมัติ</li>
+                </ul>
+              </li>
+              <li>
+                <strong>วัดขนาดและน้ำหนักเฉลี่ย (สำคัญ):</strong>
+                <ul>
+                  <li>หากมีผลผลิตในทะลายรวมกันมากกว่า 0 ลูก <strong>จำเป็นต้องวัดและกรอก</strong> <em>น้ำหนักเฉลี่ย (กก.)</em> และ <em>เส้นรอบวงเฉลี่ย (ซม.)</em></li>
+                  <li>หากพบว่าทะลายนั้นไม่มีผลผลิตเลย (ผลรวมเป็น 0) ให้เว้นว่างช่องนี้ไว้ได้</li>
+                </ul>
+              </li>
+              <li>
+                <strong>ระบุราคาเฉลี่ยในพื้นที่:</strong>
+                <ul>
+                  <li><strong>ราคาเฉลี่ยผลมาตรฐาน:</strong> ราคารับซื้อผลเกรดดีหรือเกรดส่งออก ณ ช่วงเวลานั้น (บาท/ลูก)</li>
+                  <li><strong>ราคาเฉลี่ยผลตกเกรด:</strong> ราคารับซื้อผลเกรดแปรรูปหรือตกไซส์ (บาท/ลูก)</li>
+                  <li><em>หมายเหตุ:</em> เมื่อระบุราคาในทะลายแรกของแปลงแล้ว ระบบจะช่วยจำข้อมูลนี้ไว้เพื่อให้กรอกแปลงถัดไปได้สะดวกรวดเร็วยิ่งขึ้น</li>
+                </ul>
+              </li>
+              <li>
+                <strong>ตรวจสอบความครบถ้วนก่อนบันทึก:</strong> สังเกตจากตาราง <strong>"สถานะการบันทึกข้อมูล"</strong> ด้านล่าง:
+                <ul>
+                  <li>🟢 <span style="color: var(--primary-strong); font-weight: bold;">สีเขียว</span> = บันทึกข้อมูลและกรอกตัวเลขครบถ้วนสมบูรณ์แล้ว</li>
+                  <li>🟠 <span style="color: #b45309; font-weight: bold;">สีส้ม</span> = มีการบันทึกจำนวนผลแล้ว แต่ลืมระบุขนาด น้ำหนัก หรือราคาเฉลี่ย</li>
+                  <li>⚫ <span style="color: var(--muted); font-weight: bold;">สีเทา</span> = ยังไม่เคยบันทึกข้อมูลในจุดนั้น</li>
+                </ul>
+              </li>
+            </ol>
+          </div>
         </section>
       </section>
 

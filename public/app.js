@@ -127,6 +127,30 @@ async function loadEntry() {
 
 async function saveEntry(event) {
   event.preventDefault();
+
+  const total = (Number(el('quality').value) || 0) + (Number(el('below').value) || 0) + (Number(el('damaged').value) || 0);
+  if (total > 0) {
+    const missing = [];
+    const w = el('weight').value.trim();
+    const c = el('circum').value.trim();
+    const ps = el('price_standard').value.trim();
+    const pb = el('price_below').value.trim();
+
+    if (!w || Number(w) <= 0) missing.push('<strong>น้ำหนักเฉลี่ย (กก.)</strong> (ต้องระบุและมากกว่า 0)');
+    if (!c || Number(c) <= 0) missing.push('<strong>เส้นรอบวงเฉลี่ย (ซม.)</strong> (ต้องระบุและมากกว่า 0)');
+    if (!ps || Number(ps) < 0) missing.push('<strong>ราคาเฉลี่ยผลมาตรฐาน (บาท)</strong> (ต้องระบุ)');
+    if (!pb || Number(pb) < 0) missing.push('<strong>ราคาเฉลี่ยผลตกเกรด (บาท)</strong> (ต้องระบุ)');
+
+    if (missing.length > 0) {
+      setStatus('entryStatus', `
+        <div style="font-weight: 800; margin-bottom: 6px;">⚠️ ไม่สามารถบันทึกข้อมูลได้ เนื่องจากข้อมูลไม่ครบถ้วน:</div>
+        <ul style="margin: 0; padding-left: 20px; text-align: left;">
+          ${missing.map(m => `<li>${m}</li>`).join('')}
+        </ul>
+      `, 'error-box');
+      return;
+    }
+  }
   
   // **1. Validate early with shared logic**
   let validated;
@@ -146,7 +170,7 @@ async function saveEntry(event) {
       notes: el('notes').value,
     });
   } catch (validationError) {
-    setStatus('entryStatus', validationError.message, 'error');
+    setStatus('entryStatus', validationError.message, 'error-box');
     return; // Stop here, don't hit API
   }
 
@@ -159,16 +183,17 @@ async function saveEntry(event) {
       method: 'POST',
       body: validated,
     });
-    setStatus('entryStatus', 'บันทึกข้อมูลสำเร็จ ✅', 'success');
+    setStatus('entryStatus', '<strong>บันทึกข้อมูลสำเร็จ ✅</strong>', 'success-box');
     setTimeout(() => {
-      if (el('entryStatus').textContent.includes('สำเร็จ')) {
+      const statusEl = el('entryStatus');
+      if (statusEl.className.includes('success-box')) {
         setStatus('entryStatus', '', '');
       }
-    }, 3000);
+    }, 4000);
     await loadDashboard();
     renderCompletion();
   } catch (error) {
-    setStatus('entryStatus', error.message, 'error');
+    setStatus('entryStatus', error.message, 'error-box');
   } finally {
     setLoading(false);
   }
@@ -235,13 +260,37 @@ function renderCompletion() {
   const roundNumber = Number(el('round').value);
   const round = state.data.rounds.find((item) => item.round === roundNumber);
   const provinceData = round?.provinces?.[provinceCode];
-  const filled = provinceData?.filled || 0;
   const maxRows = provinceData?.maxRows || 20;
-  const pct = maxRows > 0 ? Math.round((filled / maxRows) * 100) : 0;
 
-  el('completionSummary').innerHTML = `<strong>${filled}/${maxRows}</strong><span>${pct}%</span>`;
+  const statuses = getRecordedStatuses(roundNumber, provinceCode);
+  
+  let doneCount = 0;
+  let incompleteCount = 0;
+  let missingCount = 0;
 
-  const recorded = getRecordedSet(roundNumber, provinceCode);
+  for (let plot = 1; plot <= 10; plot++) {
+    for (let bunch = 1; bunch <= 2; bunch++) {
+      const info = statuses.get(`${plot}:${bunch}`) || { status: 'missing', missingFields: [] };
+      if (info.status === 'done') doneCount++;
+      else if (info.status === 'incomplete') incompleteCount++;
+      else missingCount++;
+    }
+  }
+
+  const pct = maxRows > 0 ? Math.round((doneCount / maxRows) * 100) : 0;
+
+  el('completionSummary').innerHTML = `
+    <div style="text-align: right">
+      <strong style="font-size:24px; color: ${pct === 100 ? 'var(--primary)' : '#e67e22'}">${doneCount}/${maxRows}</strong>
+      <span style="margin-left: 6px; font-weight: bold">${pct}% สมบูรณ์</span>
+      <div style="font-size: 11px; color: var(--muted); margin-top: 4px">
+        บันทึกครบถ้วน: <span style="color:var(--primary); font-weight:bold">${doneCount}</span> | 
+        ไม่ครบถ้วน: <span style="color:#d97706; font-weight:bold">${incompleteCount}</span> | 
+        ยังไม่บันทึก: <span style="color:#7f8c8d; font-weight:bold">${missingCount}</span>
+      </div>
+    </div>
+  `;
+
   el('completionGrid').innerHTML = Array.from({ length: 10 }, (_, plotIndex) => {
     const plot = plotIndex + 1;
     return `
@@ -249,16 +298,25 @@ function renderCompletion() {
         <div class="plot-check-title">แปลง ${plot}</div>
         <div class="bunch-checks">
           ${[1, 2].map((bunch) => {
-            const done = recorded.has(`${plot}:${bunch}`);
+            const info = statuses.get(`${plot}:${bunch}`) || { status: 'missing', missingFields: [] };
+            const statusClass = info.status; // 'done', 'incomplete', 'missing'
+            let tooltip = `แปลง ${plot} ทะลาย ${bunch}: `;
+            if (info.status === 'done') {
+              tooltip += 'บันทึกครบถ้วนสมบูรณ์';
+            } else if (info.status === 'incomplete') {
+              tooltip += `บันทึกแล้ว แต่ขาด: ${info.missingFields.join(', ')}`;
+            } else {
+              tooltip += 'ยังไม่ได้บันทึกข้อมูล';
+            }
             return `
               <button
                 type="button"
-                class="bunch-check ${done ? 'done' : 'missing'}"
+                class="bunch-check ${statusClass}"
                 data-round="${roundNumber}"
                 data-province="${provinceCode}"
                 data-plot="${plot}"
                 data-bunch="${bunch}"
-                title="แปลง ${plot} ทะลาย ${bunch}: ${done ? 'บันทึกแล้ว' : 'ยังไม่ได้บันทึก'}"
+                title="${tooltip}"
               >ท${bunch}</button>
             `;
           }).join('')}
@@ -279,15 +337,35 @@ function renderCompletion() {
   });
 }
 
-function getRecordedSet(roundNumber, provinceCode) {
-  const set = new Set();
+function getRecordedStatuses(roundNumber, provinceCode) {
+  const map = new Map();
   (state.data.entries || [])
     .filter((entry) => Number(entry.round) === roundNumber && entry.province_code === provinceCode)
     .forEach((entry) => {
       const total = (Number(entry.quality) || 0) + (Number(entry.below) || 0) + (Number(entry.damaged) || 0);
-      if (total > 0) set.add(`${entry.plot}:${entry.bunch}`);
+      const key = `${entry.plot}:${entry.bunch}`;
+      if (total > 0) {
+        const missingFields = [];
+        const w = entry.weight !== null && entry.weight !== undefined && entry.weight !== '' ? Number(entry.weight) : null;
+        const c = entry.circum !== null && entry.circum !== undefined && entry.circum !== '' ? Number(entry.circum) : null;
+        const ps = entry.price_standard !== null && entry.price_standard !== undefined && entry.price_standard !== '' ? Number(entry.price_standard) : null;
+        const pb = entry.price_below !== null && entry.price_below !== undefined && entry.price_below !== '' ? Number(entry.price_below) : null;
+
+        if (w === null || w <= 0) missingFields.push('น้ำหนัก');
+        if (c === null || c <= 0) missingFields.push('เส้นรอบวง');
+        if (ps === null || ps < 0) missingFields.push('ราคามาตรฐาน');
+        if (pb === null || pb < 0) missingFields.push('ราคาตกเกรด');
+
+        if (missingFields.length > 0) {
+          map.set(key, { status: 'incomplete', missingFields });
+        } else {
+          map.set(key, { status: 'done', missingFields: [] });
+        }
+      } else {
+        map.set(key, { status: 'missing', missingFields: [] });
+      }
     });
-  return set;
+  return map;
 }
 
 function aggregate() {
@@ -796,7 +874,7 @@ function fillNumberSelect(select, start, end, label) {
 }
 
 function setStatus(id, message, type) {
-  el(id).textContent = message;
+  el(id).innerHTML = message;
   el(id).className = `status ${type || ''}`;
 }
 
