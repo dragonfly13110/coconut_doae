@@ -24,13 +24,13 @@ const FIELD_LABELS = {
   round: 'รอบการประเมิน',
   plot: 'แปลง',
   bunch: 'ทะลาย',
-  quality: 'จำนวนผลคุณภาพ',
-  below: 'จำนวนผลต่ำกว่ามาตรฐาน',
-  damaged: 'จำนวนผลเสียหาย',
+  quality: 'จำนวนผล 1.8+',
+  below: 'จำนวนผล 1.4-1.8',
+  damaged: 'จำนวนผลตกเกรด',
   weight: 'น้ำหนักเฉลี่ย',
   circum: 'เส้นรอบวงเฉลี่ย',
-  price_standard: 'ราคาเฉลี่ยผลมาตรฐาน',
-  price_below: 'ราคาเฉลี่ยผลตกเกรด',
+  price_standard: 'ราคาเฉลี่ยเกรด 1.8+',
+  price_below: 'ราคาเฉลี่ยเกรด 1.4-1.8',
 };
 
 function toInt(value, name) {
@@ -73,7 +73,7 @@ export function normalizeEntryInput(input) {
 
   if (round < 1 || round > CONFIG.totalRounds) throw new Error('รอบการประเมินไม่ถูกต้อง');
   if (!provinceCodes.has(provinceCode)) throw new Error('จังหวัดไม่ถูกต้อง');
-  if (plot < 1 || plot > CONFIG.maxPlots) throw new Error('แปลงไม่ถูกต้อง');
+  if (plot < 1) throw new Error('แปลงไม่ถูกต้อง');
   if (bunch < 1 || bunch > CONFIG.bunchesPerPlot) throw new Error('ทะลายไม่ถูกต้อง');
 
   return {

@@ -57,6 +57,7 @@ function bindEvents() {
   el('bunchRefreshBtn').addEventListener('click', loadDashboard);
   el('econRefreshBtn').addEventListener('click', renderEconomy);
   el('econRecalcBtn').addEventListener('click', renderEconomy);
+  el('addPlotBtn').addEventListener('click', addPlot);
   ['quality', 'below', 'damaged'].forEach((id) => el(id).addEventListener('input', calcTotal));
   ['round', 'province', 'plot', 'bunch'].forEach((id) => el(id).addEventListener('change', loadEntry));
 
@@ -107,6 +108,9 @@ async function loadMe() {
 
 async function loadEntry() {
   if (!state.user) return;
+  
+  updatePlotSelect();
+  
   setStatus('entryStatus', 'กำลังโหลดข้อมูลเดิม...', '');
   const params = new URLSearchParams({
     round: el('round').value,
@@ -261,6 +265,8 @@ function renderCompletion() {
   const round = state.data.rounds.find((item) => item.round === roundNumber);
   const provinceData = round?.provinces?.[provinceCode];
   const maxRows = provinceData?.maxRows || 20;
+  const key = `${provinceCode}-${roundNumber}`;
+  const maxPlotsOfProvince = Math.max(maxRows / 2, state.tempMaxPlots?.[key] || 0);
 
   const statuses = getRecordedStatuses(roundNumber, provinceCode);
   
@@ -268,7 +274,7 @@ function renderCompletion() {
   let incompleteCount = 0;
   let missingCount = 0;
 
-  for (let plot = 1; plot <= 10; plot++) {
+  for (let plot = 1; plot <= maxPlotsOfProvince; plot++) {
     for (let bunch = 1; bunch <= 2; bunch++) {
       const info = statuses.get(`${plot}:${bunch}`) || { status: 'missing', missingFields: [] };
       if (info.status === 'done') doneCount++;
@@ -277,11 +283,12 @@ function renderCompletion() {
     }
   }
 
-  const pct = maxRows > 0 ? Math.round((doneCount / maxRows) * 100) : 0;
+  const calculatedMaxRows = maxPlotsOfProvince * 2;
+  const pct = calculatedMaxRows > 0 ? Math.round((doneCount / calculatedMaxRows) * 100) : 0;
 
   el('completionSummary').innerHTML = `
     <div style="text-align: right">
-      <strong style="font-size:24px; color: ${pct === 100 ? 'var(--primary)' : '#e67e22'}">${doneCount}/${maxRows}</strong>
+      <strong style="font-size:24px; color: ${pct === 100 ? 'var(--primary)' : '#e67e22'}">${doneCount}/${calculatedMaxRows}</strong>
       <span style="margin-left: 6px; font-weight: bold">${pct}% สมบูรณ์</span>
       <div style="font-size: 11px; color: var(--muted); margin-top: 4px">
         บันทึกครบถ้วน: <span style="color:var(--primary); font-weight:bold">${doneCount}</span> | 
@@ -291,7 +298,7 @@ function renderCompletion() {
     </div>
   `;
 
-  el('completionGrid').innerHTML = Array.from({ length: 10 }, (_, plotIndex) => {
+  el('completionGrid').innerHTML = Array.from({ length: maxPlotsOfProvince }, (_, plotIndex) => {
     const plot = plotIndex + 1;
     return `
       <div class="plot-check">
@@ -464,11 +471,11 @@ function finalize(summary) {
 function renderOverall(overall) {
   el('overall').innerHTML = [
     metric('ผลรวมทั้งหมด', overall.totalFruits.toLocaleString()),
-    metric('อัตราผลคุณภาพ', `${(overall.qualityRate * 100).toFixed(1)}%`, rateClass(overall.qualityRate)),
+    metric('อัตรา 1.8+', `${(overall.qualityRate * 100).toFixed(1)}%`, rateClass(overall.qualityRate)),
     metric('น้ำหนักเฉลี่ย', overall.avgWeight === null ? '-- กก.' : `${overall.avgWeight.toFixed(2)} กก.`),
     metric('เส้นรอบวงเฉลี่ย', overall.avgCircum === null ? '-- ซม.' : `${overall.avgCircum.toFixed(2)} ซม.`),
-    metric('ราคามาตรฐานเฉลี่ย', overall.avgPriceStandard === null ? '-- ฿' : `${overall.avgPriceStandard.toFixed(2)} ฿`),
-    metric('ราคาตกเกรดเฉลี่ย', overall.avgPriceBelow === null ? '-- ฿' : `${overall.avgPriceBelow.toFixed(2)} ฿`),
+    metric('ราคาเกรด 1.8+ เฉลี่ย', overall.avgPriceStandard === null ? '-- ฿' : `${overall.avgPriceStandard.toFixed(2)} ฿`),
+    metric('ราคาเกรด 1.4-1.8 เฉลี่ย', overall.avgPriceBelow === null ? '-- ฿' : `${overall.avgPriceBelow.toFixed(2)} ฿`),
   ].join('');
 }
 
@@ -485,11 +492,11 @@ function renderCards(provinces) {
         <h3>${province.label}<span class="${rateClass(data.qualityRate)}">${(data.qualityRate * 100).toFixed(0)}%</span></h3>
         <div class="rows">
           ${row('ผลรวม', data.totalFruits.toLocaleString())}
-          ${row('ผลคุณภาพ', data.quality.toLocaleString())}
-          ${row('ต่ำกว่ามาตรฐาน', data.below.toLocaleString())}
-          ${row('เสียหาย', data.damaged.toLocaleString())}
-          ${row('ราคามาตรฐานเฉลี่ย', data.avgPriceStandard === null ? '-- ฿' : `${data.avgPriceStandard.toFixed(1)} ฿`)}
-          ${row('ราคาตกเกรดเฉลี่ย', data.avgPriceBelow === null ? '-- ฿' : `${data.avgPriceBelow.toFixed(1)} ฿`)}
+          ${row('1.8+', data.quality.toLocaleString())}
+          ${row('1.4-1.8', data.below.toLocaleString())}
+          ${row('ตกเกรด', data.damaged.toLocaleString())}
+          ${row('ราคาเกรด 1.8+ เฉลี่ย', data.avgPriceStandard === null ? '-- ฿' : `${data.avgPriceStandard.toFixed(1)} ฿`)}
+          ${row('ราคาเกรด 1.4-1.8 เฉลี่ย', data.avgPriceBelow === null ? '-- ฿' : `${data.avgPriceBelow.toFixed(1)} ฿`)}
           ${row('บันทึกแล้ว', `${filled}/${maxRows}`)}
         </div>
         <div class="progress-container">
@@ -541,9 +548,9 @@ function barsMarkup(provinces) {
         }).join('')}
       </div>
       <div class="legend">
-        <span><i class="dot quality"></i>ผลคุณภาพ</span>
-        <span><i class="dot below"></i>ต่ำกว่ามาตรฐาน</span>
-        <span><i class="dot damaged"></i>เสียหาย</span>
+        <span><i class="dot quality"></i>1.8+</span>
+        <span><i class="dot below"></i>1.4-1.8</span>
+        <span><i class="dot damaged"></i>ตกเกรด</span>
       </div>
     </section>
   `;
@@ -562,7 +569,7 @@ function trendMarkup() {
 
   return `
     <section class="visual-panel">
-      <h3>อัตราผลคุณภาพตามรอบการประเมิน</h3>
+      <h3>อัตรา 1.8+ ตามรอบการประเมิน</h3>
       <div class="trend-chart">
         ${rounds.map((round) => `
           <div class="trend-item">
@@ -620,7 +627,7 @@ function metricCompareMarkup(provinces) {
 function renderTable(provinces) {
   el('compareTable').innerHTML = `
     <thead>
-      <tr><th>จังหวัด</th><th>ผลรวม</th><th>ผลคุณภาพ</th><th>ต่ำกว่ามาตรฐาน</th><th>เสียหาย</th><th>อัตราคุณภาพ</th><th>บันทึกแล้ว</th></tr>
+      <tr><th>จังหวัด</th><th>ผลรวม</th><th>1.8+</th><th>1.4-1.8</th><th>ตกเกรด</th><th>อัตรา 1.8+</th><th>บันทึกแล้ว</th></tr>
     </thead>
     <tbody>
       ${activeProvinces().map((province) => {
@@ -741,8 +748,8 @@ function renderBunchOverall(overall) {
     metric('ลูกต่อทะลายเฉลี่ย', formatNumber(overall.total.avgFruits, ' ลูก')),
     metric('น้ำหนักเฉลี่ย', formatNumber(overall.total.avgWeight, ' กก.')),
     metric('เส้นรอบวงเฉลี่ย', formatNumber(overall.total.avgCircum, ' ซม.')),
-    metric('ราคามาตรฐานเฉลี่ย', formatNumber(overall.total.avgPriceStandard, ' ฿')),
-    metric('ราคาตกเกรดเฉลี่ย', formatNumber(overall.total.avgPriceBelow, ' ฿')),
+    metric('ราคาเกรด 1.8+ เฉลี่ย', formatNumber(overall.total.avgPriceStandard, ' ฿')),
+    metric('ราคาเกรด 1.4-1.8 เฉลี่ย', formatNumber(overall.total.avgPriceBelow, ' ฿')),
   ].join('');
 }
 
@@ -751,8 +758,8 @@ function renderBunchVisual(data) {
     ${bunchProvinceBars(data.provinces, 'avgFruits', 'ลูกต่อทะลายเฉลี่ย', 'ลูก')}
     ${bunchProvinceBars(data.provinces, 'avgWeight', 'น้ำหนักเฉลี่ยรายจังหวัด', 'กก.')}
     ${bunchProvinceBars(data.provinces, 'avgCircum', 'เส้นรอบวงเฉลี่ยรายจังหวัด', 'ซม.')}
-    ${bunchProvinceBars(data.provinces, 'avgPriceStandard', 'ราคามาตรฐานเฉลี่ยรายจังหวัด', '฿')}
-    ${bunchProvinceBars(data.provinces, 'avgPriceBelow', 'ราคาตกเกรดเฉลี่ยรายจังหวัด', '฿')}
+    ${bunchProvinceBars(data.provinces, 'avgPriceStandard', 'ราคาเกรด 1.8+ เฉลี่ยรายจังหวัด', '฿')}
+    ${bunchProvinceBars(data.provinces, 'avgPriceBelow', 'ราคาเกรด 1.4-1.8 เฉลี่ยรายจังหวัด', '฿')}
   `;
 }
 
@@ -785,7 +792,7 @@ function renderBunchTable(provinces) {
       <tr>
         <th>จังหวัด</th><th>ทะลาย</th><th>บันทึก</th><th>ลูกต่อทะลาย</th>
         <th>น้ำหนักเฉลี่ย</th><th>เส้นรอบวงเฉลี่ย</th>
-        <th>ราคามาตรฐานเฉลี่ย</th><th>ราคาตกเกรดเฉลี่ย</th>
+        <th>ราคาเกรด 1.8+ เฉลี่ย</th><th>ราคาเกรด 1.4-1.8 เฉลี่ย</th>
       </tr>
     </thead>
     <tbody>
@@ -871,6 +878,59 @@ function fillNumberSelect(select, start, end, label) {
   for (let value = start; value <= end; value += 1) {
     select.insertAdjacentHTML('beforeend', `<option value="${value}">${label}${value}</option>`);
   }
+}
+
+function updatePlotSelect() {
+  const round = Number(el('round').value);
+  const province = provinceForRequest();
+  const key = `${province}-${round}`;
+  
+  let maxPlot = 10;
+  if (state.data && state.data.entries) {
+    state.data.entries.forEach((entry) => {
+      if (Number(entry.round) === round && entry.province_code === province) {
+        maxPlot = Math.max(maxPlot, Number(entry.plot));
+      }
+    });
+  }
+  if (state.tempMaxPlots && state.tempMaxPlots[key]) {
+    maxPlot = Math.max(maxPlot, state.tempMaxPlots[key]);
+  }
+  
+  const prevVal = el('plot').value;
+  fillNumberSelect(el('plot'), 1, maxPlot, 'แปลงที่ ');
+  
+  if (prevVal && Number(prevVal) <= maxPlot) {
+    el('plot').value = prevVal;
+  }
+}
+
+async function addPlot() {
+  const round = Number(el('round').value);
+  const province = provinceForRequest();
+  const key = `${province}-${round}`;
+  
+  let currentMax = 10;
+  if (state.data && state.data.entries) {
+    state.data.entries.forEach((entry) => {
+      if (Number(entry.round) === round && entry.province_code === province) {
+        currentMax = Math.max(currentMax, Number(entry.plot));
+      }
+    });
+  }
+  if (state.tempMaxPlots && state.tempMaxPlots[key]) {
+    currentMax = Math.max(currentMax, state.tempMaxPlots[key]);
+  }
+  
+  const newPlot = currentMax + 1;
+  if (!state.tempMaxPlots) {
+    state.tempMaxPlots = {};
+  }
+  state.tempMaxPlots[key] = newPlot;
+  
+  updatePlotSelect();
+  el('plot').value = newPlot;
+  await loadEntry();
 }
 
 function setStatus(id, message, type) {
@@ -1204,12 +1264,12 @@ function renderSummaryCards(stats) {
     <div class="summary-card">
       <div class="card-value">${stats.totalFruits} <span style="font-size:14px;font-weight:400;color:var(--muted)">ลูก</span></div>
       <div class="card-label">จำนวนผลรวม</div>
-      <div class="card-sub">คุณภาพ ${stats.totalQuality} / ต่ำมาตรฐาน ${stats.totalFruits - stats.totalQuality - stats.totalDamaged} / เสียหาย ${stats.totalDamaged}</div>
+      <div class="card-sub">1.8+: ${stats.totalQuality} / 1.4-1.8: ${stats.totalFruits - stats.totalQuality - stats.totalDamaged} / ตกเกรด: ${stats.totalDamaged}</div>
     </div>
     <div class="summary-card">
       <div class="card-value ${rateClass(stats.qualityRate)}">${(stats.qualityRate * 100).toFixed(1)}%</div>
-      <div class="card-label">อัตราผลคุณภาพ</div>
-      <div class="card-sub">quality / จำนวนผลรวม</div>
+      <div class="card-label">อัตรา 1.8+</div>
+      <div class="card-sub">1.8+ / จำนวนผลรวม</div>
     </div>
     <div class="summary-card">
       <div class="card-value">${stats.avgWeight !== null ? stats.avgWeight.toFixed(2) : '-'} <span style="font-size:13px;font-weight:400;color:var(--muted)">±${stats.sdWeight !== null ? stats.sdWeight.toFixed(2) : '-'} กก.</span></div>
@@ -1223,12 +1283,12 @@ function renderSummaryCards(stats) {
     </div>
     <div class="summary-card">
       <div class="card-value">${stats.avgPriceStandard !== null ? stats.avgPriceStandard.toFixed(2) : '-'} <span style="font-size:13px;font-weight:400;color:var(--muted)">±${stats.sdPriceStandard !== null ? stats.sdPriceStandard.toFixed(2) : '-'} ฿</span></div>
-      <div class="card-label">ราคาเฉลี่ยผลมาตรฐาน</div>
+      <div class="card-label">ราคาเฉลี่ยเกรด 1.8+</div>
       <div class="card-sub">จากที่บันทึกจริงรายแปลง</div>
     </div>
     <div class="summary-card">
       <div class="card-value">${stats.avgPriceBelow !== null ? stats.avgPriceBelow.toFixed(2) : '-'} <span style="font-size:13px;font-weight:400;color:var(--muted)">±${stats.sdPriceBelow !== null ? stats.sdPriceBelow.toFixed(2) : '-'} ฿</span></div>
-      <div class="card-label">ราคาเฉลี่ยผลตกเกรด</div>
+      <div class="card-label">ราคาเฉลี่ยเกรด 1.4-1.8</div>
       <div class="card-sub">จากที่บันทึกจริงรายแปลง</div>
     </div>
   `;
@@ -1336,9 +1396,9 @@ function renderAllRoundTable(stats) {
         <table>
           <thead>
             <tr>
-              <th>รอบ</th><th>จำนวนบันทึก</th><th>จำนวนผลรวม</th><th>อัตราผลคุณภาพ</th>
+              <th>รอบ</th><th>จำนวนบันทึก</th><th>จำนวนผลรวม</th><th>อัตรา 1.8+</th>
               <th>น้ำหนักเฉลี่ย ± SD</th><th>เส้นรอบวงเฉลี่ย ± SD</th>
-              <th>ราคามาตรฐาน ± SD</th><th>ราคาตกเกรด ± SD</th>
+              <th>ราคาเกรด 1.8+ ± SD</th><th>ราคาเกรด 1.4-1.8 ± SD</th>
             </tr>
           </thead>
           <tbody>
@@ -1381,7 +1441,7 @@ function renderProvinceTrends(stats) {
 
   el('statsModeContent').innerHTML = `
     <section class="visual-panel">
-      <h3>แนวโน้มอัตราผลคุณภาพรายจังหวัดตามรอบ</h3>
+      <h3>แนวโน้มอัตรา 1.8+ รายจังหวัดตามรอบ</h3>
       <div class="multi-trend">
         <div class="multi-trend-chart">
           ${trends.map((t, idx) => `
@@ -1436,7 +1496,7 @@ function renderBunchComparison(stats) {
       <div class="table-wrap" style="margin-bottom:16px">
         <table>
           <thead>
-            <tr><th>จังหวัด</th><th>ทะลาย</th><th>n</th><th>จำนวนผลรวม</th><th>อัตราผลคุณภาพ</th><th>นน.เฉลี่ย ± SD</th><th>รอบวงเฉลี่ย ± SD</th></tr>
+            <tr><th>จังหวัด</th><th>ทะลาย</th><th>n</th><th>จำนวนผลรวม</th><th>อัตรา 1.8+</th><th>นน.เฉลี่ย ± SD</th><th>รอบวงเฉลี่ย ± SD</th></tr>
           </thead>
           <tbody>
             ${PROVINCES.map((p) => {
@@ -1463,7 +1523,7 @@ function renderBunchComparison(stats) {
           </tbody>
         </table>
       </div>
-      <h4 style="margin-bottom:10px">อัตราผลคุณภาพ ทะลาย 1 vs 2</h4>
+      <h4 style="margin-bottom:10px">อัตรา 1.8+ ทะลาย 1 vs 2</h4>
       <div class="comp-bar-chart">
         ${PROVINCES.map((p, idx) => {
           const b1 = stats.byProvinceBunch[`${p.code}-1`] || blankGroupStats();
@@ -1612,7 +1672,7 @@ function renderOutlierPanel(stats) {
 
   el('outlierTable').innerHTML = `
     <table>
-      <thead><tr><th>รอบ</th><th>จังหวัด</th><th>แปลง</th><th>ทะลาย</th><th>ผลคุณภาพ</th><th>ต่ำ</th><th>เสียหาย</th><th>น้ำหนัก</th><th>รอบวง</th><th>เหตุผล</th></tr></thead>
+      <thead><tr><th>รอบ</th><th>จังหวัด</th><th>แปลง</th><th>ทะลาย</th><th>1.8+</th><th>1.4-1.8</th><th>ตกเกรด</th><th>น้ำหนัก</th><th>รอบวง</th><th>เหตุผล</th></tr></thead>
       <tbody>
         ${stats.outliers.map((o) => `
           <tr>
@@ -1648,10 +1708,10 @@ function renderStatsTable(stats) {
       <table>
         <thead>
           <tr>
-            <th>จังหวัด</th><th>ทะลาย</th><th>จำนวนบันทึก</th><th>จำนวนผลรวม</th><th>อัตราผลคุณภาพ</th>
+            <th>จังหวัด</th><th>ทะลาย</th><th>จำนวนบันทึก</th><th>จำนวนผลรวม</th><th>อัตรา 1.8+</th>
             <th>นน.เฉลี่ย</th><th>นน.SD</th><th>นน.ต่ำสุด</th><th>นน.สูงสุด</th>
             <th>รอบวงเฉลี่ย</th><th>รอบวง SD</th><th>รอบวงต่ำสุด</th><th>รอบวงสูงสุด</th>
-            <th>ราคามาตรฐานเฉลี่ย</th><th>ราคาตกเกรดเฉลี่ย</th>
+            <th>ราคาเกรด 1.8+ เฉลี่ย</th><th>ราคาเกรด 1.4-1.8 เฉลี่ย</th>
           </tr>
         </thead>
         <tbody>
@@ -1690,13 +1750,13 @@ function renderStatsTable(stats) {
 }
 
 function exportSummaryCSV(stats) {
-  const headers = ['จังหวัด', 'รอบ', 'ทะลาย', 'จำนวนบันทึก', 'จำนวนผลรวม', 'อัตราผลคุณภาพ', 'นน.เฉลี่ย', 'นน.SD', 'รอบวงเฉลี่ย', 'รอบวง SD'];
+  const headers = ['จังหวัด', 'รอบ', 'ทะลาย', 'จำนวนบันทึก', 'จำนวนผลรวม', 'อัตรา 1.8+', 'นน.เฉลี่ย', 'นน.SD', 'รอบวงเฉลี่ย', 'รอบวง SD'];
   const rows = buildSummaryCsvRows(stats, PROVINCES, 6, 2);
   exportCSV('coconut_summary', headers, rows);
 }
 
 function exportOutlierCSV(stats) {
-  const headers = ['รอบ', 'จังหวัด', 'แปลง', 'ทะลาย', 'ผลคุณภาพ', 'ต่ำมาตรฐาน', 'เสียหาย', 'น้ำหนัก', 'รอบวง', 'เหตุผล'];
+  const headers = ['รอบ', 'จังหวัด', 'แปลง', 'ทะลาย', '1.8+', '1.4-1.8', 'ตกเกรด', 'น้ำหนัก', 'รอบวง', 'เหตุผล'];
   const rows = stats.outliers.map((o) => [
     o.entry.round, o.provinceLabel, o.entry.plot, o.entry.bunch,
     o.entry.quality || 0, o.entry.below || 0, o.entry.damaged || 0,
@@ -1914,18 +1974,18 @@ function renderEconomy() {
       <div class="card-value" style="color:var(--primary); font-size: 26px; font-weight: 800;">${Math.round(grandRealized).toLocaleString()} ฿</div>
       <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">ประมาณการรายได้จริงของพื้นที่</div>
       <div class="card-sub" style="font-size:12px; color:var(--muted); margin-top:6px; line-height: 1.5">
-        ส่งออกประมาณการ: <strong>${grandPremium.toLocaleString()} ลูก</strong> (${Math.round(grandPremiumValue).toLocaleString()} ฿)<br>
-        แปรรูปประมาณการ: <strong>${grandBelow.toLocaleString()} ลูก</strong> (${Math.round(grandBelowValue).toLocaleString()} ฿)<br>
-        <span style="font-size:11px; opacity:0.8; font-weight:normal">(อิงกลุ่มตัวอย่าง: ส่งออก ${grandSamplePremium.toLocaleString()} / แปรรูป ${grandSampleBelow.toLocaleString()} ลูก)</span>
+        เกรด 1.8+ ประมาณการ: <strong>${grandPremium.toLocaleString()} ลูก</strong> (${Math.round(grandPremiumValue).toLocaleString()} ฿)<br>
+        เกรด 1.4-1.8 ประมาณการ: <strong>${grandBelow.toLocaleString()} ลูก</strong> (${Math.round(grandBelowValue).toLocaleString()} ฿)<br>
+        <span style="font-size:11px; opacity:0.8; font-weight:normal">(อิงกลุ่มตัวอย่าง: เกรด 1.8+ ${grandSamplePremium.toLocaleString()} / เกรด 1.4-1.8 ${grandSampleBelow.toLocaleString()} ลูก)</span>
       </div>
     </div>
     <div class="summary-card" style="border-left: 4px solid var(--red); padding: 16px; background: rgba(255,255,255,0.85); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
       <div class="card-value rate-red" style="font-size: 26px; font-weight: 800;">${Math.round(grandLost).toLocaleString()} ฿</div>
       <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">ประมาณการสูญเสียโอกาส</div>
       <div class="card-sub" style="font-size:12px; color:var(--muted); margin-top:6px; line-height: 1.5">
-        เสียหายสะสมประมาณการ: <strong>${grandDamaged.toLocaleString()} ลูก</strong><br>
+        เกรดตกเกรดประมาณการ: <strong>${grandDamaged.toLocaleString()} ลูก</strong><br>
         สัดส่วนการสูญเสียทางการเงิน: <span class="rate-red" style="font-weight:700">${grandLossRate.toFixed(1)}%</span><br>
-        <span style="font-size:11px; opacity:0.8; font-weight:normal">(อิงกลุ่มตัวอย่างเสียหาย: ${grandSampleDamaged.toLocaleString()} ลูก)</span>
+        <span style="font-size:11px; opacity:0.8; font-weight:normal">(อิงกลุ่มตัวอย่างตกเกรด: ${grandSampleDamaged.toLocaleString()} ลูก)</span>
       </div>
     </div>
     <div class="summary-card" style="border-left: 4px solid var(--blue); padding: 16px; background: rgba(255,255,255,0.85); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">

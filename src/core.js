@@ -6,9 +6,9 @@ const FIELD_LABELS = {
   round: 'รอบการประเมิน',
   plot: 'แปลง',
   bunch: 'ทะลาย',
-  quality: 'จำนวนผลคุณภาพ',
-  below: 'จำนวนผลต่ำกว่ามาตรฐาน',
-  damaged: 'จำนวนผลเสียหาย',
+  quality: 'จำนวนผล 1.8+',
+  below: 'จำนวนผล 1.4-1.8',
+  damaged: 'จำนวนผลตกเกรด',
   weight: 'น้ำหนักเฉลี่ย',
   circum: 'เส้นรอบวงเฉลี่ย',
 };
@@ -82,9 +82,21 @@ export function summarizeEntries(entries) {
       overall: blankSummary(),
     };
 
+    const maxPlotsPerProvince = {};
+    for (const province of CONFIG.provinces) {
+      maxPlotsPerProvince[province.code] = CONFIG.maxPlots;
+    }
+    for (const entry of entries) {
+      if (Number(entry.round) !== roundInfo.number) continue;
+      const pCode = entry.province_code;
+      if (maxPlotsPerProvince[pCode] !== undefined) {
+        maxPlotsPerProvince[pCode] = Math.max(maxPlotsPerProvince[pCode], Number(entry.plot));
+      }
+    }
+
     for (const province of CONFIG.provinces) {
       round.provinces[province.code] = blankSummary();
-      round.provinces[province.code].maxRows = CONFIG.maxPlots * CONFIG.bunchesPerPlot;
+      round.provinces[province.code].maxRows = maxPlotsPerProvince[province.code] * CONFIG.bunchesPerPlot;
       round.provinces[province.code].progressPercent = sharedCalcProgress(
         round.provinces[province.code].filled,
         round.provinces[province.code].maxRows

@@ -64,7 +64,7 @@ test('normalizes entry input and rejects invalid location', () => {
   assert.equal(entry.circum, null);
 
   assert.throws(
-    () => normalizeEntryInput({ ...entry, plot: 99 }),
+    () => normalizeEntryInput({ ...entry, plot: 0 }),
     /แปลงไม่ถูกต้อง/,
   );
 });

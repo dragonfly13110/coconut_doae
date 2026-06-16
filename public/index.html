@@ -88,7 +88,10 @@
           </label>
           <label>
             แปลง
-            <select id="plot"></select>
+            <div style="display: flex; gap: 8px;">
+              <select id="plot" style="flex: 1;"></select>
+              <button id="addPlotBtn" type="button" class="button ghost small" style="white-space: nowrap; padding: 0 12px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 13px;">+ เพิ่มแปลงใหม่</button>
+            </div>
           </label>
           <label>
             ทะลาย
@@ -101,15 +104,15 @@
           <div class="divider"></div>
 
           <label>
-            ผลคุณภาพ
+            1.8+
             <input id="quality" type="number" min="0" step="1" value="0">
           </label>
           <label>
-            ผลต่ำกว่ามาตรฐาน
+            1.4-1.8
             <input id="below" type="number" min="0" step="1" value="0">
           </label>
           <label>
-            ผลเสียหาย
+            ตกเกรด
             <input id="damaged" type="number" min="0" step="1" value="0">
           </label>
           <label>
@@ -125,11 +128,11 @@
             <input id="circum" type="number" min="0" step="0.01" placeholder="0.00">
           </label>
           <label>
-            ราคาเฉลี่ยผลมาตรฐาน (บาท)
+            ราคาเฉลี่ยเกรด 1.8+ (บาท)
             <input id="price_standard" type="number" min="0" step="0.1" placeholder="20.0">
           </label>
           <label>
-            ราคาเฉลี่ยผลตกเกรด (บาท)
+            ราคาเฉลี่ยเกรด 1.4-1.8 (บาท)
             <input id="price_below" type="number" min="0" step="0.1" placeholder="8.0">
           </label>
           <label class="wide">
@@ -159,12 +162,12 @@
           <div style="font-size: 13px; color: #2c3e50; line-height: 1.6;">
             <ol style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px;">
               <li>
-                <strong>เลือกระบุตำแหน่งเก็บข้อมูล:</strong> เลือกรอบการประเมิน จังหวัด แปลง (1-10) และทะลาย (1 หรือ 2) ให้ถูกต้องตรงกับจุดที่ตรวจวัดจริง
+                <strong>เลือกระบุตำแหน่งเก็บข้อมูล:</strong> เลือกรอบการประเมิน จังหวัด แปลง และทะลาย (1 หรือ 2) ให้ถูกต้องตรงกับจุดที่ตรวจวัดจริง
               </li>
               <li>
                 <strong>กรอกข้อมูลสัดส่วนผลผลิต:</strong> 
                 <ul>
-                  <li>กรอกจำนวน <em>ผลคุณภาพ (เกรดส่งออก)</em>, <em>ผลต่ำกว่ามาตรฐาน (เกรดแปรรูป)</em> และ <em>ผลเสียหาย</em> ตามที่นับได้จริง</li>
+                  <li>กรอกจำนวน <em>เกรด 1.8+</em>, <em>เกรด 1.4-1.8</em> และ <em>เกรดตกเกรด</em> ตามที่นับได้จริง</li>
                   <li>ระบบจะคำนวณ <strong>ผลรวม</strong> ให้โดยอัตโนมัติ</li>
                 </ul>
               </li>
@@ -178,8 +181,8 @@
               <li>
                 <strong>ระบุราคาเฉลี่ยในพื้นที่:</strong>
                 <ul>
-                  <li><strong>ราคาเฉลี่ยผลมาตรฐาน:</strong> ราคารับซื้อผลเกรดดีหรือเกรดส่งออก ณ ช่วงเวลานั้น (บาท/ลูก)</li>
-                  <li><strong>ราคาเฉลี่ยผลตกเกรด:</strong> ราคารับซื้อผลเกรดแปรรูปหรือตกไซส์ (บาท/ลูก)</li>
+                  <li><strong>ราคาเฉลี่ยเกรด 1.8+:</strong> ราคารับซื้อผลเกรดพรีเมียมหรือเกรดส่งออก ณ ช่วงเวลานั้น (บาท/ลูก)</li>
+                  <li><strong>ราคาเฉลี่ยเกรด 1.4-1.8:</strong> ราคารับซื้อผลเกรดรองหรือไซส์กลาง ณ ช่วงเวลานั้น (บาท/ลูก)</li>
                   <li><em>หมายเหตุ:</em> เมื่อระบุราคาในทะลายแรกของแปลงแล้ว ระบบจะช่วยจำข้อมูลนี้ไว้เพื่อให้กรอกแปลงถัดไปได้สะดวกรวดเร็วยิ่งขึ้น</li>
                 </ul>
               </li>
@@ -254,17 +257,17 @@
           <h3 style="margin-bottom:12px; font-size:15px; color:var(--text-color); display:flex; align-items:center; gap:8px">⚙️ ตั้งค่าสมมติฐานราคามะพร้าว (บาทต่อลูก)</h3>
           <div class="econ-inputs" style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px">
             <label style="flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; font-size:13px">
-              ผลคุณภาพ (เกรดพรีเมียม / ส่งออก)
-              <input id="pricePremium" type="number" min="0" value="20" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold">
-            </label>
-            <label style="flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; font-size:13px">
-              ผลต่ำกว่ามาตรฐาน (เกรดแปรรูป)
-              <input id="priceBelow" type="number" min="0" value="8" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold">
-            </label>
-            <label style="flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; font-size:13px; opacity:0.7">
-              ผลเสียหาย (เน่า/เสีย)
-              <input id="priceDamaged" type="number" readonly value="0" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold; background:#eee; cursor:not-allowed">
-            </label>
+            เกรด 1.8+ (ส่งออก)
+            <input id="pricePremium" type="number" min="0" value="20" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold">
+          </label>
+          <label style="flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; font-size:13px">
+            เกรด 1.4-1.8 (ในประเทศ)
+            <input id="priceBelow" type="number" min="0" value="8" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold">
+          </label>
+          <label style="flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; font-size:13px; opacity:0.7">
+            เกรดตกเกรด
+            <input id="priceDamaged" type="number" readonly value="0" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold; background:#eee; cursor:not-allowed">
+          </label>
           </div>
 
           <h3 style="margin-bottom:12px; font-size:15px; color:var(--text-color); display:flex; align-items:center; gap:8px">🚜 สมมติฐานพื้นที่และผลผลิตเฉลี่ยของโครงการแปลงใหญ่รายจังหวัด (เพื่อขยายผลสถิติ)</h3>
