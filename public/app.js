@@ -58,6 +58,7 @@ function bindEvents() {
   el('econRefreshBtn').addEventListener('click', renderEconomy);
   el('econRecalcBtn').addEventListener('click', renderEconomy);
   el('addPlotBtn').addEventListener('click', addPlot);
+  el('deletePlotBtn').addEventListener('click', deletePlot);
   ['quality', 'below', 'damaged'].forEach((id) => el(id).addEventListener('input', calcTotal));
   ['round', 'province', 'plot', 'bunch'].forEach((id) => el(id).addEventListener('change', loadEntry));
 
@@ -931,6 +932,53 @@ async function addPlot() {
   updatePlotSelect();
   el('plot').value = newPlot;
   await loadEntry();
+}
+
+async function deletePlot() {
+  const round = Number(el('round').value);
+  const province = provinceForRequest();
+  const plot = Number(el('plot').value);
+  const key = `${province}-${round}`;
+
+  const confirmMsg = `⚠️ คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลของ "แปลงที่ ${plot}" ใน "รอบที่ ${round}"?\n\nข้อมูลทั้ง 2 ทะลายของแปลงนี้จะถูกลบออกจากระบบทั้งหมดและไม่สามารถกู้คืนได้!`;
+  if (!confirm(confirmMsg)) {
+    return;
+  }
+
+  setLoading(true);
+  setStatus('entryStatus', 'กำลังลบข้อมูล...', '');
+
+  try {
+    const params = new URLSearchParams({
+      round,
+      province_code: province,
+      plot,
+    });
+    await api(`/api/entry?${params}`, { method: 'DELETE' });
+
+    if (state.tempMaxPlots && state.tempMaxPlots[key]) {
+      if (state.tempMaxPlots[key] === plot) {
+        state.tempMaxPlots[key] = Math.max(10, plot - 1);
+      }
+    }
+
+    setStatus('entryStatus', '<strong>ลบข้อมูลสำเร็จ 🗑️</strong>', 'success-box');
+    setTimeout(() => {
+      const statusEl = el('entryStatus');
+      if (statusEl.className.includes('success-box')) {
+        setStatus('entryStatus', '', '');
+      }
+    }, 4000);
+
+    await loadDashboard();
+
+    el('plot').value = 1;
+    await loadEntry();
+  } catch (error) {
+    setStatus('entryStatus', `ลบข้อมูลไม่สำเร็จ: ${error.message}`, 'error-box');
+  } finally {
+    setLoading(false);
+  }
 }
 
 function setStatus(id, message, type) {

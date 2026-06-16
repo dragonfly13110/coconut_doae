@@ -6,6 +6,7 @@ export async function onRequest({ request, env }) {
     const user = await requireUser(request, env);
     if (request.method === 'GET') return loadEntry(request, env, user);
     if (request.method === 'POST') return saveEntry(request, env, user);
+    if (request.method === 'DELETE') return deleteEntry(request, env, user);
     return methodNotAllowed();
   } catch (error) {
     return authErrorResponse(error) || json({ error: error.message }, { status: 400 });
@@ -111,4 +112,24 @@ async function saveEntry(request, env, user) {
   `).bind(input.price_standard, input.price_below, input.round, input.province_code, input.plot).run();
 
   return json({ ok: true, entry: input });
+}
+
+async function deleteEntry(request, env, user) {
+  const url = new URL(request.url);
+  const input = normalizeEntryInput({
+    round: url.searchParams.get('round'),
+    province_code: user.role === 'admin' ? url.searchParams.get('province_code') : user.province_code,
+    plot: url.searchParams.get('plot'),
+    bunch: 1,
+    quality: 0,
+    below: 0,
+    damaged: 0,
+  });
+
+  await env.DB.prepare(`
+    DELETE FROM entries
+    WHERE round = ? AND province_code = ? AND plot = ?
+  `).bind(input.round, input.province_code, input.plot).run();
+
+  return json({ ok: true });
 }
