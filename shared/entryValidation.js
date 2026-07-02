@@ -24,13 +24,16 @@ const FIELD_LABELS = {
   round: 'รอบการประเมิน',
   plot: 'แปลง',
   bunch: 'ทะลาย',
-  quality: 'จำนวนผล 1.8+',
-  below: 'จำนวนผล 1.4-1.8',
-  damaged: 'จำนวนผลตกเกรด',
+  quality: 'จำนวนผล 1.80 ขึ้นไป (ไซส์จัมโบ้)',
+  below: 'จำนวนผล 1.40 - 1.79 (เกรดมาตรฐาน)',
+  domestic: 'จำนวนผล 1.20 - 1.39 (เกรดในประเทศ)',
+  damaged: 'จำนวนผลต่ำกว่า 1.20 (ตกเกรด/ไม่ได้มาตรฐาน)',
   weight: 'น้ำหนักเฉลี่ย',
   circum: 'เส้นรอบวงเฉลี่ย',
-  price_standard: 'ราคาเฉลี่ยเกรด 1.8+',
-  price_below: 'ราคาเฉลี่ยเกรด 1.4-1.8',
+  price_standard: 'ราคาเกรด 1.80 ขึ้นไป',
+  price_below: 'ราคาเกรด 1.40 - 1.79',
+  price_domestic: 'ราคาเกรด 1.20 - 1.39',
+  price_damaged: 'ราคาเกรดต่ำกว่า 1.20',
 };
 
 function toInt(value, name) {
@@ -65,11 +68,14 @@ export function normalizeEntryInput(input) {
   const bunch = toInt(input.bunch, 'bunch');
   const quality = toNonNegativeInt(input.quality, 'quality');
   const below = toNonNegativeInt(input.below, 'below');
+  const domestic = toNonNegativeInt(input.domestic, 'domestic');
   const damaged = toNonNegativeInt(input.damaged, 'damaged');
   const weight = toNullableNumber(input.weight, 'weight');
   const circum = toNullableNumber(input.circum, 'circum');
   const price_standard = toNullableNumber(input.price_standard, 'price_standard');
   const price_below = toNullableNumber(input.price_below, 'price_below');
+  const price_domestic = toNullableNumber(input.price_domestic, 'price_domestic');
+  const price_damaged = toNullableNumber(input.price_damaged, 'price_damaged');
 
   if (round < 1 || round > CONFIG.totalRounds) throw new Error('รอบการประเมินไม่ถูกต้อง');
   if (!provinceCodes.has(provinceCode)) throw new Error('จังหวัดไม่ถูกต้อง');
@@ -83,13 +89,16 @@ export function normalizeEntryInput(input) {
     bunch,
     quality,
     below,
+    domestic,
     damaged,
-    total: quality + below + damaged,
+    total: quality + below + domestic + damaged,
     weight,
     circum,
     notes: String(input.notes || '').trim(),
     price_standard,
     price_below,
+    price_domestic,
+    price_damaged,
   };
 }
 

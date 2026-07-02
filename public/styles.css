@@ -243,6 +243,60 @@ h1 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.grades-container {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+
+@media (max-width: 1024px) {
+  .grades-container {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .grades-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.grade-card {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.grade-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.grade-card-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--primary-strong);
+  margin-bottom: 2px;
+  line-height: 1.4;
+}
+
+.grade-card-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.grade-card-fields label {
+  gap: 4px;
+}
+
 label {
   display: grid;
   gap: 7px;
@@ -261,6 +315,12 @@ select {
   background: #fff;
   color: var(--ink);
   font: inherit;
+}
+
+input::placeholder {
+  color: #a8b8b0 !important;
+  opacity: 0.65;
+  font-weight: 400;
 }
 
 input:focus,

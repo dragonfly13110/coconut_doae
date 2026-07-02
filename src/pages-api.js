@@ -18,6 +18,28 @@ export async function ensureDbInitialized(db) {
         // ignore
       }
     }
+    // Self-healing check for new columns: domestic, price_domestic, price_damaged
+    try {
+      await db.prepare('SELECT domestic FROM entries LIMIT 1').first();
+    } catch (err) {
+      try {
+        await db.prepare('ALTER TABLE entries ADD COLUMN domestic INTEGER NOT NULL DEFAULT 0').run();
+      } catch (alterError) {}
+    }
+    try {
+      await db.prepare('SELECT price_domestic FROM entries LIMIT 1').first();
+    } catch (err) {
+      try {
+        await db.prepare('ALTER TABLE entries ADD COLUMN price_domestic REAL').run();
+      } catch (alterError) {}
+    }
+    try {
+      await db.prepare('SELECT price_damaged FROM entries LIMIT 1').first();
+    } catch (err) {
+      try {
+        await db.prepare('ALTER TABLE entries ADD COLUMN price_damaged REAL').run();
+      } catch (alterError) {}
+    }
   } catch (error) {
     if (error.message.includes('no such table') || error.message.includes('SQLITE_ERROR')) {
       const schemaSql = `
@@ -43,6 +65,7 @@ export async function ensureDbInitialized(db) {
           bunch INTEGER NOT NULL,
           quality INTEGER NOT NULL DEFAULT 0,
           below INTEGER NOT NULL DEFAULT 0,
+          domestic INTEGER NOT NULL DEFAULT 0,
           damaged INTEGER NOT NULL DEFAULT 0,
           weight REAL,
           circum REAL,
@@ -51,6 +74,8 @@ export async function ensureDbInitialized(db) {
           recorded_by INTEGER,
           price_standard REAL,
           price_below REAL,
+          price_domestic REAL,
+          price_damaged REAL,
           PRIMARY KEY (round, province_code, plot, bunch),
           FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL
         );

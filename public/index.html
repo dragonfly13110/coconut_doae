@@ -104,20 +104,72 @@
 
           <div class="divider"></div>
 
+          <div class="grades-container wide">
+            <!-- Jumbo Grade -->
+            <div class="grade-card" style="border-left: 4px solid var(--primary);">
+              <div class="grade-card-title">1.80 ขึ้นไป (จัมโบ้ ส่งออก)</div>
+              <div class="grade-card-fields">
+                <label>
+                  จำนวนผล (ลูก)
+                  <input id="quality" type="number" min="0" step="1" value="0">
+                </label>
+                <label>
+                  ราคา (บาท)
+                  <input id="price_standard" type="number" min="0" step="0.1" placeholder="20.0">
+                </label>
+              </div>
+            </div>
+
+            <!-- Standard Grade -->
+            <div class="grade-card" style="border-left: 4px solid var(--blue);">
+              <div class="grade-card-title">1.40 - 1.79 (มาตรฐาน/ส่งออก)</div>
+              <div class="grade-card-fields">
+                <label>
+                  จำนวนผล (ลูก)
+                  <input id="below" type="number" min="0" step="1" value="0">
+                </label>
+                <label>
+                  ราคา (บาท)
+                  <input id="price_below" type="number" min="0" step="0.1" placeholder="12.0">
+                </label>
+              </div>
+            </div>
+
+            <!-- Domestic Grade -->
+            <div class="grade-card" style="border-left: 4px solid var(--amber);">
+              <div class="grade-card-title">1.20 - 1.39 (ในประเทศ)</div>
+              <div class="grade-card-fields">
+                <label>
+                  จำนวนผล (ลูก)
+                  <input id="domestic" type="number" min="0" step="1" value="0">
+                </label>
+                <label>
+                  ราคา (บาท)
+                  <input id="price_domestic" type="number" min="0" step="0.1" placeholder="8.0">
+                </label>
+              </div>
+            </div>
+
+            <!-- Substandard Grade -->
+            <div class="grade-card" style="border-left: 4px solid var(--red);">
+              <div class="grade-card-title">ต่ำกว่า 1.20 (ตกเกรด)</div>
+              <div class="grade-card-fields">
+                <label>
+                  จำนวนผล (ลูก)
+                  <input id="damaged" type="number" min="0" step="1" value="0">
+                </label>
+                <label>
+                  ราคา (บาท)
+                  <input id="price_damaged" type="number" min="0" step="0.1" placeholder="3.0">
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
           <label>
-            1.8+ (เกรดส่งออก)
-            <input id="quality" type="number" min="0" step="1" value="0">
-          </label>
-          <label>
-            1.4-1.8 (เกรดรอง/ในประเทศ)
-            <input id="below" type="number" min="0" step="1" value="0">
-          </label>
-          <label>
-            ตกเกรด (ไม่ได้เกณฑ์/แปรรูป)
-            <input id="damaged" type="number" min="0" step="1" value="0">
-          </label>
-          <label>
-            ผลรวม
+            ผลรวมทั้งหมด (ลูก)
             <input id="total" type="text" readonly value="0">
           </label>
           <label>
@@ -129,18 +181,11 @@
             <input id="circum" type="number" min="0" step="0.01" placeholder="0.00">
           </label>
           <label>
-            ราคาเฉลี่ยเกรด 1.8+ (บาท)
-            <input id="price_standard" type="number" min="0" step="0.1" placeholder="20.0">
-          </label>
-          <label>
-            ราคาเฉลี่ยเกรด 1.4-1.8 (บาท)
-            <input id="price_below" type="number" min="0" step="0.1" placeholder="8.0">
-          </label>
-          <label class="wide">
             หมายเหตุ
             <input id="notes" type="text" placeholder="บันทึกข้อสังเกตเพิ่มเติม">
           </label>
-          <button type="submit" class="button primary wide">บันทึกข้อมูล</button>
+
+          <button type="submit" class="button primary wide" style="margin-top: 8px;">บันทึกข้อมูล</button>
         </form>
         <p id="entryStatus" class="status"></p>
         <section class="completion-panel" aria-labelledby="completionTitle">
@@ -168,7 +213,7 @@
               <li>
                 <strong>กรอกข้อมูลสัดส่วนผลผลิต:</strong> 
                 <ul>
-                  <li>กรอกจำนวน <em>เกรด 1.8+</em>, <em>เกรด 1.4-1.8</em> และ <em>เกรดตกเกรด</em> ตามที่นับได้จริง</li>
+                  <li>กรอกจำนวน <em>ไซส์จัมโบ้ 1.80+</em>, <em>เกรดมาตรฐาน 1.40-1.79</em>, <em>เกรดบริโภคในประเทศ 1.20-1.39</em> และ <em>ตกเกรดต่ำกว่า 1.20</em> ตามที่นับได้จริง</li>
                   <li>ระบบจะคำนวณ <strong>ผลรวม</strong> ให้โดยอัตโนมัติ</li>
                 </ul>
               </li>
@@ -182,8 +227,10 @@
               <li>
                 <strong>ระบุราคาเฉลี่ยในพื้นที่:</strong>
                 <ul>
-                  <li><strong>ราคาเฉลี่ยเกรด 1.8+:</strong> ราคารับซื้อผลเกรดพรีเมียมหรือเกรดส่งออก ณ ช่วงเวลานั้น (บาท/ลูก)</li>
-                  <li><strong>ราคาเฉลี่ยเกรด 1.4-1.8:</strong> ราคารับซื้อผลเกรดรองหรือไซส์กลาง ณ ช่วงเวลานั้น (บาท/ลูก)</li>
+                  <li><strong>ราคารับซื้อเกรด 1.80+:</strong> ราคารับซื้อผลไซส์จัมโบ้ ส่งออกต่างประเทศ ณ ช่วงเวลานั้น (บาท/ลูก)</li>
+                  <li><strong>ราคารับซื้อเกรด 1.40-1.79:</strong> ราคารับซื้อผลเกรดมาตรฐาน ส่งออกต่างประเทศ ณ ช่วงเวลานั้น (บาท/ลูก)</li>
+                  <li><strong>ราคารับซื้อเกรด 1.20-1.39:</strong> ราคารับซื้อผลเกรดบริโภคในประเทศ ณ ช่วงเวลานั้น (บาท/ลูก)</li>
+                  <li><strong>ราคารับซื้อเกรดต่ำกว่า 1.20:</strong> ราคารับซื้อผลตกเกรด/ไม่ได้มาตรฐาน ณ ช่วงเวลานั้น (บาท/ลูก)</li>
                   <li><em>หมายเหตุ:</em> เมื่อระบุราคาในทะลายแรกของแปลงแล้ว ระบบจะช่วยจำข้อมูลนี้ไว้เพื่อให้กรอกแปลงถัดไปได้สะดวกรวดเร็วยิ่งขึ้น</li>
                 </ul>
               </li>
@@ -258,16 +305,20 @@
           <h3 style="margin-bottom:12px; font-size:15px; color:var(--text-color); display:flex; align-items:center; gap:8px">⚙️ ตั้งค่าสมมติฐานราคามะพร้าว (บาทต่อลูก)</h3>
           <div class="econ-inputs" style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px">
             <label style="flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; font-size:13px">
-            เกรด 1.8+ (ส่งออก)
+            เกรด 1.80+ (ไซส์จัมโบ้)
             <input id="pricePremium" type="number" min="0" value="20" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold">
           </label>
           <label style="flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; font-size:13px">
-            เกรด 1.4-1.8 (ในประเทศ)
-            <input id="priceBelow" type="number" min="0" value="8" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold">
+            เกรด 1.40 - 1.79 (เกรดมาตรฐาน)
+            <input id="priceBelow" type="number" min="0" value="12" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold">
           </label>
-          <label style="flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; font-size:13px; opacity:0.7">
-            เกรดตกเกรด
-            <input id="priceDamaged" type="number" readonly value="0" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold; background:#eee; cursor:not-allowed">
+          <label style="flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; font-size:13px">
+            เกรด 1.20 - 1.39 (เกรดในประเทศ)
+            <input id="priceDomesticEcon" type="number" min="0" value="8" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold">
+          </label>
+          <label style="flex:1; min-width:180px; display:flex; flex-direction:column; gap:6px; font-size:13px">
+            เกรดตกเกรด (ต่ำกว่า 1.20)
+            <input id="priceDamaged" type="number" min="0" value="3" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-size:14px; font-weight:bold">
           </label>
           </div>
 

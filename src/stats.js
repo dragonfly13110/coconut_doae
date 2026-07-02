@@ -4,12 +4,15 @@ export function blankGroupStats() {
     totalFruits: 0,
     quality: 0,
     below: 0,
+    domestic: 0,
     damaged: 0,
     qualityRate: 0,
     weightVals: [],
     circumVals: [],
     priceStandardVals: [],
     priceBelowVals: [],
+    priceDomesticVals: [],
+    priceDamagedVals: [],
     avgWeight: null,
     sdWeight: null,
     avgCircum: null,
@@ -18,6 +21,10 @@ export function blankGroupStats() {
     sdPriceStandard: null,
     avgPriceBelow: null,
     sdPriceBelow: null,
+    avgPriceDomestic: null,
+    sdPriceDomestic: null,
+    avgPriceDamaged: null,
+    sdPriceDamaged: null,
     missingWeight: 0,
     missingCircum: 0,
   };
@@ -102,17 +109,21 @@ function groupKey(provinceCode, round, bunch) {
 function accumGroup(group, entry) {
   const quality = Number(entry.quality) || 0;
   const below = Number(entry.below) || 0;
+  const domestic = Number(entry.domestic) || 0;
   const damaged = Number(entry.damaged) || 0;
-  const total = quality + below + damaged;
+  const total = quality + below + domestic + damaged;
   const weight = Number(entry.weight);
   const circum = Number(entry.circum);
   const ps = entry.price_standard !== null && entry.price_standard !== undefined && entry.price_standard !== '' ? Number(entry.price_standard) : null;
   const pb = entry.price_below !== null && entry.price_below !== undefined && entry.price_below !== '' ? Number(entry.price_below) : null;
+  const pd = entry.price_domestic !== null && entry.price_domestic !== undefined && entry.price_domestic !== '' ? Number(entry.price_domestic) : null;
+  const pdm = entry.price_damaged !== null && entry.price_damaged !== undefined && entry.price_damaged !== '' ? Number(entry.price_damaged) : null;
 
   if (total > 0) group.n += 1;
   group.totalFruits += total;
   group.quality += quality;
   group.below += below;
+  group.domestic += domestic;
   group.damaged += damaged;
 
   if (Number.isFinite(weight) && weight > 0) group.weightVals.push(weight);
@@ -123,6 +134,8 @@ function accumGroup(group, entry) {
 
   if (ps !== null && Number.isFinite(ps) && ps >= 0) group.priceStandardVals.push(ps);
   if (pb !== null && Number.isFinite(pb) && pb >= 0) group.priceBelowVals.push(pb);
+  if (pd !== null && Number.isFinite(pd) && pd >= 0) group.priceDomesticVals.push(pd);
+  if (pdm !== null && Number.isFinite(pdm) && pdm >= 0) group.priceDamagedVals.push(pdm);
 }
 
 function finalizeGroupStats(group) {
@@ -148,6 +161,20 @@ function finalizeGroupStats(group) {
   } else {
     group.avgPriceBelow = null;
     group.sdPriceBelow = null;
+  }
+  if (group.priceDomesticVals && group.priceDomesticVals.length) {
+    group.avgPriceDomestic = group.priceDomesticVals.reduce((sum, value) => sum + value, 0) / group.priceDomesticVals.length;
+    group.sdPriceDomestic = stdDev(group.priceDomesticVals);
+  } else {
+    group.avgPriceDomestic = null;
+    group.sdPriceDomestic = null;
+  }
+  if (group.priceDamagedVals && group.priceDamagedVals.length) {
+    group.avgPriceDamaged = group.priceDamagedVals.reduce((sum, value) => sum + value, 0) / group.priceDamagedVals.length;
+    group.sdPriceDamaged = stdDev(group.priceDamagedVals);
+  } else {
+    group.avgPriceDamaged = null;
+    group.sdPriceDamaged = null;
   }
 }
 

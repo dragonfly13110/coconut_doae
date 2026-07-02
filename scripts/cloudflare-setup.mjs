@@ -45,8 +45,8 @@ for (const province of CONFIG.provinces) {
 for (const entry of createInitialEntries()) {
   await query(database.uuid, `
     INSERT OR IGNORE INTO entries (
-      round, province_code, plot, bunch, quality, below, damaged, weight, circum, notes, recorded_at
-    ) VALUES (?, ?, ?, ?, 0, 0, 0, NULL, NULL, '', NULL)
+      round, province_code, plot, bunch, quality, below, domestic, damaged, weight, circum, notes, recorded_at
+    ) VALUES (?, ?, ?, ?, 0, 0, 0, 0, NULL, NULL, '', NULL)
   `, [entry.round, entry.province_code, entry.plot, entry.bunch]);
 }
 

@@ -23,12 +23,15 @@ test('creates one empty entry per round, province, plot, and bunch', () => {
     bunch: 1,
     quality: 0,
     below: 0,
+    domestic: 0,
     damaged: 0,
     weight: null,
     circum: null,
     notes: '',
     price_standard: null,
     price_below: null,
+    price_domestic: null,
+    price_damaged: null,
     recorded_at: null,
   });
 });
@@ -52,13 +55,14 @@ test('normalizes entry input and rejects invalid location', () => {
     bunch: '1',
     quality: '10',
     below: '',
+    domestic: '2',
     damaged: '2',
     weight: '1.25',
     circum: '',
     notes: ' ok ',
   });
 
-  assert.equal(entry.total, 12);
+  assert.equal(entry.total, 14);
   assert.equal(entry.notes, 'ok');
   assert.equal(entry.weight, 1.25);
   assert.equal(entry.circum, null);
@@ -78,6 +82,7 @@ test('summarizes entries by round and province', () => {
       bunch: 1,
       quality: 8,
       below: 1,
+      domestic: 1,
       damaged: 1,
       weight: 1.2,
       circum: 42,
@@ -88,8 +93,9 @@ test('summarizes entries by round and province', () => {
       province_code: 'ratchaburi',
       plot: 1,
       bunch: 1,
-      quality: 4,
-      below: 4,
+      quality: 6,
+      below: 2,
+      domestic: 2,
       damaged: 2,
       weight: 1.4,
       circum: 44,
@@ -100,9 +106,9 @@ test('summarizes entries by round and province', () => {
   const summary = summarizeEntries(data);
   const np = summary.rounds[0].provinces.nakhon_pathom;
 
-  assert.equal(np.totalFruits, 10);
-  assert.equal(np.qualityRate, 0.8);
+  assert.equal(np.totalFruits, 11);
+  assert.equal(np.qualityRate.toFixed(4), (8/11).toFixed(4));
   assert.equal(np.avgWeight, 1.2);
-  assert.equal(summary.rounds[0].overall.totalFruits, 20);
-  assert.equal(summary.rounds[0].overall.qualityRate, 0.6);
+  assert.equal(summary.rounds[0].overall.totalFruits, 23);
+  assert.equal(summary.rounds[0].overall.qualityRate.toFixed(4), (14/23).toFixed(4));
 });

@@ -13,6 +13,7 @@ test('entriesToExcelHtml creates Excel-readable table with escaped values', () =
       bunch: 2,
       quality: 10,
       below: 1,
+      domestic: 0,
       damaged: 0,
       weight: 1.2,
       circum: 42,
@@ -24,6 +25,6 @@ test('entriesToExcelHtml creates Excel-readable table with escaped values', () =
   assert.match(html, /<table>/);
   assert.match(html, /Nakhon Pathom/);
   assert.match(html, /&lt;checked&gt;/);
-  assert.match(html, /อัตรา 1.8\+/);
+  assert.match(html, /อัตรา 1.80\+/);
   assert.match(html, /90.91%/);
 });

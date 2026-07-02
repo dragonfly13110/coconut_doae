@@ -4,15 +4,18 @@ const HEADERS = [
   'จังหวัด',
   'แปลง',
   'ทะลาย',
-  'จำนวนผล 1.8+',
-  'จำนวนผล 1.4-1.8',
-  'จำนวนผลตกเกรด',
+  'จำนวนผล 1.80 ขึ้นไป (ไซส์จัมโบ้)',
+  'จำนวนผล 1.40 - 1.79 (เกรดมาตรฐาน)',
+  'จำนวนผล 1.20 - 1.39 (เกรดในประเทศ)',
+  'จำนวนผลต่ำกว่า 1.20 (ตกเกรด/ไม่ได้มาตรฐาน)',
   'ผลรวม',
-  'อัตรา 1.8+',
+  'อัตรา 1.80+ (ไซส์จัมโบ้)',
   'น้ำหนักเฉลี่ย (กก.)',
   'เส้นรอบวงเฉลี่ย (ซม.)',
-  'ราคาเฉลี่ยเกรด 1.8+ (บาท)',
-  'ราคาเฉลี่ยเกรด 1.4-1.8 (บาท)',
+  'ราคาเกรด 1.80 ขึ้นไป (บาท)',
+  'ราคาเกรด 1.40 - 1.79 (บาท)',
+  'ราคาเกรด 1.20 - 1.39 (บาท)',
+  'ราคาเกรดต่ำกว่า 1.20 (บาท)',
   'หมายเหตุ',
   'วันเวลาที่บันทึก',
 ];
@@ -21,8 +24,9 @@ export function entriesToExcelHtml(entries) {
   const rows = entries.map((entry) => {
     const quality = Number(entry.quality) || 0;
     const below = Number(entry.below) || 0;
+    const domestic = Number(entry.domestic) || 0;
     const damaged = Number(entry.damaged) || 0;
-    const total = quality + below + damaged;
+    const total = quality + below + domestic + damaged;
     const rate = total > 0 ? `${((quality / total) * 100).toFixed(2)}%` : '';
 
     return [
@@ -33,6 +37,7 @@ export function entriesToExcelHtml(entries) {
       entry.bunch,
       quality,
       below,
+      domestic,
       damaged,
       total,
       rate,
@@ -40,6 +45,8 @@ export function entriesToExcelHtml(entries) {
       entry.circum ?? '',
       entry.price_standard ?? '',
       entry.price_below ?? '',
+      entry.price_domestic ?? '',
+      entry.price_damaged ?? '',
       entry.notes ?? '',
       entry.recorded_at ?? '',
     ];

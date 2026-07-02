@@ -59,7 +59,7 @@ function bindEvents() {
   el('econRecalcBtn').addEventListener('click', renderEconomy);
   el('addPlotBtn').addEventListener('click', addPlot);
   el('deletePlotBtn').addEventListener('click', deletePlot);
-  ['quality', 'below', 'damaged'].forEach((id) => el(id).addEventListener('input', calcTotal));
+  ['quality', 'below', 'domestic', 'damaged'].forEach((id) => el(id).addEventListener('input', calcTotal));
   ['round', 'province', 'plot', 'bunch'].forEach((id) => el(id).addEventListener('change', loadEntry));
 
   document.querySelectorAll('.tab').forEach((button) => {
@@ -133,18 +133,22 @@ async function loadEntry() {
 async function saveEntry(event) {
   event.preventDefault();
 
-  const total = (Number(el('quality').value) || 0) + (Number(el('below').value) || 0) + (Number(el('damaged').value) || 0);
+  const total = (Number(el('quality').value) || 0) + (Number(el('below').value) || 0) + (Number(el('domestic').value) || 0) + (Number(el('damaged').value) || 0);
   if (total > 0) {
     const missing = [];
     const w = el('weight').value.trim();
     const c = el('circum').value.trim();
     const ps = el('price_standard').value.trim();
     const pb = el('price_below').value.trim();
+    const pd = el('price_domestic').value.trim();
+    const pdm = el('price_damaged').value.trim();
 
     if (!w || Number(w) <= 0) missing.push('<strong>น้ำหนักเฉลี่ย (กก.)</strong> (ต้องระบุและมากกว่า 0)');
     if (!c || Number(c) <= 0) missing.push('<strong>เส้นรอบวงเฉลี่ย (ซม.)</strong> (ต้องระบุและมากกว่า 0)');
-    if (!ps || Number(ps) < 0) missing.push('<strong>ราคาเฉลี่ยผลมาตรฐาน (บาท)</strong> (ต้องระบุ)');
-    if (!pb || Number(pb) < 0) missing.push('<strong>ราคาเฉลี่ยผลตกเกรด (บาท)</strong> (ต้องระบุ)');
+    if (!ps || Number(ps) < 0) missing.push('<strong>ราคาเกรด 1.80 ขึ้นไป (บาท)</strong> (ต้องระบุ)');
+    if (!pb || Number(pb) < 0) missing.push('<strong>ราคาเกรด 1.40 - 1.79 (บาท)</strong> (ต้องระบุ)');
+    if (!pd || Number(pd) < 0) missing.push('<strong>ราคาเกรด 1.20 - 1.39 (บาท)</strong> (ต้องระบุ)');
+    if (!pdm || Number(pdm) < 0) missing.push('<strong>ราคาเกรดต่ำกว่า 1.20 (บาท)</strong> (ต้องระบุ)');
 
     if (missing.length > 0) {
       setStatus('entryStatus', `
@@ -167,11 +171,14 @@ async function saveEntry(event) {
       bunch: el('bunch').value,
       quality: el('quality').value,
       below: el('below').value,
+      domestic: el('domestic').value,
       damaged: el('damaged').value,
       weight: el('weight').value,
       circum: el('circum').value,
       price_standard: el('price_standard').value,
       price_below: el('price_below').value,
+      price_domestic: el('price_domestic').value,
+      price_damaged: el('price_damaged').value,
       notes: el('notes').value,
     });
   } catch (validationError) {
@@ -350,7 +357,7 @@ function getRecordedStatuses(roundNumber, provinceCode) {
   (state.data.entries || [])
     .filter((entry) => Number(entry.round) === roundNumber && entry.province_code === provinceCode)
     .forEach((entry) => {
-      const total = (Number(entry.quality) || 0) + (Number(entry.below) || 0) + (Number(entry.damaged) || 0);
+      const total = (Number(entry.quality) || 0) + (Number(entry.below) || 0) + (Number(entry.domestic) || 0) + (Number(entry.damaged) || 0);
       const key = `${entry.plot}:${entry.bunch}`;
       if (total > 0) {
         const missingFields = [];
@@ -358,11 +365,15 @@ function getRecordedStatuses(roundNumber, provinceCode) {
         const c = entry.circum !== null && entry.circum !== undefined && entry.circum !== '' ? Number(entry.circum) : null;
         const ps = entry.price_standard !== null && entry.price_standard !== undefined && entry.price_standard !== '' ? Number(entry.price_standard) : null;
         const pb = entry.price_below !== null && entry.price_below !== undefined && entry.price_below !== '' ? Number(entry.price_below) : null;
+        const pd = entry.price_domestic !== null && entry.price_domestic !== undefined && entry.price_domestic !== '' ? Number(entry.price_domestic) : null;
+        const pdm = entry.price_damaged !== null && entry.price_damaged !== undefined && entry.price_damaged !== '' ? Number(entry.price_damaged) : null;
 
         if (w === null || w <= 0) missingFields.push('น้ำหนัก');
         if (c === null || c <= 0) missingFields.push('เส้นรอบวง');
-        if (ps === null || ps < 0) missingFields.push('ราคามาตรฐาน');
-        if (pb === null || pb < 0) missingFields.push('ราคาตกเกรด');
+        if (ps === null || ps < 0) missingFields.push('ราคาเกรด 1.80+');
+        if (pb === null || pb < 0) missingFields.push('ราคาเกรด 1.40-1.79');
+        if (pd === null || pd < 0) missingFields.push('ราคาเกรด 1.20-1.39');
+        if (pdm === null || pdm < 0) missingFields.push('ราคาเกรด < 1.20');
 
         if (missingFields.length > 0) {
           map.set(key, { status: 'incomplete', missingFields });
@@ -395,16 +406,28 @@ function aggregate() {
     provinces[province.code].priceStandardCount = 0;
     provinces[province.code].priceBelowSum = 0;
     provinces[province.code].priceBelowCount = 0;
+    provinces[province.code].priceDomesticSum = 0;
+    provinces[province.code].priceDomesticCount = 0;
+    provinces[province.code].priceDamagedSum = 0;
+    provinces[province.code].priceDamagedCount = 0;
     provinces[province.code].avgPriceStandard = null;
     provinces[province.code].avgPriceBelow = null;
+    provinces[province.code].avgPriceDomestic = null;
+    provinces[province.code].avgPriceDamaged = null;
   });
 
   overall.priceStandardSum = 0;
   overall.priceStandardCount = 0;
   overall.priceBelowSum = 0;
   overall.priceBelowCount = 0;
+  overall.priceDomesticSum = 0;
+  overall.priceDomesticCount = 0;
+  overall.priceDamagedSum = 0;
+  overall.priceDamagedCount = 0;
   overall.avgPriceStandard = null;
   overall.avgPriceBelow = null;
+  overall.avgPriceDomestic = null;
+  overall.avgPriceDamaged = null;
 
   allEntries.forEach((entry) => {
     if (state.activeRound !== 'all' && Number(entry.round) !== state.activeRound) return;
@@ -413,6 +436,8 @@ function aggregate() {
 
     const ps = entry.price_standard !== null && entry.price_standard !== undefined && entry.price_standard !== '' ? Number(entry.price_standard) : null;
     const pb = entry.price_below !== null && entry.price_below !== undefined && entry.price_below !== '' ? Number(entry.price_below) : null;
+    const pd = entry.price_domestic !== null && entry.price_domestic !== undefined && entry.price_domestic !== '' ? Number(entry.price_domestic) : null;
+    const pdm = entry.price_damaged !== null && entry.price_damaged !== undefined && entry.price_damaged !== '' ? Number(entry.price_damaged) : null;
 
     if (ps !== null && isFinite(ps) && ps >= 0) {
       provinces[pCode].priceStandardSum += ps;
@@ -426,16 +451,32 @@ function aggregate() {
       overall.priceBelowSum += pb;
       overall.priceBelowCount += 1;
     }
+    if (pd !== null && isFinite(pd) && pd >= 0) {
+      provinces[pCode].priceDomesticSum += pd;
+      provinces[pCode].priceDomesticCount += 1;
+      overall.priceDomesticSum += pd;
+      overall.priceDomesticCount += 1;
+    }
+    if (pdm !== null && isFinite(pdm) && pdm >= 0) {
+      provinces[pCode].priceDamagedSum += pdm;
+      provinces[pCode].priceDamagedCount += 1;
+      overall.priceDamagedSum += pdm;
+      overall.priceDamagedCount += 1;
+    }
   });
 
   activeProvinces().forEach((province) => {
     const p = provinces[province.code];
     p.avgPriceStandard = p.priceStandardCount > 0 ? p.priceStandardSum / p.priceStandardCount : null;
     p.avgPriceBelow = p.priceBelowCount > 0 ? p.priceBelowSum / p.priceBelowCount : null;
+    p.avgPriceDomestic = p.priceDomesticCount > 0 ? p.priceDomesticSum / p.priceDomesticCount : null;
+    p.avgPriceDamaged = p.priceDamagedCount > 0 ? p.priceDamagedSum / p.priceDamagedCount : null;
   });
 
   overall.avgPriceStandard = overall.priceStandardCount > 0 ? overall.priceStandardSum / overall.priceStandardCount : null;
   overall.avgPriceBelow = overall.priceBelowCount > 0 ? overall.priceBelowSum / overall.priceBelowCount : null;
+  overall.avgPriceDomestic = overall.priceDomesticCount > 0 ? overall.priceDomesticSum / overall.priceDomesticCount : null;
+  overall.avgPriceDamaged = overall.priceDamagedCount > 0 ? overall.priceDamagedSum / overall.priceDamagedCount : null;
 
   Object.values(provinces).forEach(finalize);
   finalize(overall);
@@ -447,6 +488,7 @@ function blankSummary() {
     totalFruits: 0,
     quality: 0,
     below: 0,
+    domestic: 0,
     damaged: 0,
     weightSum: 0,
     weightCount: 0,
@@ -459,7 +501,7 @@ function blankSummary() {
 
 function addSummary(target, source) {
   if (!source) return;
-  ['totalFruits', 'quality', 'below', 'damaged', 'weightSum', 'weightCount', 'circumSum', 'circumCount', 'filled', 'maxRows']
+  ['totalFruits', 'quality', 'below', 'domestic', 'damaged', 'weightSum', 'weightCount', 'circumSum', 'circumCount', 'filled', 'maxRows']
     .forEach((key) => { target[key] += Number(source[key]) || 0; });
 }
 
@@ -472,11 +514,13 @@ function finalize(summary) {
 function renderOverall(overall) {
   el('overall').innerHTML = [
     metric('ผลรวมทั้งหมด', overall.totalFruits.toLocaleString()),
-    metric('อัตรา 1.8+', `${(overall.qualityRate * 100).toFixed(1)}%`, rateClass(overall.qualityRate)),
+    metric('อัตรา 1.80+', `${(overall.qualityRate * 100).toFixed(1)}%`, rateClass(overall.qualityRate)),
     metric('น้ำหนักเฉลี่ย', overall.avgWeight === null ? '-- กก.' : `${overall.avgWeight.toFixed(2)} กก.`),
     metric('เส้นรอบวงเฉลี่ย', overall.avgCircum === null ? '-- ซม.' : `${overall.avgCircum.toFixed(2)} ซม.`),
-    metric('ราคาเกรด 1.8+ เฉลี่ย', overall.avgPriceStandard === null ? '-- ฿' : `${overall.avgPriceStandard.toFixed(2)} ฿`),
-    metric('ราคาเกรด 1.4-1.8 เฉลี่ย', overall.avgPriceBelow === null ? '-- ฿' : `${overall.avgPriceBelow.toFixed(2)} ฿`),
+    metric('ราคาเกรด 1.80+ เฉลี่ย', overall.avgPriceStandard === null ? '-- ฿' : `${overall.avgPriceStandard.toFixed(2)} ฿`),
+    metric('ราคาเกรด 1.40-1.79 เฉลี่ย', overall.avgPriceBelow === null ? '-- ฿' : `${overall.avgPriceBelow.toFixed(2)} ฿`),
+    metric('ราคาเกรด 1.20-1.39 เฉลี่ย', overall.avgPriceDomestic === null ? '-- ฿' : `${overall.avgPriceDomestic.toFixed(2)} ฿`),
+    metric('ราคาเกรดต่ำกว่า 1.20 เฉลี่ย', overall.avgPriceDamaged === null ? '-- ฿' : `${overall.avgPriceDamaged.toFixed(2)} ฿`),
   ].join('');
 }
 
@@ -493,11 +537,14 @@ function renderCards(provinces) {
         <h3>${province.label}<span class="${rateClass(data.qualityRate)}">${(data.qualityRate * 100).toFixed(0)}%</span></h3>
         <div class="rows">
           ${row('ผลรวม', data.totalFruits.toLocaleString())}
-          ${row('1.8+', data.quality.toLocaleString())}
-          ${row('1.4-1.8', data.below.toLocaleString())}
-          ${row('ตกเกรด', data.damaged.toLocaleString())}
-          ${row('ราคาเกรด 1.8+ เฉลี่ย', data.avgPriceStandard === null ? '-- ฿' : `${data.avgPriceStandard.toFixed(1)} ฿`)}
-          ${row('ราคาเกรด 1.4-1.8 เฉลี่ย', data.avgPriceBelow === null ? '-- ฿' : `${data.avgPriceBelow.toFixed(1)} ฿`)}
+          ${row('1.80+ (จัมโบ้)', data.quality.toLocaleString())}
+          ${row('1.40 - 1.79 (มาตรฐาน)', data.below.toLocaleString())}
+          ${row('1.20 - 1.39 (ในประเทศ)', data.domestic.toLocaleString())}
+          ${row('ต่ำกว่า 1.20 (ตกเกรด)', data.damaged.toLocaleString())}
+          ${row('ราคาเกรด 1.80+ เฉลี่ย', data.avgPriceStandard === null ? '-- ฿' : `${data.avgPriceStandard.toFixed(1)} ฿`)}
+          ${row('ราคาเกรด 1.40-1.79 เฉลี่ย', data.avgPriceBelow === null ? '-- ฿' : `${data.avgPriceBelow.toFixed(1)} ฿`)}
+          ${row('ราคาเกรด 1.20-1.39 เฉลี่ย', data.avgPriceDomestic === null ? '-- ฿' : `${data.avgPriceDomestic.toFixed(1)} ฿`)}
+          ${row('ราคาเกรดต่ำกว่า 1.20 เฉลี่ย', data.avgPriceDamaged === null ? '-- ฿' : `${data.avgPriceDamaged.toFixed(1)} ฿`)}
           ${row('บันทึกแล้ว', `${filled}/${maxRows}`)}
         </div>
         <div class="progress-container">
@@ -673,7 +720,7 @@ function aggregateBunch() {
     const bunch = Number(entry.bunch);
     if (!province || !province.bunches[bunch]) return;
 
-    const total = (Number(entry.quality) || 0) + (Number(entry.below) || 0) + (Number(entry.damaged) || 0);
+    const total = (Number(entry.quality) || 0) + (Number(entry.below) || 0) + (Number(entry.domestic) || 0) + (Number(entry.damaged) || 0);
     if (total <= 0) return;
 
     addBunchEntry(province.bunches[bunch], entry, total);
@@ -705,7 +752,11 @@ function blankBunchSummary() {
     priceStandardSum: 0,
     priceStandardCount: 0,
     priceBelowSum: 0,
-    priceBelowCount: 0
+    priceBelowCount: 0,
+    priceDomesticSum: 0,
+    priceDomesticCount: 0,
+    priceDamagedSum: 0,
+    priceDamagedCount: 0,
   };
 }
 
@@ -716,6 +767,8 @@ function addBunchEntry(target, entry, total) {
   const circum = Number(entry.circum) || 0;
   const ps = entry.price_standard !== null && entry.price_standard !== undefined && entry.price_standard !== '' ? Number(entry.price_standard) : null;
   const pb = entry.price_below !== null && entry.price_below !== undefined && entry.price_below !== '' ? Number(entry.price_below) : null;
+  const pd = entry.price_domestic !== null && entry.price_domestic !== undefined && entry.price_domestic !== '' ? Number(entry.price_domestic) : null;
+  const pdm = entry.price_damaged !== null && entry.price_damaged !== undefined && entry.price_damaged !== '' ? Number(entry.price_damaged) : null;
 
   if (weight > 0) {
     target.weightSum += weight;
@@ -733,6 +786,14 @@ function addBunchEntry(target, entry, total) {
     target.priceBelowSum += pb;
     target.priceBelowCount += 1;
   }
+  if (pd !== null && isFinite(pd) && pd >= 0) {
+    target.priceDomesticSum += pd;
+    target.priceDomesticCount += 1;
+  }
+  if (pdm !== null && isFinite(pdm) && pdm >= 0) {
+    target.priceDamagedSum += pdm;
+    target.priceDamagedCount += 1;
+  }
 }
 
 function finalizeBunch(summary) {
@@ -741,6 +802,8 @@ function finalizeBunch(summary) {
   summary.avgCircum = summary.circumCount > 0 ? summary.circumSum / summary.circumCount : null;
   summary.avgPriceStandard = summary.priceStandardCount > 0 ? summary.priceStandardSum / summary.priceStandardCount : null;
   summary.avgPriceBelow = summary.priceBelowCount > 0 ? summary.priceBelowSum / summary.priceBelowCount : null;
+  summary.avgPriceDomestic = summary.priceDomesticCount > 0 ? summary.priceDomesticSum / summary.priceDomesticCount : null;
+  summary.avgPriceDamaged = summary.priceDamagedCount > 0 ? summary.priceDamagedSum / summary.priceDamagedCount : null;
 }
 
 function renderBunchOverall(overall) {
@@ -749,8 +812,10 @@ function renderBunchOverall(overall) {
     metric('ลูกต่อทะลายเฉลี่ย', formatNumber(overall.total.avgFruits, ' ลูก')),
     metric('น้ำหนักเฉลี่ย', formatNumber(overall.total.avgWeight, ' กก.')),
     metric('เส้นรอบวงเฉลี่ย', formatNumber(overall.total.avgCircum, ' ซม.')),
-    metric('ราคาเกรด 1.8+ เฉลี่ย', formatNumber(overall.total.avgPriceStandard, ' ฿')),
-    metric('ราคาเกรด 1.4-1.8 เฉลี่ย', formatNumber(overall.total.avgPriceBelow, ' ฿')),
+    metric('ราคาเกรด 1.80+ เฉลี่ย', formatNumber(overall.total.avgPriceStandard, ' ฿')),
+    metric('ราคาเกรด 1.40-1.79 เฉลี่ย', formatNumber(overall.total.avgPriceBelow, ' ฿')),
+    metric('ราคาเกรด 1.20-1.39 เฉลี่ย', formatNumber(overall.total.avgPriceDomestic, ' ฿')),
+    metric('ราคาเกรดต่ำกว่า 1.20 เฉลี่ย', formatNumber(overall.total.avgPriceDamaged, ' ฿')),
   ].join('');
 }
 
@@ -759,8 +824,10 @@ function renderBunchVisual(data) {
     ${bunchProvinceBars(data.provinces, 'avgFruits', 'ลูกต่อทะลายเฉลี่ย', 'ลูก')}
     ${bunchProvinceBars(data.provinces, 'avgWeight', 'น้ำหนักเฉลี่ยรายจังหวัด', 'กก.')}
     ${bunchProvinceBars(data.provinces, 'avgCircum', 'เส้นรอบวงเฉลี่ยรายจังหวัด', 'ซม.')}
-    ${bunchProvinceBars(data.provinces, 'avgPriceStandard', 'ราคาเกรด 1.8+ เฉลี่ยรายจังหวัด', '฿')}
-    ${bunchProvinceBars(data.provinces, 'avgPriceBelow', 'ราคาเกรด 1.4-1.8 เฉลี่ยรายจังหวัด', '฿')}
+    ${bunchProvinceBars(data.provinces, 'avgPriceStandard', 'ราคาเกรด 1.80+ เฉลี่ยรายจังหวัด', '฿')}
+    ${bunchProvinceBars(data.provinces, 'avgPriceBelow', 'ราคาเกรด 1.40-1.79 เฉลี่ยรายจังหวัด', '฿')}
+    ${bunchProvinceBars(data.provinces, 'avgPriceDomestic', 'ราคาเกรด 1.20-1.39 เฉลี่ยรายจังหวัด', '฿')}
+    ${bunchProvinceBars(data.provinces, 'avgPriceDamaged', 'ราคาเกรดต่ำกว่า 1.20 เฉลี่ยรายจังหวัด', '฿')}
   `;
 }
 
@@ -793,7 +860,8 @@ function renderBunchTable(provinces) {
       <tr>
         <th>จังหวัด</th><th>ทะลาย</th><th>บันทึก</th><th>ลูกต่อทะลาย</th>
         <th>น้ำหนักเฉลี่ย</th><th>เส้นรอบวงเฉลี่ย</th>
-        <th>ราคาเกรด 1.8+ เฉลี่ย</th><th>ราคาเกรด 1.4-1.8 เฉลี่ย</th>
+        <th>ราคาเกรด 1.80+ เฉลี่ย</th><th>ราคาเกรด 1.40-1.79 เฉลี่ย</th>
+        <th>ราคาเกรด 1.20-1.39 เฉลี่ย</th><th>ราคาเกรดต่ำกว่า 1.20 เฉลี่ย</th>
       </tr>
     </thead>
     <tbody>
@@ -809,6 +877,8 @@ function renderBunchTable(provinces) {
             <td>${formatNumber(data.avgCircum, ' ซม.')}</td>
             <td>${formatNumber(data.avgPriceStandard, ' ฿')}</td>
             <td>${formatNumber(data.avgPriceBelow, ' ฿')}</td>
+            <td>${formatNumber(data.avgPriceDomestic, ' ฿')}</td>
+            <td>${formatNumber(data.avgPriceDamaged, ' ฿')}</td>
           </tr>
         `;
       })).join('')}
@@ -850,17 +920,20 @@ function showTab(tab) {
 function setEntry(entry) {
   el('quality').value = entry.quality ?? 0;
   el('below').value = entry.below ?? 0;
+  el('domestic').value = entry.domestic ?? 0;
   el('damaged').value = entry.damaged ?? 0;
   el('weight').value = entry.weight ?? '';
   el('circum').value = entry.circum ?? '';
   el('price_standard').value = entry.price_standard ?? '';
   el('price_below').value = entry.price_below ?? '';
+  el('price_domestic').value = entry.price_domestic ?? '';
+  el('price_damaged').value = entry.price_damaged ?? '';
   el('notes').value = entry.notes ?? '';
   calcTotal();
 }
 
 function calcTotal() {
-  const total = ['quality', 'below', 'damaged']
+  const total = ['quality', 'below', 'domestic', 'damaged']
     .map((id) => Number(el(id).value) || 0)
     .reduce((sum, value) => sum + value, 0);
   el('total').value = total;
@@ -1044,6 +1117,8 @@ function computeAllStats(entries) {
     totalRecords: entries.length,
     totalFruits: 0,
     totalQuality: 0,
+    totalBelow: 0,
+    totalDomestic: 0,
     totalDamaged: 0,
     qualityRate: 0,
     avgWeight: null,
@@ -1054,6 +1129,10 @@ function computeAllStats(entries) {
     sdPriceStandard: null,
     avgPriceBelow: null,
     sdPriceBelow: null,
+    avgPriceDomestic: null,
+    sdPriceDomestic: null,
+    avgPriceDamaged: null,
+    sdPriceDamaged: null,
     missingWeight: 0,
     missingCircum: 0,
     outliers: [],
@@ -1072,24 +1151,33 @@ function computeAllStats(entries) {
   const circums = [];
   const priceStandards = [];
   const priceBelows = [];
+  const priceDomestics = [];
+  const priceDamageds = [];
 
   entries.forEach((e) => {
     const q = Number(e.quality) || 0;
     const bl = Number(e.below) || 0;
+    const dom = Number(e.domestic) || 0;
     const dm = Number(e.damaged) || 0;
-    const totalF = q + bl + dm;
+    const totalF = q + bl + dom + dm;
     const w = Number(e.weight);
     const c = Number(e.circum);
     const ps = e.price_standard !== null && e.price_standard !== undefined && e.price_standard !== '' ? Number(e.price_standard) : null;
     const pb = e.price_below !== null && e.price_below !== undefined && e.price_below !== '' ? Number(e.price_below) : null;
+    const pd = e.price_domestic !== null && e.price_domestic !== undefined && e.price_domestic !== '' ? Number(e.price_domestic) : null;
+    const pdm = e.price_damaged !== null && e.price_damaged !== undefined && e.price_damaged !== '' ? Number(e.price_damaged) : null;
     const hasValidW = isFinite(w) && w > 0;
     const hasValidC = isFinite(c) && c > 0;
     const hasValidPS = ps !== null && isFinite(ps) && ps >= 0;
     const hasValidPB = pb !== null && isFinite(pb) && pb >= 0;
+    const hasValidPD = pd !== null && isFinite(pd) && pd >= 0;
+    const hasValidPDM = pdm !== null && isFinite(pdm) && pdm >= 0;
 
     if (totalF > 0) ctx.n += 1;
     ctx.totalFruits += totalF;
     ctx.totalQuality += q;
+    ctx.totalBelow += bl;
+    ctx.totalDomestic += dom;
     ctx.totalDamaged += dm;
 
     if (hasValidW) { weights.push(w); }
@@ -1100,22 +1188,24 @@ function computeAllStats(entries) {
 
     if (hasValidPS) { priceStandards.push(ps); }
     if (hasValidPB) { priceBelows.push(pb); }
+    if (hasValidPD) { priceDomestics.push(pd); }
+    if (hasValidPDM) { priceDamageds.push(pdm); }
 
     const pCode = e.province_code;
     const round = Number(e.round);
     const bunch = Number(e.bunch);
 
-    accumGroup(ctx.byProvince[pCode], q, bl, dm, w, c, hasValidW, hasValidC, ps, pb, hasValidPS, hasValidPB);
-    accumGroup(ctx.byRound[round], q, bl, dm, w, c, hasValidW, hasValidC, ps, pb, hasValidPS, hasValidPB);
-    accumGroup(ctx.byBunch[bunch], q, bl, dm, w, c, hasValidW, hasValidC, ps, pb, hasValidPS, hasValidPB);
+    accumGroup(ctx.byProvince[pCode], q, bl, dom, dm, w, c, hasValidW, hasValidC, ps, pb, pd, pdm, hasValidPS, hasValidPB, hasValidPD, hasValidPDM);
+    accumGroup(ctx.byRound[round], q, bl, dom, dm, w, c, hasValidW, hasValidC, ps, pb, pd, pdm, hasValidPS, hasValidPB, hasValidPD, hasValidPDM);
+    accumGroup(ctx.byBunch[bunch], q, bl, dom, dm, w, c, hasValidW, hasValidC, ps, pb, pd, pdm, hasValidPS, hasValidPB, hasValidPD, hasValidPDM);
 
     const prKey = `${pCode}-${round}`;
     if (!ctx.byProvinceRound[prKey]) ctx.byProvinceRound[prKey] = blankGroupStats();
-    accumGroup(ctx.byProvinceRound[prKey], q, bl, dm, w, c, hasValidW, hasValidC, ps, pb, hasValidPS, hasValidPB);
+    accumGroup(ctx.byProvinceRound[prKey], q, bl, dom, dm, w, c, hasValidW, hasValidC, ps, pb, pd, pdm, hasValidPS, hasValidPB, hasValidPD, hasValidPDM);
 
     const pbKey = `${pCode}-${bunch}`;
     if (!ctx.byProvinceBunch[pbKey]) ctx.byProvinceBunch[pbKey] = blankGroupStats();
-    accumGroup(ctx.byProvinceBunch[pbKey], q, bl, dm, w, c, hasValidW, hasValidC, ps, pb, hasValidPS, hasValidPB);
+    accumGroup(ctx.byProvinceBunch[pbKey], q, bl, dom, dm, w, c, hasValidW, hasValidC, ps, pb, pd, pdm, hasValidPS, hasValidPB, hasValidPD, hasValidPDM);
   });
 
   ctx.qualityRate = ctx.totalFruits > 0 ? ctx.totalQuality / ctx.totalFruits : 0;
@@ -1136,6 +1226,14 @@ function computeAllStats(entries) {
     ctx.avgPriceBelow = priceBelows.reduce((a, b) => a + b, 0) / priceBelows.length;
     ctx.sdPriceBelow = stdDev(priceBelows);
   }
+  if (priceDomestics.length) {
+    ctx.avgPriceDomestic = priceDomestics.reduce((a, b) => a + b, 0) / priceDomestics.length;
+    ctx.sdPriceDomestic = stdDev(priceDomestics);
+  }
+  if (priceDamageds.length) {
+    ctx.avgPriceDamaged = priceDamageds.reduce((a, b) => a + b, 0) / priceDamageds.length;
+    ctx.sdPriceDamaged = stdDev(priceDamageds);
+  }
 
   finalizeGroupStats(ctx);
   ctx.byProvinceRoundBunch = buildProvinceRoundBunchStats(entries, PROVINCES, 6, 2);
@@ -1150,12 +1248,15 @@ function blankGroupStats() {
     totalFruits: 0,
     quality: 0,
     below: 0,
+    domestic: 0,
     damaged: 0,
     qualityRate: 0,
     weightVals: [],
     circumVals: [],
     priceStandardVals: [],
     priceBelowVals: [],
+    priceDomesticVals: [],
+    priceDamagedVals: [],
     avgWeight: null,
     sdWeight: null,
     avgCircum: null,
@@ -1164,17 +1265,22 @@ function blankGroupStats() {
     sdPriceStandard: null,
     avgPriceBelow: null,
     sdPriceBelow: null,
+    avgPriceDomestic: null,
+    sdPriceDomestic: null,
+    avgPriceDamaged: null,
+    sdPriceDamaged: null,
     missingWeight: 0,
     missingCircum: 0
   };
 }
 
-function accumGroup(g, q, bl, dm, w, c, hasW, hasC, ps, pb, hasPS, hasPB) {
-  const total = q + bl + dm;
+function accumGroup(g, q, bl, dom, dm, w, c, hasW, hasC, ps, pb, pd, pdm, hasPS, hasPB, hasPD, hasPDM) {
+  const total = q + bl + dom + dm;
   if (total > 0) g.n += 1;
   g.totalFruits += total;
   g.quality += q;
   g.below += bl;
+  g.domestic += dom;
   g.damaged += dm;
   if (hasW) g.weightVals.push(w);
   else if (total > 0) g.missingWeight += 1;
@@ -1182,6 +1288,8 @@ function accumGroup(g, q, bl, dm, w, c, hasW, hasC, ps, pb, hasPS, hasPB) {
   else if (total > 0) g.missingCircum += 1;
   if (hasPS) g.priceStandardVals.push(ps);
   if (hasPB) g.priceBelowVals.push(pb);
+  if (hasPD) g.priceDomesticVals.push(pd);
+  if (hasPDM) g.priceDamagedVals.push(pdm);
 }
 
 function finalizeGroupStats(ctx) {
@@ -1209,6 +1317,20 @@ function finalizeGroupStats(ctx) {
       g.avgPriceBelow = null;
       g.sdPriceBelow = null;
     }
+    if (g.priceDomesticVals && g.priceDomesticVals.length) {
+      g.avgPriceDomestic = g.priceDomesticVals.reduce((a, b) => a + b, 0) / g.priceDomesticVals.length;
+      g.sdPriceDomestic = stdDev(g.priceDomesticVals);
+    } else {
+      g.avgPriceDomestic = null;
+      g.sdPriceDomestic = null;
+    }
+    if (g.priceDamagedVals && g.priceDamagedVals.length) {
+      g.avgPriceDamaged = g.priceDamagedVals.reduce((a, b) => a + b, 0) / g.priceDamagedVals.length;
+      g.sdPriceDamaged = stdDev(g.priceDamagedVals);
+    } else {
+      g.avgPriceDamaged = null;
+      g.sdPriceDamaged = null;
+    }
   };
   activeProvinces().forEach((p) => finalize(ctx.byProvince[p.code]));
   for (let r = 1; r <= 6; r++) finalize(ctx.byRound[r]);
@@ -1225,8 +1347,9 @@ function detectOutliers(entries, ctx) {
   entries.forEach((e) => {
     const q = Number(e.quality) || 0;
     const bl = Number(e.below) || 0;
+    const dom = Number(e.domestic) || 0;
     const dm = Number(e.damaged) || 0;
-    const totalF = q + bl + dm;
+    const totalF = q + bl + dom + dm;
     const rawW = e.weight;
     const rawC = e.circum;
     const hasW = rawW !== null && rawW !== undefined && rawW !== '';
@@ -1312,12 +1435,15 @@ function renderSummaryCards(stats) {
     <div class="summary-card">
       <div class="card-value">${stats.totalFruits} <span style="font-size:14px;font-weight:400;color:var(--muted)">ลูก</span></div>
       <div class="card-label">จำนวนผลรวม</div>
-      <div class="card-sub">1.8+: ${stats.totalQuality} / 1.4-1.8: ${stats.totalFruits - stats.totalQuality - stats.totalDamaged} / ตกเกรด: ${stats.totalDamaged}</div>
+      <div class="card-sub" style="font-size:10.5px; line-height: 1.3;">
+        1.80+: ${stats.totalQuality} / 1.40-1.79: ${stats.totalBelow}<br>
+        1.20-1.39: ${stats.totalDomestic} / ตกเกรด: ${stats.totalDamaged}
+      </div>
     </div>
     <div class="summary-card">
       <div class="card-value ${rateClass(stats.qualityRate)}">${(stats.qualityRate * 100).toFixed(1)}%</div>
-      <div class="card-label">อัตรา 1.8+</div>
-      <div class="card-sub">1.8+ / จำนวนผลรวม</div>
+      <div class="card-label">อัตรา 1.80+ (จัมโบ้)</div>
+      <div class="card-sub">1.80+ / จำนวนผลรวม</div>
     </div>
     <div class="summary-card">
       <div class="card-value">${stats.avgWeight !== null ? stats.avgWeight.toFixed(2) : '-'} <span style="font-size:13px;font-weight:400;color:var(--muted)">±${stats.sdWeight !== null ? stats.sdWeight.toFixed(2) : '-'} กก.</span></div>
@@ -1331,12 +1457,22 @@ function renderSummaryCards(stats) {
     </div>
     <div class="summary-card">
       <div class="card-value">${stats.avgPriceStandard !== null ? stats.avgPriceStandard.toFixed(2) : '-'} <span style="font-size:13px;font-weight:400;color:var(--muted)">±${stats.sdPriceStandard !== null ? stats.sdPriceStandard.toFixed(2) : '-'} ฿</span></div>
-      <div class="card-label">ราคาเฉลี่ยเกรด 1.8+</div>
+      <div class="card-label">ราคาเฉลี่ยเกรด 1.80+</div>
       <div class="card-sub">จากที่บันทึกจริงรายแปลง</div>
     </div>
     <div class="summary-card">
       <div class="card-value">${stats.avgPriceBelow !== null ? stats.avgPriceBelow.toFixed(2) : '-'} <span style="font-size:13px;font-weight:400;color:var(--muted)">±${stats.sdPriceBelow !== null ? stats.sdPriceBelow.toFixed(2) : '-'} ฿</span></div>
-      <div class="card-label">ราคาเฉลี่ยเกรด 1.4-1.8</div>
+      <div class="card-label">ราคาเฉลี่ยเกรด 1.40-1.79</div>
+      <div class="card-sub">จากที่บันทึกจริงรายแปลง</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-value">${stats.avgPriceDomestic !== null ? stats.avgPriceDomestic.toFixed(2) : '-'} <span style="font-size:13px;font-weight:400;color:var(--muted)">±${stats.sdPriceDomestic !== null ? stats.sdPriceDomestic.toFixed(2) : '-'} ฿</span></div>
+      <div class="card-label">ราคาเฉลี่ยเกรด 1.20-1.39</div>
+      <div class="card-sub">จากที่บันทึกจริงรายแปลง</div>
+    </div>
+    <div class="summary-card">
+      <div class="card-value">${stats.avgPriceDamaged !== null ? stats.avgPriceDamaged.toFixed(2) : '-'} <span style="font-size:13px;font-weight:400;color:var(--muted)">±${stats.sdPriceDamaged !== null ? stats.sdPriceDamaged.toFixed(2) : '-'} ฿</span></div>
+      <div class="card-label">ราคาเฉลี่ยเกรดต่ำกว่า 1.20</div>
       <div class="card-sub">จากที่บันทึกจริงรายแปลง</div>
     </div>
   `;
@@ -1444,9 +1580,10 @@ function renderAllRoundTable(stats) {
         <table>
           <thead>
             <tr>
-              <th>รอบ</th><th>จำนวนบันทึก</th><th>จำนวนผลรวม</th><th>อัตรา 1.8+</th>
+              <th>รอบ</th><th>จำนวนบันทึก</th><th>จำนวนผลรวม</th><th>อัตรา 1.80+</th>
               <th>น้ำหนักเฉลี่ย ± SD</th><th>เส้นรอบวงเฉลี่ย ± SD</th>
-              <th>ราคาเกรด 1.8+ ± SD</th><th>ราคาเกรด 1.4-1.8 ± SD</th>
+              <th>ราคาเกรด 1.80+ ± SD</th><th>ราคาเกรด 1.40-1.79 ± SD</th>
+              <th>ราคาเกรด 1.20-1.39 ± SD</th><th>ราคาเกรดต่ำกว่า 1.20 ± SD</th>
             </tr>
           </thead>
           <tbody>
@@ -1460,6 +1597,8 @@ function renderAllRoundTable(stats) {
                 <td>${formatMeanSd(r.avgCircum, r.sdCircum, 'ซม.')}</td>
                 <td>${formatMeanSd(r.avgPriceStandard, r.sdPriceStandard, '฿')}</td>
                 <td>${formatMeanSd(r.avgPriceBelow, r.sdPriceBelow, '฿')}</td>
+                <td>${formatMeanSd(r.avgPriceDomestic, r.sdPriceDomestic, '฿')}</td>
+                <td>${formatMeanSd(r.avgPriceDamaged, r.sdPriceDamaged, '฿')}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -1544,7 +1683,7 @@ function renderBunchComparison(stats) {
       <div class="table-wrap" style="margin-bottom:16px">
         <table>
           <thead>
-            <tr><th>จังหวัด</th><th>ทะลาย</th><th>n</th><th>จำนวนผลรวม</th><th>อัตรา 1.8+</th><th>นน.เฉลี่ย ± SD</th><th>รอบวงเฉลี่ย ± SD</th></tr>
+            <tr><th>จังหวัด</th><th>ทะลาย</th><th>n</th><th>จำนวนผลรวม</th><th>อัตรา 1.80+</th><th>นน.เฉลี่ย ± SD</th><th>รอบวงเฉลี่ย ± SD</th></tr>
           </thead>
           <tbody>
             ${PROVINCES.map((p) => {
@@ -1571,7 +1710,7 @@ function renderBunchComparison(stats) {
           </tbody>
         </table>
       </div>
-      <h4 style="margin-bottom:10px">อัตรา 1.8+ ทะลาย 1 vs 2</h4>
+      <h4 style="margin-bottom:10px">อัตรา 1.80+ ทะลาย 1 vs 2</h4>
       <div class="comp-bar-chart">
         ${PROVINCES.map((p, idx) => {
           const b1 = stats.byProvinceBunch[`${p.code}-1`] || blankGroupStats();
@@ -1880,34 +2019,48 @@ function renderEconomy() {
   const allEntries = state.data.entries || [];
 
   // Calculate average prices across all entries with data for auto-initialization
-  const entriesWithData = allEntries.filter(e => (Number(e.quality) || 0) + (Number(e.below) || 0) + (Number(e.damaged) || 0) > 0);
+  const entriesWithData = allEntries.filter(e => (Number(e.quality) || 0) + (Number(e.below) || 0) + (Number(e.domestic) || 0) + (Number(e.damaged) || 0) > 0);
   const defaultPremium = entriesWithData.length > 0
     ? entriesWithData.reduce((sum, e) => sum + (e.price_standard !== null && e.price_standard !== undefined ? Number(e.price_standard) : 20), 0) / entriesWithData.length
     : 20;
   const defaultBelow = entriesWithData.length > 0
-    ? entriesWithData.reduce((sum, e) => sum + (e.price_below !== null && e.price_below !== undefined ? Number(e.price_below) : 8), 0) / entriesWithData.length
+    ? entriesWithData.reduce((sum, e) => sum + (e.price_below !== null && e.price_below !== undefined ? Number(e.price_below) : 12), 0) / entriesWithData.length
+    : 12;
+  const defaultDomestic = entriesWithData.length > 0
+    ? entriesWithData.reduce((sum, e) => sum + (e.price_domestic !== null && e.price_domestic !== undefined ? Number(e.price_domestic) : 8), 0) / entriesWithData.length
     : 8;
+  const defaultDamaged = entriesWithData.length > 0
+    ? entriesWithData.reduce((sum, e) => sum + (e.price_damaged !== null && e.price_damaged !== undefined ? Number(e.price_damaged) : 3), 0) / entriesWithData.length
+    : 3;
 
   if (!state.pricesInitialized) {
     el('pricePremium').value = defaultPremium.toFixed(1);
     el('priceBelow').value = defaultBelow.toFixed(1);
+    el('priceDomesticEcon').value = defaultDomestic.toFixed(1);
+    el('priceDamaged').value = defaultDamaged.toFixed(1);
     state.pricesInitialized = true;
   }
 
   const pPremium = Number(el('pricePremium').value) || 0;
   const pBelow = Number(el('priceBelow').value) || 0;
+  const pDomestic = Number(el('priceDomesticEcon').value) || 0;
+  const pDamaged = Number(el('priceDamaged').value) || 0;
 
   let grandPremium = 0;
   let grandBelow = 0;
+  let grandDomestic = 0;
   let grandDamaged = 0;
   let grandRealized = 0;
   let grandLost = 0;
 
   let grandPremiumValue = 0;
   let grandBelowValue = 0;
+  let grandDomesticValue = 0;
+  let grandDamagedValue = 0;
 
   let grandSamplePremium = 0;
   let grandSampleBelow = 0;
+  let grandSampleDomestic = 0;
   let grandSampleDamaged = 0;
 
   const provData = provinces.map(prov => {
@@ -1922,34 +2075,43 @@ function renderEconomy() {
     // 2. Aggregate sample counts and financial values using plot-specific prices
     let premium = 0;
     let below = 0;
+    let domestic = 0;
     let damaged = 0;
     let samplePremiumValue = 0;
     let sampleBelowValue = 0;
+    let sampleDomesticValue = 0;
+    let sampleDamagedValue = 0;
     let sampleLost = 0;
 
     provEntries.forEach(e => {
       const q = Number(e.quality) || 0;
       const bl = Number(e.below) || 0;
+      const dom = Number(e.domestic) || 0;
       const dm = Number(e.damaged) || 0;
 
       const epPremium = (e.price_standard !== null && e.price_standard !== undefined) ? Number(e.price_standard) : pPremium;
       const epBelow = (e.price_below !== null && e.price_below !== undefined) ? Number(e.price_below) : pBelow;
+      const epDomestic = (e.price_domestic !== null && e.price_domestic !== undefined) ? Number(e.price_domestic) : pDomestic;
+      const epDamaged = (e.price_damaged !== null && e.price_damaged !== undefined) ? Number(e.price_damaged) : pDamaged;
 
       premium += q;
       below += bl;
+      domestic += dom;
       damaged += dm;
 
       samplePremiumValue += (q * epPremium);
       sampleBelowValue += (bl * epBelow);
-      sampleLost += (dm * epPremium);
+      sampleDomesticValue += (dom * epDomestic);
+      sampleDamagedValue += (dm * epDamaged);
+      sampleLost += (dm * (epPremium - epDamaged));
     });
-    const sampleTotal = premium + below + damaged;
-    const sampleRealized = samplePremiumValue + sampleBelowValue;
+    const sampleTotal = premium + below + domestic + damaged;
+    const sampleRealized = samplePremiumValue + sampleBelowValue + sampleDomesticValue + sampleDamagedValue;
 
     // 3. Count rounds that have at least one recorded entry for this province
     const activeRoundsCount = new Set(
       provEntries
-        .filter(e => (Number(e.quality) || 0) + (Number(e.below) || 0) + (Number(e.damaged) || 0) > 0)
+        .filter(e => (Number(e.quality) || 0) + (Number(e.below) || 0) + (Number(e.domestic) || 0) + (Number(e.damaged) || 0) > 0)
         .map(e => e.round)
     ).size || 1;
 
@@ -1959,15 +2121,19 @@ function renderEconomy() {
     // 5. Extrapolate quantities using sample proportions
     let projectedPremium = 0;
     let projectedBelow = 0;
+    let projectedDomestic = 0;
     let projectedDamaged = 0;
     let realized = 0;
     let lost = 0;
     let projectedPremiumValue = 0;
     let projectedBelowValue = 0;
+    let projectedDomesticValue = 0;
+    let projectedDamagedValue = 0;
 
     if (sampleTotal > 0) {
       projectedPremium = Math.round((premium / sampleTotal) * projectedTotalYield);
       projectedBelow = Math.round((below / sampleTotal) * projectedTotalYield);
+      projectedDomestic = Math.round((domestic / sampleTotal) * projectedTotalYield);
       projectedDamaged = Math.round((damaged / sampleTotal) * projectedTotalYield);
 
       const scaleFactor = projectedTotalYield / sampleTotal;
@@ -1975,6 +2141,8 @@ function renderEconomy() {
       lost = sampleLost * scaleFactor;
       projectedPremiumValue = samplePremiumValue * scaleFactor;
       projectedBelowValue = sampleBelowValue * scaleFactor;
+      projectedDomesticValue = sampleDomesticValue * scaleFactor;
+      projectedDamagedValue = sampleDamagedValue * scaleFactor;
     }
 
     const potential = realized + lost;
@@ -1982,22 +2150,27 @@ function renderEconomy() {
 
     grandPremium += projectedPremium;
     grandBelow += projectedBelow;
+    grandDomestic += projectedDomestic;
     grandDamaged += projectedDamaged;
     grandRealized += realized;
     grandLost += lost;
     grandPremiumValue += projectedPremiumValue;
     grandBelowValue += projectedBelowValue;
+    grandDomesticValue += projectedDomesticValue;
+    grandDamagedValue += projectedDamagedValue;
 
     grandSamplePremium += premium;
     grandSampleBelow += below;
+    grandSampleDomestic += domestic;
     grandSampleDamaged += damaged;
 
     return {
       label: prov.label,
       code: prov.code,
-      totalN: projectedPremium + projectedBelow + projectedDamaged,
+      totalN: projectedPremium + projectedBelow + projectedDomestic + projectedDamaged,
       premium: projectedPremium,
       below: projectedBelow,
+      domestic: projectedDomestic,
       damaged: projectedDamaged,
       realized,
       lost,
@@ -2008,6 +2181,7 @@ function renderEconomy() {
       activeRoundsCount,
       samplePremium: premium,
       sampleBelow: below,
+      sampleDomestic: domestic,
       sampleDamaged: damaged,
       sampleTotal
     };
@@ -2021,17 +2195,19 @@ function renderEconomy() {
     <div class="summary-card" style="border-left: 4px solid var(--primary); padding: 16px; background: rgba(255,255,255,0.85); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
       <div class="card-value" style="color:var(--primary); font-size: 26px; font-weight: 800;">${Math.round(grandRealized).toLocaleString()} ฿</div>
       <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">ประมาณการรายได้จริงของพื้นที่</div>
-      <div class="card-sub" style="font-size:12px; color:var(--muted); margin-top:6px; line-height: 1.5">
-        เกรด 1.8+ ประมาณการ: <strong>${grandPremium.toLocaleString()} ลูก</strong> (${Math.round(grandPremiumValue).toLocaleString()} ฿)<br>
-        เกรด 1.4-1.8 ประมาณการ: <strong>${grandBelow.toLocaleString()} ลูก</strong> (${Math.round(grandBelowValue).toLocaleString()} ฿)<br>
-        <span style="font-size:11px; opacity:0.8; font-weight:normal">(อิงกลุ่มตัวอย่าง: เกรด 1.8+ ${grandSamplePremium.toLocaleString()} / เกรด 1.4-1.8 ${grandSampleBelow.toLocaleString()} ลูก)</span>
+      <div class="card-sub" style="font-size:12.5px; color:var(--muted); margin-top:6px; line-height: 1.5">
+        เกรด 1.80+ (จัมโบ้): <strong>${grandPremium.toLocaleString()} ลูก</strong> (${Math.round(grandPremiumValue).toLocaleString()} ฿)<br>
+        เกรด 1.40-1.79 (มาตรฐาน): <strong>${grandBelow.toLocaleString()} ลูก</strong> (${Math.round(grandBelowValue).toLocaleString()} ฿)<br>
+        เกรด 1.20-1.39 (ในประเทศ): <strong>${grandDomestic.toLocaleString()} ลูก</strong> (${Math.round(grandDomesticValue).toLocaleString()} ฿)<br>
+        เกรดต่ำกว่า 1.20 (ตกเกรด): <strong>${grandDamaged.toLocaleString()} ลูก</strong> (${Math.round(grandDamagedValue).toLocaleString()} ฿)<br>
+        <span style="font-size:11px; opacity:0.8; font-weight:normal">(อิงกลุ่มตัวอย่าง: จัมโบ้ ${grandSamplePremium.toLocaleString()} / มาตรฐาน ${grandSampleBelow.toLocaleString()} / ในประเทศ ${grandSampleDomestic.toLocaleString()} / ตกเกรด ${grandSampleDamaged.toLocaleString()} ลูก)</span>
       </div>
     </div>
     <div class="summary-card" style="border-left: 4px solid var(--red); padding: 16px; background: rgba(255,255,255,0.85); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
       <div class="card-value rate-red" style="font-size: 26px; font-weight: 800;">${Math.round(grandLost).toLocaleString()} ฿</div>
-      <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">ประมาณการสูญเสียโอกาส</div>
+      <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">ประมาณการสูญเสียโอกาส (เทียบเกรดจัมโบ้)</div>
       <div class="card-sub" style="font-size:12px; color:var(--muted); margin-top:6px; line-height: 1.5">
-        เกรดตกเกรดประมาณการ: <strong>${grandDamaged.toLocaleString()} ลูก</strong><br>
+        ผลผลผลิตตกเกรดสะสมประมาณการ: <strong>${grandDamaged.toLocaleString()} ลูก</strong><br>
         สัดส่วนการสูญเสียทางการเงิน: <span class="rate-red" style="font-weight:700">${grandLossRate.toFixed(1)}%</span><br>
         <span style="font-size:11px; opacity:0.8; font-weight:normal">(อิงกลุ่มตัวอย่างตกเกรด: ${grandSampleDamaged.toLocaleString()} ลูก)</span>
       </div>
@@ -2040,8 +2216,8 @@ function renderEconomy() {
       <div class="card-value" style="color:var(--blue); font-size: 26px; font-weight: 800;">${Math.round(grandPotential).toLocaleString()} ฿</div>
       <div class="card-label" style="font-weight:700; margin-top:6px; color:#2c3e50">ประมาณการศักยภาพรวมสูงสุด</div>
       <div class="card-sub" style="font-size:12px; color:var(--muted); margin-top:6px; line-height: 1.5">
-        เป้าหมายรายได้รวมสูงสุดของพื้นที่หากไม่มีความเสียหาย<br>
-        (ตามเป้าหมายแผนขับเคลื่อนแปลงใหญ่มะพร้าวน้ำหอม)
+        เป้าหมายรายได้รวมสูงสุดของพื้นที่หากไม่มีผลผลิตตกเกรด<br>
+        (คำนวณจาก รายได้จริง + มูลค่าส่วนต่างสูญเสียโอกาส)
       </div>
     </div>
   `;
@@ -2078,7 +2254,7 @@ function renderEconomy() {
       <tr style="border-top: 2px solid var(--primary); font-weight: bold; background: rgba(226, 237, 231, 0.4)">
         <td>รวมทุกพื้นที่</td>
         <td style="text-align:right">${provData.reduce((sum, d) => sum + d.area, 0).toLocaleString()} ไร่</td>
-        <td style="text-align:right">${(grandPremium + grandBelow + grandDamaged).toLocaleString()}</td>
+        <td style="text-align:right">${(grandPremium + grandBelow + grandDomestic + grandDamaged).toLocaleString()}</td>
         <td style="text-align:right; color:var(--primary)">${Math.round(grandRealized).toLocaleString()} ฿</td>
         <td style="text-align:right; color:var(--red)">${Math.round(grandLost).toLocaleString()} ฿</td>
         <td style="text-align:right; color:var(--blue)">${Math.round(grandPotential).toLocaleString()} ฿</td>

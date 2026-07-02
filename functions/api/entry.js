@@ -22,41 +22,46 @@ async function loadEntry(request, env, user) {
     bunch: url.searchParams.get('bunch'),
     quality: 0,
     below: 0,
+    domestic: 0,
     damaged: 0,
   });
 
   const row = await env.DB.prepare(`
-    SELECT quality, below, damaged, weight, circum, notes, price_standard, price_below, recorded_at
+    SELECT quality, below, domestic, damaged, weight, circum, notes, price_standard, price_below, price_domestic, price_damaged, recorded_at
     FROM entries
     WHERE round = ? AND province_code = ? AND plot = ? AND bunch = ?
   `).bind(input.round, input.province_code, input.plot, input.bunch).first();
 
   let entry = row || null;
   if (entry) {
-    if (entry.price_standard === null || entry.price_below === null) {
+    if (entry.price_standard === null || entry.price_below === null || entry.price_domestic === null || entry.price_damaged === null) {
       const otherBunch = 3 - input.bunch;
       const otherRow = await env.DB.prepare(`
-        SELECT price_standard, price_below
+        SELECT price_standard, price_below, price_domestic, price_damaged
         FROM entries
         WHERE round = ? AND province_code = ? AND plot = ? AND bunch = ?
       `).bind(input.round, input.province_code, input.plot, otherBunch).first();
       if (otherRow) {
         if (entry.price_standard === null) entry.price_standard = otherRow.price_standard;
         if (entry.price_below === null) entry.price_below = otherRow.price_below;
+        if (entry.price_domestic === null) entry.price_domestic = otherRow.price_domestic;
+        if (entry.price_damaged === null) entry.price_damaged = otherRow.price_damaged;
       }
     }
   } else {
     // If current bunch doesn't exist, check if other bunch of the plot has prices
     const otherBunch = 3 - input.bunch;
     const otherRow = await env.DB.prepare(`
-      SELECT price_standard, price_below
+      SELECT price_standard, price_below, price_domestic, price_damaged
       FROM entries
       WHERE round = ? AND province_code = ? AND plot = ? AND bunch = ?
     `).bind(input.round, input.province_code, input.plot, otherBunch).first();
-    if (otherRow && (otherRow.price_standard !== null || otherRow.price_below !== null)) {
+    if (otherRow && (otherRow.price_standard !== null || otherRow.price_below !== null || otherRow.price_domestic !== null || otherRow.price_damaged !== null)) {
       entry = {
         price_standard: otherRow.price_standard,
-        price_below: otherRow.price_below
+        price_below: otherRow.price_below,
+        price_domestic: otherRow.price_domestic,
+        price_damaged: otherRow.price_damaged
       };
     }
   }
@@ -74,18 +79,21 @@ async function saveEntry(request, env, user) {
   // 1. Insert/Update the current bunch
   await env.DB.prepare(`
     INSERT INTO entries (
-      round, province_code, plot, bunch, quality, below, damaged,
-      weight, circum, notes, price_standard, price_below, recorded_at, recorded_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
+      round, province_code, plot, bunch, quality, below, domestic, damaged,
+      weight, circum, notes, price_standard, price_below, price_domestic, price_damaged, recorded_at, recorded_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
     ON CONFLICT(round, province_code, plot, bunch) DO UPDATE SET
       quality = excluded.quality,
       below = excluded.below,
+      domestic = excluded.domestic,
       damaged = excluded.damaged,
       weight = excluded.weight,
       circum = excluded.circum,
       notes = excluded.notes,
       price_standard = excluded.price_standard,
       price_below = excluded.price_below,
+      price_domestic = excluded.price_domestic,
+      price_damaged = excluded.price_damaged,
       recorded_at = excluded.recorded_at,
       recorded_by = excluded.recorded_by
   `).bind(
@@ -95,21 +103,32 @@ async function saveEntry(request, env, user) {
     input.bunch,
     input.quality,
     input.below,
+    input.domestic,
     input.damaged,
     input.weight,
     input.circum,
     input.notes,
     input.price_standard,
     input.price_below,
+    input.price_domestic,
+    input.price_damaged,
     user.id,
   ).run();
 
   // 2. Synchronize prices to both bunches of this plot
   await env.DB.prepare(`
     UPDATE entries
-    SET price_standard = ?, price_below = ?
+    SET price_standard = ?, price_below = ?, price_domestic = ?, price_damaged = ?
     WHERE round = ? AND province_code = ? AND plot = ?
-  `).bind(input.price_standard, input.price_below, input.round, input.province_code, input.plot).run();
+  `).bind(
+    input.price_standard,
+    input.price_below,
+    input.price_domestic,
+    input.price_damaged,
+    input.round,
+    input.province_code,
+    input.plot
+  ).run();
 
   return json({ ok: true, entry: input });
 }
@@ -123,6 +142,7 @@ async function deleteEntry(request, env, user) {
     bunch: 1,
     quality: 0,
     below: 0,
+    domestic: 0,
     damaged: 0,
   });
 

@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS entries (
   bunch INTEGER NOT NULL,
   quality INTEGER NOT NULL DEFAULT 0,
   below INTEGER NOT NULL DEFAULT 0,
+  domestic INTEGER NOT NULL DEFAULT 0,
   damaged INTEGER NOT NULL DEFAULT 0,
   weight REAL,
   circum REAL,
@@ -30,6 +31,8 @@ CREATE TABLE IF NOT EXISTS entries (
   recorded_by INTEGER,
   price_standard REAL,
   price_below REAL,
+  price_domestic REAL,
+  price_damaged REAL,
   PRIMARY KEY (round, province_code, plot, bunch),
   FOREIGN KEY (recorded_by) REFERENCES users(id) ON DELETE SET NULL
 );

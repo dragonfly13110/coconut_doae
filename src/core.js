@@ -6,9 +6,10 @@ const FIELD_LABELS = {
   round: 'รอบการประเมิน',
   plot: 'แปลง',
   bunch: 'ทะลาย',
-  quality: 'จำนวนผล 1.8+',
-  below: 'จำนวนผล 1.4-1.8',
-  damaged: 'จำนวนผลตกเกรด',
+  quality: 'จำนวนผล 1.80 ขึ้นไป (ไซส์จัมโบ้)',
+  below: 'จำนวนผล 1.40 - 1.79 (เกรดมาตรฐาน)',
+  domestic: 'จำนวนผล 1.20 - 1.39 (เกรดในประเทศ)',
+  damaged: 'จำนวนผลต่ำกว่า 1.20 (ตกเกรด/ไม่ได้มาตรฐาน)',
   weight: 'น้ำหนักเฉลี่ย',
   circum: 'เส้นรอบวงเฉลี่ย',
 };
@@ -45,12 +46,15 @@ export function createInitialEntries() {
             bunch,
             quality: 0,
             below: 0,
+            domestic: 0,
             damaged: 0,
             weight: null,
             circum: null,
             notes: '',
             price_standard: null,
             price_below: null,
+            price_domestic: null,
+            price_damaged: null,
             recorded_at: null,
           });
         }
@@ -126,6 +130,7 @@ function blankSummary() {
     totalFruits: 0,
     quality: 0,
     below: 0,
+    domestic: 0,
     damaged: 0,
     qualityRate: 0,
     avgWeight: null,
@@ -142,16 +147,18 @@ function blankSummary() {
 function addEntry(summary, entry) {
   const quality = Number(entry.quality) || 0;
   const below = Number(entry.below) || 0;
+  const domestic = Number(entry.domestic) || 0;
   const damaged = Number(entry.damaged) || 0;
   const weight = Number(entry.weight) || 0;
   const circum = Number(entry.circum) || 0;
 
   summary.quality += quality;
   summary.below += below;
+  summary.domestic += domestic;
   summary.damaged += damaged;
-  summary.totalFruits += quality + below + damaged;
+  summary.totalFruits += quality + below + domestic + damaged;
 
-  if (quality > 0 || below > 0 || damaged > 0) summary.filled += 1;
+  if (quality > 0 || below > 0 || domestic > 0 || damaged > 0) summary.filled += 1;
   if (weight > 0) {
     summary.weightSum += weight;
     summary.weightCount += 1;
