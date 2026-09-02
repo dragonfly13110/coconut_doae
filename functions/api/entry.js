@@ -76,12 +76,29 @@ async function saveEntry(request, env, user) {
     province_code: user.role === 'admin' ? body.province_code : user.province_code,
   });
 
-  // 1. Insert/Update the current bunch
-  await env.DB.prepare(`
+  const existing = await env.DB.prepare(`
+    SELECT round, province_code, plot, bunch, quality, below, domestic, damaged,
+      weight, circum, notes, price_standard, price_below, price_domestic, price_damaged,
+      recorded_at, recorded_by
+    FROM entries
+    WHERE round = ? AND province_code = ? AND plot = ? AND bunch = ?
+  `).bind(input.round, input.province_code, input.plot, input.bunch).first();
+  const otherBunch = input.bunch === 1 ? 2 : 1;
+  const otherExisting = await env.DB.prepare(`
+    SELECT round, province_code, plot, bunch, quality, below, domestic, damaged,
+      weight, circum, notes, price_standard, price_below, price_domestic, price_damaged,
+      recorded_at, recorded_by
+    FROM entries
+    WHERE round = ? AND province_code = ? AND plot = ? AND bunch = ?
+  `).bind(input.round, input.province_code, input.plot, otherBunch).first();
+  const recordedAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const before = snapshotEntry(existing);
+  const after = snapshotEntry({ ...input, recorded_at: recordedAt, recorded_by: user.id });
+  const statements = [env.DB.prepare(`
     INSERT INTO entries (
       round, province_code, plot, bunch, quality, below, domestic, damaged,
       weight, circum, notes, price_standard, price_below, price_domestic, price_damaged, recorded_at, recorded_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(round, province_code, plot, bunch) DO UPDATE SET
       quality = excluded.quality,
       below = excluded.below,
@@ -112,11 +129,9 @@ async function saveEntry(request, env, user) {
     input.price_below,
     input.price_domestic,
     input.price_damaged,
+    recordedAt,
     user.id,
-  ).run();
-
-  // 2. Synchronize prices to both bunches of this plot
-  await env.DB.prepare(`
+  ), env.DB.prepare(`
     UPDATE entries
     SET price_standard = ?, price_below = ?, price_domestic = ?, price_damaged = ?
     WHERE round = ? AND province_code = ? AND plot = ?
@@ -127,8 +142,36 @@ async function saveEntry(request, env, user) {
     input.price_damaged,
     input.round,
     input.province_code,
-    input.plot
-  ).run();
+    input.plot,
+  ), auditStatement(env, {
+    action: existing?.recorded_at ? 'update' : 'create',
+    entry: after,
+    before,
+    after,
+    userId: user.id,
+  })];
+
+  if (otherExisting) {
+    const otherBefore = snapshotEntry(otherExisting);
+    const otherAfter = snapshotEntry({
+      ...otherExisting,
+      price_standard: input.price_standard,
+      price_below: input.price_below,
+      price_domestic: input.price_domestic,
+      price_damaged: input.price_damaged,
+    });
+    if (JSON.stringify(otherBefore) !== JSON.stringify(otherAfter)) {
+      statements.push(auditStatement(env, {
+        action: 'update',
+        entry: otherAfter,
+        before: otherBefore,
+        after: otherAfter,
+        userId: user.id,
+      }));
+    }
+  }
+
+  await env.DB.batch(statements);
 
   return json({ ok: true, entry: input });
 }
@@ -146,10 +189,69 @@ async function deleteEntry(request, env, user) {
     damaged: 0,
   });
 
-  await env.DB.prepare(`
+  const rows = await env.DB.prepare(`
+    SELECT round, province_code, plot, bunch, quality, below, domestic, damaged,
+      weight, circum, notes, price_standard, price_below, price_domestic, price_damaged,
+      recorded_at, recorded_by
+    FROM entries
+    WHERE round = ? AND province_code = ? AND plot = ?
+  `).bind(input.round, input.province_code, input.plot).all();
+  const statements = [env.DB.prepare(`
     DELETE FROM entries
     WHERE round = ? AND province_code = ? AND plot = ?
-  `).bind(input.round, input.province_code, input.plot).run();
+  `).bind(input.round, input.province_code, input.plot)];
+
+  for (const row of rows.results || []) {
+    statements.push(auditStatement(env, {
+      action: 'delete',
+      entry: snapshotEntry(row),
+      before: snapshotEntry(row),
+      after: null,
+      userId: user.id,
+    }));
+  }
+
+  await env.DB.batch(statements);
 
   return json({ ok: true });
+}
+
+function auditStatement(env, { action, entry, before, after, userId }) {
+  return env.DB.prepare(`
+    INSERT INTO entry_audit_log (
+      action, round, province_code, plot, bunch, changed_by, before_json, after_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    action,
+    entry.round,
+    entry.province_code,
+    entry.plot,
+    entry.bunch,
+    userId,
+    before ? JSON.stringify(before) : null,
+    after ? JSON.stringify(after) : null,
+  );
+}
+
+function snapshotEntry(entry) {
+  if (!entry) return null;
+  return {
+    round: Number(entry.round),
+    province_code: String(entry.province_code),
+    plot: Number(entry.plot),
+    bunch: Number(entry.bunch),
+    quality: Number(entry.quality) || 0,
+    below: Number(entry.below) || 0,
+    domestic: Number(entry.domestic) || 0,
+    damaged: Number(entry.damaged) || 0,
+    weight: entry.weight ?? null,
+    circum: entry.circum ?? null,
+    notes: String(entry.notes || ''),
+    price_standard: entry.price_standard ?? null,
+    price_below: entry.price_below ?? null,
+    price_domestic: entry.price_domestic ?? null,
+    price_damaged: entry.price_damaged ?? null,
+    recorded_at: entry.recorded_at ?? null,
+    recorded_by: entry.recorded_by ?? null,
+  };
 }

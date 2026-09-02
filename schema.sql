@@ -40,5 +40,22 @@ CREATE TABLE IF NOT EXISTS entries (
 CREATE INDEX IF NOT EXISTS idx_entries_round_province
 ON entries(round, province_code);
 
+CREATE TABLE IF NOT EXISTS entry_audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  action TEXT NOT NULL CHECK (action IN ('create', 'update', 'delete')),
+  round INTEGER NOT NULL,
+  province_code TEXT NOT NULL,
+  plot INTEGER NOT NULL,
+  bunch INTEGER NOT NULL,
+  changed_by INTEGER,
+  changed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  before_json TEXT,
+  after_json TEXT,
+  FOREIGN KEY (changed_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_entry_audit_log_lookup
+ON entry_audit_log(province_code, round, plot, bunch, changed_at);
+
 CREATE INDEX IF NOT EXISTS idx_sessions_expires
 ON sessions(expires_at);
