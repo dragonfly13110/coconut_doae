@@ -1,4 +1,5 @@
 import { clearSessionCookie, parseCookies } from './auth.js';
+import { ensureChallengeDb } from './challenge-db.js';
 
 export async function ensureDbInitialized(db) {
   if (!db || typeof db.exec !== 'function' || typeof db.prepare !== 'function') return;
@@ -59,6 +60,7 @@ export async function ensureDbInitialized(db) {
         await db.prepare('ALTER TABLE entries ADD COLUMN price_damaged REAL').run();
       } catch (alterError) {}
     }
+    await ensureChallengeDb(db);
   } catch (error) {
     if (error.message.includes('no such table') || error.message.includes('SQLITE_ERROR')) {
       const schemaSql = `

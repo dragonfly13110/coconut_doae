@@ -1,0 +1,342 @@
+import macroBaseline from './macro-baseline.json' with { type: 'json' };
+
+export const CHALLENGE_PROVINCES = [
+  { code: 'ratchaburi', label: 'ราชบุรี' },
+  { code: 'nakhon_pathom', label: 'นครปฐม' },
+  { code: 'samut_sakhon', label: 'สมุทรสาคร' },
+  { code: 'samut_songkhram', label: 'สมุทรสงคราม' },
+];
+
+export const SAMPLE_TREES = [
+  { no: 1, pos: 'C', label: 'ต้นที่ 1 (จุด C - กึ่งกลางแปลง)', shortLabel: 'จุด C (กลาง)' },
+  { no: 2, pos: 'L', label: 'ต้นที่ 2 (จุด L - ด้านซ้ายแปลง)', shortLabel: 'จุด L (ซ้าย)' },
+  { no: 3, pos: 'R', label: 'ต้นที่ 3 (จุด R - ด้านขวาแปลง)', shortLabel: 'จุด R (ขวา)' },
+  { no: 4, pos: 'F', label: 'ต้นที่ 4 (จุด F - ด้านหน้าแปลง)', shortLabel: 'จุด F (หน้า)' },
+  { no: 5, pos: 'B', label: 'ต้นที่ 5 (จุด B - ด้านหลังแปลง)', shortLabel: 'จุด B (หลัง)' },
+];
+
+export const MONTH_NAMES = [
+  'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+  'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.',
+];
+
+export async function ensureChallengeDb(db) {
+  if (!db || typeof db.prepare !== 'function') return;
+
+  // 1. Farmer plots (Sheet 1)
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS farmer_plots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      province_code TEXT NOT NULL,
+      farmer_no INTEGER,
+      plot_label TEXT NOT NULL,
+      full_name TEXT NOT NULL,
+      address TEXT,
+      age INTEGER,
+      phone TEXT,
+      total_area_rai REAL DEFAULT 0,
+      productive_area_rai REAL DEFAULT 0,
+      plant_age_years REAL DEFAULT 0,
+      trees_per_rai REAL DEFAULT 0,
+      coord_zone TEXT DEFAULT '47P',
+      coord_x REAL,
+      coord_y REAL,
+      production_standard TEXT DEFAULT 'GAP',
+      soil_series TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `).run();
+
+  await db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_farmer_plots_province ON farmer_plots(province_code);
+  `).run();
+
+  // 2. Yield forecasts (Sheet 2)
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS yield_forecasts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      plot_id INTEGER NOT NULL,
+      province_code TEXT NOT NULL,
+      tree_no INTEGER NOT NULL,
+      tree_position TEXT NOT NULL,
+      point_label TEXT NOT NULL DEFAULT 'จุดที่ 1',
+      bunch_no INTEGER NOT NULL,
+      harvest_month INTEGER NOT NULL,
+      fruit_count INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (plot_id) REFERENCES farmer_plots(id) ON DELETE CASCADE,
+      UNIQUE (plot_id, tree_position, bunch_no, harvest_month)
+    );
+  `).run();
+
+  await db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_yield_forecasts_lookup ON yield_forecasts(plot_id, tree_position, bunch_no);
+  `).run();
+
+  // 3. Harvest cuts (Sheet 3)
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS harvest_cuts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      plot_id INTEGER NOT NULL,
+      province_code TEXT NOT NULL,
+      farmer_name TEXT NOT NULL,
+      cut_round INTEGER NOT NULL,
+      cut_date TEXT,
+      total_yield INTEGER NOT NULL DEFAULT 0,
+      yield_per_rai REAL,
+      price_per_fruit REAL,
+      twin_fruits INTEGER DEFAULT 0,
+      damaged_fruits INTEGER DEFAULT 0,
+      notes TEXT DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (plot_id) REFERENCES farmer_plots(id) ON DELETE CASCADE
+    );
+  `).run();
+
+  await db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_harvest_cuts_plot ON harvest_cuts(plot_id, cut_round);
+  `).run();
+
+  // 4. Macro district stats (Sheet 4)
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS macro_district_stats (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      region TEXT NOT NULL DEFAULT 'ภาคตะวันตก',
+      province_code TEXT NOT NULL,
+      province_name TEXT NOT NULL,
+      district_name TEXT NOT NULL,
+      year INTEGER NOT NULL DEFAULT 2569,
+      standing_area_rai REAL NOT NULL,
+      productive_area_rai REAL NOT NULL,
+      total_yield_fruit REAL NOT NULL,
+      yield_per_productive_rai REAL NOT NULL,
+      is_total INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(province_name, district_name, year)
+    );
+  `).run();
+
+  await db.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_macro_stats_province ON macro_district_stats(province_code, year);
+  `).run();
+
+  // Seed macro stats if empty
+  try {
+    const macroCount = await db.prepare('SELECT COUNT(*) as count FROM macro_district_stats').first();
+    if (!macroCount || Number(macroCount.count) === 0) {
+      for (const row of macroBaseline) {
+        await db.prepare(`
+          INSERT OR REPLACE INTO macro_district_stats 
+          (region, province_code, province_name, district_name, year, standing_area_rai, productive_area_rai, total_yield_fruit, yield_per_productive_rai, is_total)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          row.region,
+          row.province_code,
+          row.province_name,
+          row.district_name,
+          row.year,
+          row.standing_area_rai,
+          row.productive_area_rai,
+          row.total_yield_fruit,
+          row.yield_per_productive_rai,
+          row.is_total
+        ).run();
+      }
+    }
+  } catch (err) {
+    // ignore
+  }
+
+  // Pre-seed sample plots if empty
+  try {
+    const plotCount = await db.prepare('SELECT COUNT(*) as count FROM farmer_plots').first();
+    if (!plotCount || Number(plotCount.count) === 0) {
+      await seedSampleData(db);
+    }
+  } catch (err) {
+    // ignore
+  }
+}
+
+async function seedSampleData(db) {
+  // Insert sample plot 1 (Ratchaburi - Damnoen Saduak)
+  const result1 = await db.prepare(`
+    INSERT INTO farmer_plots 
+    (province_code, farmer_no, plot_label, full_name, address, age, phone, total_area_rai, productive_area_rai, plant_age_years, trees_per_rai, coord_zone, coord_x, coord_y, production_standard, soil_series)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    'ratchaburi',
+    1,
+    'แปลงที่ 1',
+    'นายสมชาย มะพร้าวทอง',
+    '124 ม.3 ต.ดำเนินสะดวก อ.ดำเนินสะดวก จ.ราชบุรี',
+    48,
+    '081-234-5678',
+    15.0,
+    12.0,
+    7.5,
+    35.0,
+    '47P',
+    605420.0,
+    1492310.0,
+    'GAP',
+    'ชุดดินดำเนินสะดวก (Ds)'
+  ).run();
+
+  const plotId1 = result1.meta?.last_row_id || 1;
+
+  // Insert sample plot 2 (Nakhon Pathom - Sam Phran)
+  const result2 = await db.prepare(`
+    INSERT INTO farmer_plots 
+    (province_code, farmer_no, plot_label, full_name, address, age, phone, total_area_rai, productive_area_rai, plant_age_years, trees_per_rai, coord_zone, coord_x, coord_y, production_standard, soil_series)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    'nakhon_pathom',
+    2,
+    'แปลงที่ 2',
+    'นางสมศรี สวนน้ำหอม',
+    '55 ม.5 ต.ยายชา อ.สามพราน จ.นครปฐม',
+    52,
+    '089-876-5432',
+    10.0,
+    8.5,
+    6.0,
+    40.0,
+    '47P',
+    632150.0,
+    1518420.0,
+    'GAP + GI',
+    'ชุดดินกำแพงแสน (Ks)'
+  ).run();
+
+  const plotId2 = result2.meta?.last_row_id || 2;
+
+  // Insert sample forecast matrix for Plot 1 (5 trees, 20 bunches across months)
+  const sampleForecasts = [
+    // Tree 1 (C - Center)
+    { tree: 1, pos: 'C', bunch: 1, month: 1, fruits: 12 },
+    { tree: 1, pos: 'C', bunch: 2, month: 1, fruits: 10 },
+    { tree: 1, pos: 'C', bunch: 3, month: 2, fruits: 14 },
+    { tree: 1, pos: 'C', bunch: 4, month: 3, fruits: 11 },
+    { tree: 1, pos: 'C', bunch: 5, month: 3, fruits: 13 },
+    { tree: 1, pos: 'C', bunch: 6, month: 4, fruits: 9 },
+    { tree: 1, pos: 'C', bunch: 7, month: 5, fruits: 15 },
+    { tree: 1, pos: 'C', bunch: 8, month: 6, fruits: 12 },
+    { tree: 1, pos: 'C', bunch: 9, month: 6, fruits: 10 },
+    { tree: 1, pos: 'C', bunch: 10, month: 7, fruits: 14 },
+    { tree: 1, pos: 'C', bunch: 11, month: 8, fruits: 13 },
+    { tree: 1, pos: 'C', bunch: 12, month: 8, fruits: 11 },
+    { tree: 1, pos: 'C', bunch: 13, month: 9, fruits: 12 },
+    { tree: 1, pos: 'C', bunch: 14, month: 10, fruits: 15 },
+    { tree: 1, pos: 'C', bunch: 15, month: 10, fruits: 14 },
+    { tree: 1, pos: 'C', bunch: 16, month: 11, fruits: 10 },
+    { tree: 1, pos: 'C', bunch: 17, month: 11, fruits: 12 },
+    { tree: 1, pos: 'C', bunch: 18, month: 12, fruits: 13 },
+    { tree: 1, pos: 'C', bunch: 19, month: 12, fruits: 11 },
+    { tree: 1, pos: 'C', bunch: 20, month: 12, fruits: 9 },
+
+    // Tree 2 (L - Left)
+    { tree: 2, pos: 'L', bunch: 1, month: 1, fruits: 11 },
+    { tree: 2, pos: 'L', bunch: 2, month: 2, fruits: 13 },
+    { tree: 2, pos: 'L', bunch: 3, month: 3, fruits: 10 },
+    { tree: 2, pos: 'L', bunch: 4, month: 4, fruits: 12 },
+    { tree: 2, pos: 'L', bunch: 5, month: 5, fruits: 14 },
+    { tree: 2, pos: 'L', bunch: 6, month: 6, fruits: 11 },
+    { tree: 2, pos: 'L', bunch: 7, month: 7, fruits: 13 },
+    { tree: 2, pos: 'L', bunch: 8, month: 8, fruits: 12 },
+    { tree: 2, pos: 'L', bunch: 9, month: 9, fruits: 15 },
+    { tree: 2, pos: 'L', bunch: 10, month: 10, fruits: 10 },
+    { tree: 2, pos: 'L', bunch: 11, month: 11, fruits: 12 },
+    { tree: 2, pos: 'L', bunch: 12, month: 12, fruits: 14 },
+
+    // Tree 3 (R - Right)
+    { tree: 3, pos: 'R', bunch: 1, month: 1, fruits: 10 },
+    { tree: 3, pos: 'R', bunch: 2, month: 2, fruits: 12 },
+    { tree: 3, pos: 'R', bunch: 3, month: 3, fruits: 14 },
+    { tree: 3, pos: 'R', bunch: 4, month: 4, fruits: 11 },
+    { tree: 3, pos: 'R', bunch: 5, month: 5, fruits: 13 },
+    { tree: 3, pos: 'R', bunch: 6, month: 6, fruits: 15 },
+    { tree: 3, pos: 'R', bunch: 7, month: 7, fruits: 10 },
+    { tree: 3, pos: 'R', bunch: 8, month: 8, fruits: 12 },
+    { tree: 3, pos: 'R', bunch: 9, month: 9, fruits: 14 },
+    { tree: 3, pos: 'R', bunch: 10, month: 10, fruits: 11 },
+    { tree: 3, pos: 'R', bunch: 11, month: 11, fruits: 13 },
+    { tree: 3, pos: 'R', bunch: 12, month: 12, fruits: 12 },
+
+    // Tree 4 (F - Front)
+    { tree: 4, pos: 'F', bunch: 1, month: 1, fruits: 13 },
+    { tree: 4, pos: 'F', bunch: 2, month: 2, fruits: 11 },
+    { tree: 4, pos: 'F', bunch: 3, month: 3, fruits: 12 },
+    { tree: 4, pos: 'F', bunch: 4, month: 4, fruits: 14 },
+    { tree: 4, pos: 'F', bunch: 5, month: 5, fruits: 10 },
+    { tree: 4, pos: 'F', bunch: 6, month: 6, fruits: 13 },
+    { tree: 4, pos: 'F', bunch: 7, month: 7, fruits: 12 },
+    { tree: 4, pos: 'F', bunch: 8, month: 8, fruits: 15 },
+    { tree: 4, pos: 'F', bunch: 9, month: 9, fruits: 11 },
+    { tree: 4, pos: 'F', bunch: 10, month: 10, fruits: 14 },
+    { tree: 4, pos: 'F', bunch: 11, month: 11, fruits: 10 },
+    { tree: 4, pos: 'F', bunch: 12, month: 12, fruits: 13 },
+
+    // Tree 5 (B - Back)
+    { tree: 5, pos: 'B', bunch: 1, month: 1, fruits: 12 },
+    { tree: 5, pos: 'B', bunch: 2, month: 2, fruits: 14 },
+    { tree: 5, pos: 'B', bunch: 3, month: 3, fruits: 11 },
+    { tree: 5, pos: 'B', bunch: 4, month: 4, fruits: 13 },
+    { tree: 5, pos: 'B', bunch: 5, month: 5, fruits: 12 },
+    { tree: 5, pos: 'B', bunch: 6, month: 6, fruits: 10 },
+    { tree: 5, pos: 'B', bunch: 7, month: 7, fruits: 14 },
+    { tree: 5, pos: 'B', bunch: 8, month: 8, fruits: 13 },
+    { tree: 5, pos: 'B', bunch: 9, month: 9, fruits: 15 },
+    { tree: 5, pos: 'B', bunch: 10, month: 10, fruits: 12 },
+    { tree: 5, pos: 'B', bunch: 11, month: 11, fruits: 11 },
+    { tree: 5, pos: 'B', bunch: 12, month: 12, fruits: 14 },
+  ];
+
+  for (const item of sampleForecasts) {
+    await db.prepare(`
+      INSERT OR REPLACE INTO yield_forecasts
+      (plot_id, province_code, tree_no, tree_position, point_label, bunch_no, harvest_month, fruit_count)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      plotId1,
+      'ratchaburi',
+      item.tree,
+      item.pos,
+      'จุดที่ 1',
+      item.bunch,
+      item.month,
+      item.fruits
+    ).run();
+  }
+
+  // Insert sample harvest cut records for Plot 1 (Sheet 3)
+  const cuts = [
+    { round: 1, date: '2026-01-15', yield: 2400, price: 16.5, twin: 120, damaged: 85, notes: 'รอบตัดแรกต้นปี ผลผลิตสมบูรณ์ดี' },
+    { round: 2, date: '2026-02-08', yield: 2650, price: 17.0, twin: 140, damaged: 90, notes: 'สภาพอากาศแจ่มใส น้ำหนักดี' },
+    { round: 3, date: '2026-03-02', yield: 2800, price: 18.0, twin: 160, damaged: 110, notes: 'ราคาปรับตัวสูงขึ้นตามความต้องการตลาด' },
+  ];
+
+  for (const c of cuts) {
+    const yieldPerRai = Math.round((c.yield / 12.0) * 10) / 10;
+    await db.prepare(`
+      INSERT INTO harvest_cuts
+      (plot_id, province_code, farmer_name, cut_round, cut_date, total_yield, yield_per_rai, price_per_fruit, twin_fruits, damaged_fruits, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      plotId1,
+      'ratchaburi',
+      'นายสมชาย มะพร้าวทอง',
+      c.round,
+      c.date,
+      c.yield,
+      yieldPerRai,
+      c.price,
+      c.twin,
+      c.damaged,
+      c.notes
+    ).run();
+  }
+}

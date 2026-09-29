@@ -59,3 +59,92 @@ ON entry_audit_log(province_code, round, plot, bunch, changed_at);
 
 CREATE INDEX IF NOT EXISTS idx_sessions_expires
 ON sessions(expires_at);
+
+-- ===================================================
+-- Challenge / New Mode Database Tables (Excel Dataset)
+-- ===================================================
+
+-- 1. Farmer plots (Sheet 1)
+CREATE TABLE IF NOT EXISTS farmer_plots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  province_code TEXT NOT NULL,
+  farmer_no INTEGER,
+  plot_label TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  address TEXT,
+  age INTEGER,
+  phone TEXT,
+  total_area_rai REAL DEFAULT 0,
+  productive_area_rai REAL DEFAULT 0,
+  plant_age_years REAL DEFAULT 0,
+  trees_per_rai REAL DEFAULT 0,
+  coord_zone TEXT DEFAULT '47P',
+  coord_x REAL,
+  coord_y REAL,
+  production_standard TEXT DEFAULT 'GAP',
+  soil_series TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_farmer_plots_province ON farmer_plots(province_code);
+
+-- 2. Yield forecasts (Sheet 2)
+CREATE TABLE IF NOT EXISTS yield_forecasts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  plot_id INTEGER NOT NULL,
+  province_code TEXT NOT NULL,
+  tree_no INTEGER NOT NULL,
+  tree_position TEXT NOT NULL,
+  point_label TEXT NOT NULL DEFAULT 'จุดที่ 1',
+  bunch_no INTEGER NOT NULL,
+  harvest_month INTEGER NOT NULL,
+  fruit_count INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (plot_id) REFERENCES farmer_plots(id) ON DELETE CASCADE,
+  UNIQUE (plot_id, tree_position, bunch_no, harvest_month)
+);
+
+CREATE INDEX IF NOT EXISTS idx_yield_forecasts_lookup ON yield_forecasts(plot_id, tree_position, bunch_no);
+
+-- 3. Harvest cuts (Sheet 3)
+CREATE TABLE IF NOT EXISTS harvest_cuts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  plot_id INTEGER NOT NULL,
+  province_code TEXT NOT NULL,
+  farmer_name TEXT NOT NULL,
+  cut_round INTEGER NOT NULL,
+  cut_date TEXT,
+  total_yield INTEGER NOT NULL DEFAULT 0,
+  yield_per_rai REAL,
+  price_per_fruit REAL,
+  twin_fruits INTEGER DEFAULT 0,
+  damaged_fruits INTEGER DEFAULT 0,
+  notes TEXT DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (plot_id) REFERENCES farmer_plots(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_harvest_cuts_plot ON harvest_cuts(plot_id, cut_round);
+
+-- 4. Macro district stats (Sheet 4)
+CREATE TABLE IF NOT EXISTS macro_district_stats (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  region TEXT NOT NULL DEFAULT 'ภาคตะวันตก',
+  province_code TEXT NOT NULL,
+  province_name TEXT NOT NULL,
+  district_name TEXT NOT NULL,
+  year INTEGER NOT NULL DEFAULT 2569,
+  standing_area_rai REAL NOT NULL,
+  productive_area_rai REAL NOT NULL,
+  total_yield_fruit REAL NOT NULL,
+  yield_per_productive_rai REAL NOT NULL,
+  is_total INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(province_name, district_name, year)
+);
+
+CREATE INDEX IF NOT EXISTS idx_macro_stats_province ON macro_district_stats(province_code, year);
+

@@ -1,3 +1,4 @@
+import { initChallenge, showChalTab } from './challenge.js';
 import { normalizeEntryInput, calculateProgressPercent, getProgressColorClass } from './shared/entryValidation.js';
 import {
   buildProvinceRoundBunchStats,
@@ -27,6 +28,8 @@ const state = {
   data: null,
   activeRound: 1,
   dashboardView: 'cards',
+  systemMode: localStorage.getItem('coconut_system_mode') || 'quality',
+  challengeInitialized: false,
 };
 
 function activeProvinces() {
@@ -65,6 +68,9 @@ function bindEvents() {
   document.querySelectorAll('.tab').forEach((button) => {
     button.addEventListener('click', () => showTab(button.dataset.tab));
   });
+
+  el('btnModeQuality')?.addEventListener('click', () => switchSystemMode('quality'));
+  el('btnModeChallenge')?.addEventListener('click', () => switchSystemMode('challenge'));
 }
 
 async function login(event) {
@@ -888,18 +894,43 @@ function renderBunchTable(provinces) {
 
 function showApp() {
   el('loginView').hidden = true;
-  el('appView').hidden = false;
+  if (el('modeNavBar')) el('modeNavBar').hidden = false;
   el('logoutBtn').hidden = false;
   el('userLine').textContent = `${state.user.province_label} | ${roleLabel(state.user.role)}`;
 
   const isAdmin = state.user.role === 'admin';
   el('provinceWrap').hidden = !isAdmin;
   if (!isAdmin) el('province').value = state.user.province_code;
+
+  switchSystemMode(state.systemMode || 'quality');
+}
+
+function switchSystemMode(mode) {
+  state.systemMode = mode;
+  try { localStorage.setItem('coconut_system_mode', mode); } catch (e) {}
+  const isQuality = mode === 'quality';
+
+  el('btnModeQuality')?.classList.toggle('active', isQuality);
+  el('btnModeChallenge')?.classList.toggle('active', !isQuality);
+
+  el('appView').hidden = !isQuality;
+  const chalView = el('appViewChallenge');
+  if (chalView) {
+    chalView.hidden = isQuality;
+    if (!isQuality && state.user) {
+      if (!state.challengeInitialized) {
+        initChallenge(state.user);
+        state.challengeInitialized = true;
+      }
+    }
+  }
 }
 
 function showLogin() {
   el('loginView').hidden = false;
   el('appView').hidden = true;
+  if (el('appViewChallenge')) el('appViewChallenge').hidden = true;
+  if (el('modeNavBar')) el('modeNavBar').hidden = true;
   el('logoutBtn').hidden = true;
   el('userLine').textContent = 'ยังไม่ได้เข้าสู่ระบบ';
 }
