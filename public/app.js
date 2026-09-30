@@ -1,10 +1,19 @@
 import { initChallenge, showChalTab } from './challenge.js';
-import { normalizeEntryInput, calculateProgressPercent, getProgressColorClass } from './shared/entryValidation.js';
+import {
+  normalizeEntryInput,
+  calculateProgressPercent,
+  getProgressColorClass,
+  detectEntryAnomalies,
+  scanAllAnomalies,
+  getEntryCompleteness,
+  SANITY_BOUNDS,
+} from './shared/entryValidation.js';
 import {
   buildProvinceRoundBunchStats,
   buildSummaryCsvRows,
   computeHistogram as buildHistogram,
 } from './shared/stats.js';
+import { renderMarkdown } from './shared/markdown.js';
 
 const PROVINCES = [
   { code: 'nakhon_pathom', label: 'นครปฐม' },
@@ -27,9 +36,17 @@ const state = {
   user: null,
   data: null,
   activeRound: 1,
+  activeTab: 'entry',
   dashboardView: 'cards',
   systemMode: localStorage.getItem('coconut_system_mode') || 'quality',
   challengeInitialized: false,
+  anomalyFilter: 'all',
+  pendingSavePayload: null,
+  currentPhotos: [],
+  pendingImportCsv: null,
+  knowledgeCatalog: null,
+  activeKnowledgeSubtab: '3d',
+  activeArticle: null,
 };
 
 function activeProvinces() {
@@ -62,15 +79,119 @@ function bindEvents() {
   el('econRecalcBtn').addEventListener('click', renderEconomy);
   el('addPlotBtn').addEventListener('click', addPlot);
   el('deletePlotBtn').addEventListener('click', deletePlot);
-  ['quality', 'below', 'domestic', 'damaged'].forEach((id) => el(id).addEventListener('input', calcTotal));
+
+  initSteppers();
+
+  // Photo Attachment (D1)
+  el('photoFileInput')?.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handlePhotoUpload(e.target.files[0]);
+    }
+  });
+  el('btnClosePhotoModal')?.addEventListener('click', closePhotoLightbox);
+
+  // Change PIN
+  el('changePinBtn')?.addEventListener('click', openChangePinModal);
+  el('btnCloseChangePinModal')?.addEventListener('click', closeChangePinModal);
+  el('btnCancelChangePin')?.addEventListener('click', closeChangePinModal);
+  el('changePinForm')?.addEventListener('submit', handleChangePin);
+
+  // Batch CSV Import
+  el('batchImportBtn')?.addEventListener('click', openBatchImportModal);
+  el('btnCloseBatchImportModal')?.addEventListener('click', closeBatchImportModal);
+  el('btnCancelBatchImport')?.addEventListener('click', closeBatchImportModal);
+  el('btnSelectCsvFile')?.addEventListener('click', () => el('batchCsvFileInput')?.click());
+  el('batchCsvFileInput')?.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleCsvFileSelect(e.target.files[0]);
+    }
+  });
+  el('btnCommitBatchImport')?.addEventListener('click', commitBatchImport);
+  const csvDropZone = el('csvDropZone');
+  if (csvDropZone) {
+    csvDropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      csvDropZone.style.borderColor = 'var(--primary)';
+      csvDropZone.style.background = '#f0fdf4';
+    });
+    csvDropZone.addEventListener('dragleave', () => {
+      csvDropZone.style.borderColor = 'var(--line)';
+      csvDropZone.style.background = '#fafafa';
+    });
+    csvDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      csvDropZone.style.borderColor = 'var(--line)';
+      csvDropZone.style.background = '#fafafa';
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        handleCsvFileSelect(e.dataTransfer.files[0]);
+      }
+    });
+  }
+
+  // 21-Day Calendar
+  el('harvestCalendarBtn')?.addEventListener('click', openHarvestCalendarModal);
+  el('btnCloseCalendarModal')?.addEventListener('click', closeHarvestCalendarModal);
+  el('btnOkCalendarModal')?.addEventListener('click', closeHarvestCalendarModal);
+  el('calStartDate')?.addEventListener('change', renderHarvestCycles);
+
+  // Executive Print Report
+  el('printReportBtn')?.addEventListener('click', openExecutivePrintReport);
+  el('btnClosePrintModal')?.addEventListener('click', closeExecutivePrintReport);
+  el('btnExecutePrint')?.addEventListener('click', () => window.print());
+
+  // Offline Draft Resilience
+  el('btnRestoreDraft')?.addEventListener('click', restoreDraft);
+  el('btnDiscardDraft')?.addEventListener('click', discardDraft);
+
+  ['quality', 'below', 'domestic', 'damaged', 'weight', 'circum', 'price_standard', 'price_below', 'price_domestic', 'price_damaged', 'notes'].forEach((id) => {
+    el(id)?.addEventListener('input', () => {
+      if (['quality', 'below', 'domestic', 'damaged'].includes(id)) calcTotal();
+      checkCurrentFormAnomalies();
+      triggerAutoDraftSave();
+    });
+  });
+
   ['round', 'province', 'plot', 'bunch'].forEach((id) => el(id).addEventListener('change', loadEntry));
 
   document.querySelectorAll('.tab').forEach((button) => {
     button.addEventListener('click', () => showTab(button.dataset.tab));
   });
 
+  el('auditRefreshBtn')?.addEventListener('click', loadAuditTab);
+  el('auditExportBtn')?.addEventListener('click', exportAuditData);
+  el('btnCancelAnomalySave')?.addEventListener('click', closeAnomalyModal);
+  el('btnConfirmAnomalySave')?.addEventListener('click', confirmAnomalySave);
+  el('auditLogProvinceFilter')?.addEventListener('change', loadAuditLogs);
+
+  document.querySelectorAll('#anomalyFilterPills .filter-pill').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('#anomalyFilterPills .filter-pill').forEach((p) => p.classList.remove('active'));
+      pill.classList.add('active');
+      state.anomalyFilter = pill.dataset.filter;
+      renderAnomalyScanner();
+    });
+  });
+
   el('btnModeQuality')?.addEventListener('click', () => switchSystemMode('quality'));
   el('btnModeChallenge')?.addEventListener('click', () => switchSystemMode('challenge'));
+
+  // Knowledge Hub & 3D Atlas
+  el('btnSubnav3D')?.addEventListener('click', () => switchKnowledgeSubtab('3d'));
+  el('btnSubnavArticles')?.addEventListener('click', () => switchKnowledgeSubtab('articles'));
+  el('btnSubnav9Stages')?.addEventListener('click', () => switchKnowledgeSubtab('stages'));
+  el('btnReload3DIframe')?.addEventListener('click', reload3DAtlas);
+  el('knowledgeSearchInput')?.addEventListener('input', (e) => renderKnowledgeTopics(e.target.value));
+
+  // Article Modal
+  el('btnCloseArticleModal')?.addEventListener('click', closeKnowledgeArticle);
+  el('btnBottomCloseArticleModal')?.addEventListener('click', closeKnowledgeArticle);
+  el('btnPrintArticle')?.addEventListener('click', () => window.print());
+
+  // Quick 3D Modal
+  el('btnQuick3DAtlas')?.addEventListener('click', openQuick3DModal);
+  el('btnChalQuick3DAtlas')?.addEventListener('click', openQuick3DModal);
+  el('btnCloseQuick3DModal')?.addEventListener('click', closeQuick3DModal);
 }
 
 async function login(event) {
@@ -131,6 +252,9 @@ async function loadEntry() {
     setEntry(entry || {});
     setStatus('entryStatus', entry ? 'โหลดข้อมูลเดิมแล้ว' : 'ยังไม่มีข้อมูลสำหรับจุดนี้', entry ? 'success' : '');
     renderCompletion();
+    checkCurrentFormAnomalies();
+    await loadPhotosForCurrentPoint();
+    checkOfflineDraft();
   } catch (error) {
     setStatus('entryStatus', error.message, 'error');
   }
@@ -192,7 +316,19 @@ async function saveEntry(event) {
     return; // Stop here, don't hit API
   }
 
-  // **2. Set loading state**
+  // **2. Check for severe anomalies or extra-zero suspects**
+  const anomalies = detectEntryAnomalies(validated);
+  const severeOrZeroAnomalies = anomalies.filter((a) => a.level === 'error' || a.isExtraZeroSuspect);
+  if (severeOrZeroAnomalies.length > 0) {
+    state.pendingSavePayload = validated;
+    showAnomalyModal(severeOrZeroAnomalies);
+    return;
+  }
+
+  await performSaveEntry(validated);
+}
+
+async function performSaveEntry(validated) {
   setLoading(true);
   setStatus('entryStatus', 'กำลังบันทึกข้อมูล...', '');
 
@@ -204,12 +340,15 @@ async function saveEntry(event) {
     setStatus('entryStatus', '<strong>บันทึกข้อมูลสำเร็จ ✅</strong>', 'success-box');
     setTimeout(() => {
       const statusEl = el('entryStatus');
-      if (statusEl.className.includes('success-box')) {
+      if (statusEl?.className.includes('success-box')) {
         setStatus('entryStatus', '', '');
       }
     }, 4000);
     await loadDashboard();
     renderCompletion();
+    checkCurrentFormAnomalies();
+    clearOfflineDraft();
+    if (state.activeTab === 'audit') loadAuditTab();
   } catch (error) {
     setStatus('entryStatus', error.message, 'error-box');
   } finally {
@@ -224,6 +363,8 @@ async function loadDashboard() {
   renderDashboard();
   renderBunchAnalysis();
   renderCompletion();
+  updateAuditBadge();
+  if (state.activeTab === 'audit') loadAuditTab();
 }
 
 function buildRoundButtons() {
@@ -896,6 +1037,7 @@ function showApp() {
   el('loginView').hidden = true;
   if (el('modeNavBar')) el('modeNavBar').hidden = false;
   el('logoutBtn').hidden = false;
+  if (el('changePinBtn')) el('changePinBtn').hidden = false;
   el('userLine').textContent = `${state.user.province_label} | ${roleLabel(state.user.role)}`;
 
   const isAdmin = state.user.role === 'admin';
@@ -932,20 +1074,26 @@ function showLogin() {
   if (el('appViewChallenge')) el('appViewChallenge').hidden = true;
   if (el('modeNavBar')) el('modeNavBar').hidden = true;
   el('logoutBtn').hidden = true;
+  if (el('changePinBtn')) el('changePinBtn').hidden = true;
   el('userLine').textContent = 'ยังไม่ได้เข้าสู่ระบบ';
 }
 
 function showTab(tab) {
+  state.activeTab = tab;
   el('entryTab').hidden = tab !== 'entry';
   el('dashboardTab').hidden = tab !== 'dashboard';
   el('bunchTab').hidden = tab !== 'bunch';
   el('economyTab').hidden = tab !== 'economy';
   el('statsTab').hidden = tab !== 'stats';
+  el('auditTab').hidden = tab !== 'audit';
+  if (el('knowledgeTab')) el('knowledgeTab').hidden = tab !== 'knowledge';
   document.querySelectorAll('.tab').forEach((button) => {
     button.classList.toggle('active', button.dataset.tab === tab);
   });
   if (tab === 'stats' && state.data) loadStats();
   if (tab === 'economy' && state.data) renderEconomy();
+  if (tab === 'audit' && state.data) loadAuditTab();
+  if (tab === 'knowledge') loadKnowledgeTab();
 }
 
 function setEntry(entry) {
@@ -1121,6 +1269,11 @@ function rateClass(rate) {
 
 function roleLabel(role) {
   return ROLE_LABELS[role] || role;
+}
+
+function provinceLabel(code) {
+  const p = PROVINCES.find((item) => item.code === code);
+  return p ? p.label : code;
 }
 
 function loadStats() {
@@ -2336,3 +2489,1329 @@ function renderEconomy() {
     </div>
   `;
 }
+
+/* ============================================================
+   DATA QC, AUDIT & ANOMALY DETECTION ENGINE (FRONTEND)
+   ============================================================ */
+
+function updateAuditBadge() {
+  const allEntries = state.data?.entries || [];
+  const flagged = scanAllAnomalies(allEntries);
+  const badge = el('auditAnomalyBadge');
+  if (badge) {
+    if (flagged.length > 0) {
+      badge.textContent = `🚩 ${flagged.length}`;
+      badge.hidden = false;
+    } else {
+      badge.hidden = true;
+    }
+  }
+}
+
+function checkCurrentFormAnomalies() {
+  const draft = {
+    quality: Number(el('quality')?.value) || 0,
+    below: Number(el('below')?.value) || 0,
+    domestic: Number(el('domestic')?.value) || 0,
+    damaged: Number(el('damaged')?.value) || 0,
+    weight: el('weight')?.value.trim() !== '' ? Number(el('weight')?.value) : null,
+    circum: el('circum')?.value.trim() !== '' ? Number(el('circum')?.value) : null,
+    price_standard: el('price_standard')?.value.trim() !== '' ? Number(el('price_standard')?.value) : null,
+    price_below: el('price_below')?.value.trim() !== '' ? Number(el('price_below')?.value) : null,
+    price_domestic: el('price_domestic')?.value.trim() !== '' ? Number(el('price_domestic')?.value) : null,
+    price_damaged: el('price_damaged')?.value.trim() !== '' ? Number(el('price_damaged')?.value) : null,
+  };
+
+  // Clear previous field highlight classes
+  ['quality', 'below', 'domestic', 'damaged', 'weight', 'circum', 'price_standard', 'price_below', 'price_domestic', 'price_damaged'].forEach((id) => {
+    el(id)?.classList.remove('input-anomaly-warn', 'input-anomaly-error');
+  });
+
+  const anomalies = detectEntryAnomalies(draft);
+  const banner = el('entryAnomalyBanner');
+  if (!banner) return;
+
+  if (anomalies.length === 0) {
+    banner.hidden = true;
+    banner.innerHTML = '';
+    return;
+  }
+
+  const hasSevere = anomalies.some((a) => a.level === 'error');
+  banner.className = `anomaly-banner ${hasSevere ? 'severe' : ''}`;
+  banner.hidden = false;
+
+  anomalies.forEach((a) => {
+    const inputEl = el(a.field);
+    if (inputEl) {
+      inputEl.classList.add(a.level === 'error' ? 'input-anomaly-error' : 'input-anomaly-warn');
+    }
+  });
+
+  banner.innerHTML = `
+    <div class="anomaly-banner-head">
+      <span>${hasSevere ? '🚨' : '⚠️'}</span>
+      <span>ตรวจพบค่าที่อาจไม่สมเหตุสมผล หรือมีเลข 0 เกิน (${anomalies.length} รายการ):</span>
+    </div>
+    <ul class="anomaly-banner-list">
+      ${anomalies.map((a) => `
+        <li>
+          <strong>${a.label}:</strong> <span style="font-weight:700; color: #dc2626;">${a.value} ${a.unit}</span>
+          ${a.suggestion !== null ? `
+            <button type="button" class="btn-quick-fix" data-field="${a.field}" data-val="${a.suggestion}">
+              ⚡ แก้เป็น ${a.suggestion} ${a.unit} ทันที
+            </button>
+          ` : ''}
+          <div style="font-size:12px; color:#4b5563; margin-top:2px;">${a.message}</div>
+        </li>
+      `).join('')}
+    </ul>
+  `;
+
+  banner.querySelectorAll('.btn-quick-fix').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const field = btn.dataset.field;
+      const val = btn.dataset.val;
+      if (el(field)) {
+        el(field).value = val;
+        if (['quality', 'below', 'domestic', 'damaged'].includes(field)) {
+          calcTotal();
+        }
+        checkCurrentFormAnomalies();
+      }
+    });
+  });
+}
+
+function showAnomalyModal(anomalies) {
+  const modal = el('anomalyConfirmModal');
+  const listEl = el('modalAnomalyList');
+  if (!modal || !listEl) return;
+  listEl.innerHTML = `
+    <ul style="margin:0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
+      ${anomalies.map((a) => `
+        <li style="font-size: 13px; color: #1f2937;">
+          <strong>${a.label}:</strong> <span style="color: #dc2626; font-weight: bold;">${a.value} ${a.unit}</span>
+          ${a.suggestion !== null ? `<div style="font-size: 12px; color: #0284c7; margin-top: 2px;">⚡ ค่าที่คาดว่าควรจะเป็น: <strong>${a.suggestion} ${a.unit}</strong></div>` : ''}
+          <div style="font-size: 12px; color: #6b7280;">${a.message}</div>
+        </li>
+      `).join('')}
+    </ul>
+  `;
+  modal.hidden = false;
+}
+
+function closeAnomalyModal() {
+  const modal = el('anomalyConfirmModal');
+  if (modal) modal.hidden = true;
+  state.pendingSavePayload = null;
+}
+
+async function confirmAnomalySave() {
+  const payload = state.pendingSavePayload;
+  closeAnomalyModal();
+  if (payload) {
+    await performSaveEntry(payload);
+  }
+}
+
+function loadAuditTab() {
+  if (!state.data) return;
+  const entries = state.data.entries || [];
+  const provinces = activeProvinces();
+  const totalItemsExpected = provinces.length * 10 * 2 * 6;
+
+  let completeCount = 0;
+  let incompleteCount = 0;
+  let recordedCount = 0;
+
+  const flagged = scanAllAnomalies(entries);
+
+  entries.forEach((e) => {
+    const comp = getEntryCompleteness(e);
+    if (comp.status === 'done') {
+      completeCount++;
+      recordedCount++;
+    } else if (comp.status === 'incomplete') {
+      incompleteCount++;
+      recordedCount++;
+    }
+  });
+
+  const missingCount = Math.max(0, totalItemsExpected - recordedCount);
+  const recordedPct = totalItemsExpected > 0 ? Math.round((recordedCount / totalItemsExpected) * 100) : 0;
+
+  if (el('auditKpiRecorded')) el('auditKpiRecorded').textContent = `${recordedCount}/${totalItemsExpected}`;
+  if (el('auditKpiRecordedPct')) el('auditKpiRecordedPct').textContent = `${recordedPct}% ของเป้าหมายทั้งหมด`;
+  if (el('auditKpiComplete')) el('auditKpiComplete').textContent = completeCount;
+  if (el('auditKpiIncomplete')) el('auditKpiIncomplete').textContent = incompleteCount;
+  if (el('auditKpiMissing')) el('auditKpiMissing').textContent = missingCount;
+  if (el('auditKpiAnomalies')) el('auditKpiAnomalies').textContent = flagged.length;
+  if (el('auditKpiAnomaliesSub')) {
+    el('auditKpiAnomaliesSub').textContent = flagged.some((f) => f.hasExtraZero) ? '⚠️ พบจุดที่สงสัยว่าพิมพ์ 0 เกิน' : 'ตรวจพบค่าหลุดเกณฑ์';
+  }
+
+  renderSubmissionMatrix(entries);
+  renderAnomalyScanner(flagged);
+  loadAuditLogs();
+}
+
+function renderSubmissionMatrix(entries) {
+  const tbody = el('auditMatrixBody');
+  if (!tbody) return;
+
+  const provinces = activeProvinces();
+  if (provinces.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding: 20px;">ไม่มีข้อมูล</td></tr>';
+    return;
+  }
+
+  const rowsHtml = provinces.map((p) => {
+    const provEntries = entries.filter((e) => e.province_code === p.code);
+
+    const roundCellsHtml = [1, 2, 3, 4, 5, 6].map((roundNum) => {
+      const rEntries = provEntries.filter((e) => Number(e.round) === roundNum);
+      let done = 0;
+      let inc = 0;
+      let totalItems = 20;
+      let roundAnomalies = 0;
+
+      rEntries.forEach((e) => {
+        const comp = getEntryCompleteness(e);
+        if (comp.status === 'done') done++;
+        else if (comp.status === 'incomplete') inc++;
+        const anom = detectEntryAnomalies(e);
+        if (anom.length > 0) roundAnomalies += anom.length;
+      });
+
+      const filled = done + inc;
+      let badgeHtml = '';
+      if (done === totalItems) {
+        badgeHtml = `<span class="badge-status badge-done" data-round="${roundNum}" data-prov="${p.code}" title="คลิกเพื่อเปิดรอบนี้: บันทึกครบถ้วนสมบูรณ์ 20/20">🟢 ครบ 100%<span class="badge-status-sub">20/20</span></span>`;
+      } else if (filled > 0) {
+        const pct = Math.round((filled / totalItems) * 100);
+        badgeHtml = `<span class="badge-status badge-inc" data-round="${roundNum}" data-prov="${p.code}" title="คลิกเพื่อเปิดรอบนี้: บันทึกแล้ว ${filled}/20 (สมบูรณ์ ${done}, ค้าง ${inc})">🟠 ${pct}%<span class="badge-status-sub">${filled}/20</span></span>`;
+      } else {
+        badgeHtml = `<span class="badge-status badge-miss" data-round="${roundNum}" data-prov="${p.code}" title="คลิกเพื่อเปิดรอบนี้: ยังไม่ได้บันทึกข้อมูล">⚪ ยังไม่เริ่ม<span class="badge-status-sub">0/20</span></span>`;
+      }
+
+      if (roundAnomalies > 0) {
+        badgeHtml += `<div style="font-size: 10px; color: #dc2626; font-weight: bold; margin-top: 2px;">🚩 มี ${roundAnomalies} จุดผิดปกติ</div>`;
+      }
+
+      return `<td>${badgeHtml}</td>`;
+    }).join('');
+
+    let provDone = 0;
+    let provInc = 0;
+    let provAnomCount = 0;
+    let latestTimestamp = null;
+    let latestSubmitter = null;
+
+    provEntries.forEach((e) => {
+      const comp = getEntryCompleteness(e);
+      if (comp.status === 'done') provDone++;
+      else if (comp.status === 'incomplete') provInc++;
+
+      const anom = detectEntryAnomalies(e);
+      if (anom.length > 0) provAnomCount += anom.length;
+
+      if (e.recorded_at) {
+        if (!latestTimestamp || e.recorded_at > latestTimestamp) {
+          latestTimestamp = e.recorded_at;
+          latestSubmitter = e.recorded_by_label || null;
+        }
+      }
+    });
+
+    const expectedTotal = 120;
+    const totalFilled = provDone + provInc;
+    const overallPct = Math.round((totalFilled / expectedTotal) * 100);
+
+    const formattedDate = latestTimestamp
+      ? formatDateTime(latestTimestamp)
+      : '<span style="color:var(--muted)">ยังไม่มีข้อมูล</span>';
+
+    const submitterTag = latestSubmitter
+      ? `<span class="recorded-user-tag">${latestSubmitter}</span>`
+      : latestTimestamp ? `<span class="recorded-user-tag">${p.label}</span>` : '-';
+
+    const anomalyTag = provAnomCount > 0
+      ? `<span class="flag-tag">🚩 พบ ${provAnomCount} จุด</span>`
+      : `<span class="flag-clean-tag">✔️ ข้อมูลปกติ</span>`;
+
+    return `
+      <tr>
+        <td><strong>${p.label}</strong></td>
+        ${roundCellsHtml}
+        <td>
+          <div style="font-weight:700; font-size:12px; color: ${overallPct === 100 ? 'var(--primary)' : overallPct > 0 ? '#d97706' : 'var(--muted)'};">${overallPct}%</div>
+          <div style="font-size:10px; color:var(--muted);">${totalFilled}/${expectedTotal} ทะลาย</div>
+        </td>
+        <td style="font-size:12px; color:var(--ink);">${formattedDate}</td>
+        <td>${submitterTag}</td>
+        <td>${anomalyTag}</td>
+      </tr>
+    `;
+  }).join('');
+
+  tbody.innerHTML = rowsHtml;
+
+  tbody.querySelectorAll('.badge-status').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const roundNum = btn.dataset.round;
+      const provCode = btn.dataset.prov;
+      if (roundNum) el('round').value = roundNum;
+      if (provCode && state.user.role === 'admin') el('province').value = provCode;
+      showTab('entry');
+      await loadEntry();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+}
+
+function renderAnomalyScanner(flaggedList = null) {
+  const entries = state.data?.entries || [];
+  const flagged = flaggedList || scanAllAnomalies(entries);
+  const container = el('anomalyListContainer');
+  if (!container) return;
+
+  const countAll = flagged.length;
+  const countZero = flagged.filter((f) => f.hasExtraZero).length;
+  const countSevere = flagged.filter((f) => f.hasSevere).length;
+
+  if (el('countAllAnomalies')) el('countAllAnomalies').textContent = countAll;
+  if (el('countZeroAnomalies')) el('countZeroAnomalies').textContent = countZero;
+  if (el('countSevereAnomalies')) el('countSevereAnomalies').textContent = countSevere;
+
+  let displayItems = flagged;
+  if (state.anomalyFilter === 'extra_zero') {
+    displayItems = flagged.filter((f) => f.hasExtraZero);
+  } else if (state.anomalyFilter === 'severe') {
+    displayItems = flagged.filter((f) => f.hasSevere);
+  }
+
+  if (displayItems.length === 0) {
+    if (countAll === 0) {
+      container.innerHTML = `
+        <div class="anomaly-empty-state">
+          <div style="font-size:36px; margin-bottom: 6px;">✅</div>
+          <h4>ไม่พบข้อมูลผิดปกติในระบบ</h4>
+          <p>ข้อมูลมะพร้าวน้ำหอมทุกจุด ทุกรอบ อยู่ในเกณฑ์มาตรฐานที่สมเหตุสมผล ไม่พบจุดที่สงสัยว่าพิมพ์ 0 เกิน</p>
+        </div>
+      `;
+    } else {
+      container.innerHTML = `
+        <div class="anomaly-empty-state" style="background:#f9fafb; border-color:#e5e7eb; color:#4b5563;">
+          <p>ไม่พบรายการในหมวดหมู่ตัวกรองนี้ (มีจุดตรวจพบในหมวดหมู่อื่น ${countAll} รายการ)</p>
+        </div>
+      `;
+    }
+    return;
+  }
+
+  container.innerHTML = displayItems.map((item) => {
+    return `
+      <div class="anomaly-item-card ${item.hasSevere ? 'severe' : ''}">
+        <div class="anomaly-card-left">
+          <div class="anomaly-location-bar">
+            <span class="loc-pill">รอบที่ ${item.round}</span>
+            <span class="loc-pill">${provinceLabel(item.province_code)}</span>
+            <span class="loc-pill">แปลงที่ ${item.plot}</span>
+            <span class="loc-pill">ทะลายที่ ${item.bunch}</span>
+            ${item.hasExtraZero ? '<span class="zero-suspect-pill">⚡ สงสัยพิมพ์ 0 เกิน</span>' : ''}
+            ${item.hasSevere ? '<span class="loc-pill" style="background:#fee2e2; color:#b91c1c;">🚨 ค่าสูงผิดปกติมาก</span>' : ''}
+          </div>
+          <div class="anomaly-message-box">
+            ${item.anomalies.map((a) => `
+              <div style="margin-bottom: 4px;">
+                <strong>${a.label}:</strong> <span style="color:#dc2626; font-weight:700;">${a.value} ${a.unit}</span>
+                ${a.suggestion !== null ? `<span style="color:#0284c7; font-weight:700; margin-left: 8px;">➔ แนะนำตรวจสอบ: ${a.suggestion} ${a.unit}</span>` : ''}
+                <div style="font-size: 12px; color: #4b5563; margin-top: 1px;">${a.message}</div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="anomaly-meta-line">
+            ผู้บันทึก: <strong>${item.recorded_by_label || provinceLabel(item.province_code)}</strong> | 
+            วันที่บันทึก: <strong>${item.recorded_at ? formatDateTime(item.recorded_at) : '-'}</strong>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="btn-anomaly-jump"
+          data-round="${item.round}"
+          data-prov="${item.province_code}"
+          data-plot="${item.plot}"
+          data-bunch="${item.bunch}"
+        >
+          ✏️ แก้ไขข้อมูลจุดนี้
+        </button>
+      </div>
+    `;
+  }).join('');
+
+  container.querySelectorAll('.btn-anomaly-jump').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      el('round').value = btn.dataset.round;
+      if (state.user.role === 'admin') el('province').value = btn.dataset.prov;
+      el('plot').value = btn.dataset.plot;
+      el('bunch').value = btn.dataset.bunch;
+      showTab('entry');
+      await loadEntry();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+}
+
+async function loadAuditLogs() {
+  const tbody = el('auditLogBody');
+  if (!tbody) return;
+  try {
+    const provFilter = el('auditLogProvinceFilter')?.value || '';
+    const params = new URLSearchParams({ limit: 50 });
+    if (provFilter) params.set('province_code', provFilter);
+    const res = await api(`/api/audit?${params}`);
+    const logs = res.logs || [];
+
+    if (logs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--muted);">ยังไม่มีประวัติการบันทึก/แก้ไขข้อมูล</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = logs.map((log) => {
+      let actionBadge = '';
+      if (log.action === 'create') {
+        actionBadge = '<span class="loc-pill" style="background:#dcfce7; color:#166534;">สร้างใหม่</span>';
+      } else if (log.action === 'update') {
+        actionBadge = '<span class="loc-pill" style="background:#fef3c7; color:#92400e;">แก้ไข</span>';
+      } else if (log.action === 'delete') {
+        actionBadge = '<span class="loc-pill" style="background:#fee2e2; color:#991b1b;">ลบแปลง</span>';
+      }
+
+      let diffHtml = '';
+      if (log.action === 'update' && log.before_json && log.after_json) {
+        try {
+          const before = JSON.parse(log.before_json);
+          const after = JSON.parse(log.after_json);
+          const changedFields = [];
+          const labels = {
+            quality: 'ผล 1.80+',
+            below: 'ผล 1.40-1.79',
+            domestic: 'ผล 1.20-1.39',
+            damaged: 'ผล < 1.20',
+            weight: 'น้ำหนัก (กก.)',
+            circum: 'รอบวง (ซม.)',
+            price_standard: 'ราคา 1.80+',
+            price_below: 'ราคา 1.40-1.79',
+            price_domestic: 'ราคา 1.20-1.39',
+            price_damaged: 'ราคา < 1.20',
+            notes: 'หมายเหตุ',
+          };
+          for (const [k, lbl] of Object.entries(labels)) {
+            if (before[k] !== after[k]) {
+              const bVal = before[k] ?? '-';
+              const aVal = after[k] ?? '-';
+              changedFields.push(`<span>${lbl}: <del style="color:#ef4444">${bVal}</del> ➔ <strong style="color:#15803d">${aVal}</strong></span>`);
+            }
+          }
+          diffHtml = changedFields.length > 0 ? changedFields.join(', ') : 'อัปเดตข้อมูล';
+        } catch {
+          diffHtml = 'แก้ไขข้อมูล';
+        }
+      } else if (log.action === 'create' && log.after_json) {
+        try {
+          const after = JSON.parse(log.after_json);
+          const total = (after.quality || 0) + (after.below || 0) + (after.domestic || 0) + (after.damaged || 0);
+          diffHtml = `บันทึกข้อมูลครั้งแรก: รวม ${total} ผล, น้ำหนัก ${after.weight || '-'} กก., รอบวง ${after.circum || '-'} ซม.`;
+        } catch {
+          diffHtml = 'บันทึกข้อมูลครั้งแรก';
+        }
+      } else if (log.action === 'delete') {
+        diffHtml = '<span style="color:#dc2626">ลบข้อมูลออกจากระบบ</span>';
+      }
+
+      const submitterName = log.user_province_label || provinceLabel(log.province_code);
+
+      return `
+        <tr>
+          <td style="font-size:12px; white-space:nowrap;">${formatDateTime(log.changed_at)}</td>
+          <td><strong>${submitterName}</strong></td>
+          <td>${actionBadge}</td>
+          <td style="font-size:12px;">รอบ ${log.round} แปลง ${log.plot} ทะลาย ${log.bunch}</td>
+          <td style="font-size:12px; color:#374151;">${diffHtml}</td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 20px; color: var(--red);">ไม่สามารถโหลดประวัติได้: ${err.message}</td></tr>`;
+  }
+}
+
+function exportAuditData() {
+  const entries = state.data?.entries || [];
+  const flagged = scanAllAnomalies(entries);
+  if (flagged.length === 0) {
+    alert('ไม่พบรายการข้อมูลผิดปกติในระบบ ข้อมูลทุกจุดสมบูรณ์และอยู่ในเกณฑ์มาตรฐาน');
+    return;
+  }
+  const headers = ['รอบ', 'จังหวัด', 'แปลง', 'ทะลาย', 'รายการที่ตรวจพบ', 'ค่าที่กรอก', 'หน่วย', 'ค่าที่แนะนำ (หาก 0 เกิน)', 'ผู้บันทึก', 'วันเวลาที่บันทึก', 'ข้อความแจ้งเตือน'];
+  const rows = [];
+  flagged.forEach((f) => {
+    f.anomalies.forEach((a) => {
+      rows.push([
+        `รอบที่ ${f.round}`,
+        provinceLabel(f.province_code),
+        `แปลงที่ ${f.plot}`,
+        `ทะลายที่ ${f.bunch}`,
+        a.label,
+        a.value,
+        a.unit,
+        a.suggestion !== null ? a.suggestion : '-',
+        f.recorded_by_label || provinceLabel(f.province_code),
+        f.recorded_at || '-',
+        `"${a.message.replace(/"/g, '""')}"`,
+      ]);
+    });
+  });
+  const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `รายงานข้อมูลผิดปกติ_มะพร้าวน้ำหอม_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function formatDateTime(str) {
+  if (!str) return '-';
+  try {
+    const d = new Date(str.includes('T') ? str : str.replace(' ', 'T') + 'Z');
+    if (isNaN(d.getTime())) return str;
+    return d.toLocaleString('th-TH', {
+      timeZone: 'Asia/Bangkok',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return str;
+  }
+}
+
+// ==========================================
+// 1. TOUCH-FRIENDLY STEPPER CONTROLS
+// ==========================================
+function initSteppers() {
+  document.querySelectorAll('.step-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetId = btn.dataset.target;
+      const delta = Number(btn.dataset.delta) || 0;
+      const input = el(targetId);
+      if (!input) return;
+      const current = Number(input.value) || 0;
+      const next = Math.max(0, current + delta);
+      input.value = next;
+      calcTotal();
+      checkCurrentFormAnomalies();
+      triggerAutoDraftSave();
+    });
+  });
+}
+
+// ==========================================
+// 2. OFFLINE DRAFT RESILIENCE (LOCALSTORAGE)
+// ==========================================
+let draftSaveTimeout = null;
+
+function draftKey() {
+  const prov = provinceForRequest() || 'unknown';
+  const r = el('round')?.value || '1';
+  const p = el('plot')?.value || '1';
+  const b = el('bunch')?.value || '1';
+  return `coconut_draft_${prov}_${r}_${p}_${b}`;
+}
+
+function triggerAutoDraftSave() {
+  clearTimeout(draftSaveTimeout);
+  draftSaveTimeout = setTimeout(() => {
+    if (!state.user) return;
+    const current = {
+      quality: el('quality')?.value || '0',
+      below: el('below')?.value || '0',
+      domestic: el('domestic')?.value || '0',
+      damaged: el('damaged')?.value || '0',
+      weight: el('weight')?.value || '',
+      circum: el('circum')?.value || '',
+      price_standard: el('price_standard')?.value || '',
+      price_below: el('price_below')?.value || '',
+      price_domestic: el('price_domestic')?.value || '',
+      price_damaged: el('price_damaged')?.value || '',
+      notes: el('notes')?.value || '',
+      savedAt: Date.now(),
+    };
+    const hasData = Number(current.quality) > 0 || Number(current.below) > 0 ||
+      Number(current.domestic) > 0 || Number(current.damaged) > 0 ||
+      (current.weight && Number(current.weight) > 0) || current.notes.trim() !== '';
+    if (hasData) {
+      try {
+        localStorage.setItem(draftKey(), JSON.stringify(current));
+      } catch (e) {}
+    }
+  }, 400);
+}
+
+function checkOfflineDraft() {
+  const notice = el('draftNotice');
+  if (!notice) return;
+  try {
+    const raw = localStorage.getItem(draftKey());
+    if (!raw) {
+      notice.style.display = 'none';
+      return;
+    }
+    const draft = JSON.parse(raw);
+    const hasData = Number(draft.quality) > 0 || Number(draft.below) > 0 ||
+      Number(draft.domestic) > 0 || Number(draft.damaged) > 0 ||
+      (draft.weight && Number(draft.weight) > 0) || (draft.notes && draft.notes.trim() !== '');
+
+    if (!hasData) {
+      notice.style.display = 'none';
+      return;
+    }
+
+    const timeAgo = formatTimeAgo(draft.savedAt);
+    if (el('draftNoticeMeta')) {
+      el('draftNoticeMeta').textContent = `บันทึกแบบร่างอัตโนมัติในเครื่องเมื่อ ${timeAgo}`;
+    }
+    notice.style.display = 'flex';
+  } catch (e) {
+    notice.style.display = 'none';
+  }
+}
+
+function restoreDraft() {
+  try {
+    const raw = localStorage.getItem(draftKey());
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+    setEntry(draft);
+    calcTotal();
+    checkCurrentFormAnomalies();
+    setStatus('entryStatus', 'กู้คืนข้อมูลแบบร่างจากเครื่องสำเร็จ ✅', 'success');
+  } catch (e) {}
+}
+
+function discardDraft() {
+  try {
+    localStorage.removeItem(draftKey());
+  } catch (e) {}
+  if (el('draftNotice')) el('draftNotice').style.display = 'none';
+  setStatus('entryStatus', 'ลบข้อมูลแบบร่างในเครื่องแล้ว', '');
+}
+
+function clearOfflineDraft() {
+  try {
+    localStorage.removeItem(draftKey());
+  } catch (e) {}
+  if (el('draftNotice')) el('draftNotice').style.display = 'none';
+}
+
+function formatTimeAgo(timestamp) {
+  if (!timestamp) return 'เมื่อสักครู่';
+  const sec = Math.floor((Date.now() - timestamp) / 1000);
+  if (sec < 60) return 'เมื่อไม่กี่วินาทีที่แล้ว';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} นาทีที่แล้ว`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} ชั่วโมงที่แล้ว`;
+  return `${Math.floor(hr / 24)} วันที่แล้ว`;
+}
+
+// ==========================================
+// 3. PHOTO ATTACHMENT & LIGHTBOX (D1 STORAGE)
+// ==========================================
+async function loadPhotosForCurrentPoint() {
+  if (!state.user) return;
+  const gallery = el('photoGallery');
+  const badge = el('photoCountBadge');
+  if (!gallery) return;
+
+  const params = new URLSearchParams({
+    round: el('round').value,
+    province_code: provinceForRequest(),
+    plot: el('plot').value,
+    bunch: el('bunch').value,
+  });
+
+  try {
+    const res = await api(`/api/photo?${params}`);
+    state.currentPhotos = res.photos || [];
+    renderPhotoGallery();
+  } catch (err) {
+    console.error('Failed to load photos:', err);
+  }
+}
+
+function renderPhotoGallery() {
+  const gallery = el('photoGallery');
+  const badge = el('photoCountBadge');
+  if (!gallery) return;
+
+  const photos = state.currentPhotos || [];
+  if (badge) {
+    badge.textContent = `${photos.length} รูป`;
+    badge.style.display = photos.length > 0 ? 'inline-block' : 'none';
+  }
+
+  if (photos.length === 0) {
+    gallery.innerHTML = '<div class="photo-empty-hint">ยังไม่มีภาพถ่ายแนบสำหรับจุดนี้ (กดปุ่มถ่ายภาพด้านบนเพื่อแนบรูป)</div>';
+    return;
+  }
+
+  gallery.innerHTML = photos.map((p, idx) => `
+    <div class="photo-thumb-card" data-idx="${idx}">
+      <img src="${p.photo_data}" class="photo-thumb-img" alt="ภาพถ่ายที่ ${idx + 1}" loading="lazy">
+      <button type="button" class="photo-thumb-del" data-id="${p.id}" title="ลบภาพ">✕</button>
+    </div>
+  `).join('');
+
+  gallery.querySelectorAll('.photo-thumb-card').forEach((card) => {
+    card.addEventListener('click', (e) => {
+      if (e.target.classList.contains('photo-thumb-del')) return;
+      const idx = Number(card.dataset.idx);
+      openPhotoLightbox(photos[idx]);
+    });
+  });
+
+  gallery.querySelectorAll('.photo-thumb-del').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      deletePhoto(id);
+    });
+  });
+}
+
+async function handlePhotoUpload(file) {
+  if (!file) return;
+  setStatus('entryStatus', 'กำลังบีบอัดภาพและจัดเก็บลง Cloudflare D1...', '');
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const img = new Image();
+    img.onload = async () => {
+      const maxDim = 1000;
+      let width = img.width;
+      let height = img.height;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // WebP client compression (~50-80 KB)
+      const webpData = canvas.toDataURL('image/webp', 0.75);
+
+      try {
+        await api('/api/photo', {
+          method: 'POST',
+          body: {
+            round: el('round').value,
+            province_code: provinceForRequest(),
+            plot: el('plot').value,
+            bunch: el('bunch').value,
+            photo_data: webpData,
+            mime_type: 'image/webp',
+            notes: `ภาพบันทึกเมื่อ ${new Date().toLocaleTimeString('th-TH')}`,
+          },
+        });
+        setStatus('entryStatus', 'แนบภาพถ่ายลง Cloudflare D1 สำเร็จ 📷', 'success');
+        if (el('photoFileInput')) el('photoFileInput').value = '';
+        await loadPhotosForCurrentPoint();
+      } catch (err) {
+        setStatus('entryStatus', `อัปโหลดภาพไม่สำเร็จ: ${err.message}`, 'error-box');
+      }
+    };
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function openPhotoLightbox(photo) {
+  if (!photo) return;
+  const modal = el('photoLightboxModal');
+  const img = el('photoModalImg');
+  const meta = el('photoModalMeta');
+  const dl = el('btnDownloadPhoto');
+  const del = el('btnDeletePhoto');
+  if (!modal || !img) return;
+
+  img.src = photo.photo_data;
+  if (meta) {
+    const sizeKb = photo.file_size_bytes ? `${Math.round(photo.file_size_bytes / 1024)} KB` : '';
+    meta.innerHTML = `
+      <span>รอบที่ ${photo.round} | ${provinceLabel(photo.province_code)} | แปลง ${photo.plot} | ทะลาย ${photo.bunch}</span>
+      <span>${sizeKb} | ${formatDateTime(photo.created_at)}</span>
+    `;
+  }
+  if (dl) dl.href = photo.photo_data;
+  if (del) {
+    del.onclick = () => deletePhoto(photo.id);
+  }
+  modal.hidden = false;
+}
+
+function closePhotoLightbox() {
+  if (el('photoLightboxModal')) el('photoLightboxModal').hidden = true;
+}
+
+async function deletePhoto(photoId) {
+  if (!confirm('ยืนยันลบภาพถ่ายนี้ออกจากระบบ Cloudflare D1 ใช่หรือไม่?')) return;
+  try {
+    await api(`/api/photo?id=${photoId}`, { method: 'DELETE' });
+    closePhotoLightbox();
+    await loadPhotosForCurrentPoint();
+    setStatus('entryStatus', 'ลบภาพถ่ายแล้ว', 'success');
+  } catch (err) {
+    alert(`ลบภาพไม่สำเร็จ: ${err.message}`);
+  }
+}
+
+// ==========================================
+// 4. SELF-SERVICE PIN CHANGE
+// ==========================================
+function openChangePinModal() {
+  el('changePinModal').hidden = false;
+  el('currentPin').value = '';
+  el('newPin').value = '';
+  el('confirmNewPin').value = '';
+  el('changePinStatus').innerHTML = '';
+}
+
+function closeChangePinModal() {
+  el('changePinModal').hidden = true;
+}
+
+async function handleChangePin(e) {
+  e.preventDefault();
+  const currentPin = el('currentPin').value.trim();
+  const newPin = el('newPin').value.trim();
+  const confirmNewPin = el('confirmNewPin').value.trim();
+  const statusEl = el('changePinStatus');
+
+  if (newPin !== confirmNewPin) {
+    statusEl.innerHTML = '<span style="color:#dc2626;">❌ PIN ใหม่และการยืนยันไม่ตรงกัน</span>';
+    return;
+  }
+  if (!/^\d{4,12}$/.test(newPin)) {
+    statusEl.innerHTML = '<span style="color:#dc2626;">❌ PIN ต้องเป็นตัวเลข 4 - 12 หลักเท่านั้น</span>';
+    return;
+  }
+
+  statusEl.innerHTML = '<span style="color:#2563eb;">กำลังเปลี่ยน PIN...</span>';
+
+  try {
+    await api('/api/change-pin', {
+      method: 'POST',
+      body: {
+        current_pin: currentPin,
+        new_pin: newPin,
+      },
+    });
+    statusEl.innerHTML = '<span style="color:#16a34a; font-weight:bold;">✅ เปลี่ยน PIN สำเร็จเรียบร้อยแล้ว</span>';
+    setTimeout(() => {
+      closeChangePinModal();
+    }, 1500);
+  } catch (err) {
+    statusEl.innerHTML = `<span style="color:#dc2626;">❌ ${err.message}</span>`;
+  }
+}
+
+// ==========================================
+// 5. BATCH CSV IMPORT & ANOMALY PRE-CHECK
+// ==========================================
+function openBatchImportModal() {
+  el('batchImportModal').hidden = false;
+  el('importPreviewWrap').style.display = 'none';
+  el('importStatusMsg').innerHTML = '';
+  el('selectedCsvFilename').textContent = '';
+  el('btnCommitBatchImport').disabled = true;
+  state.pendingImportCsv = null;
+}
+
+function closeBatchImportModal() {
+  el('batchImportModal').hidden = true;
+  state.pendingImportCsv = null;
+}
+
+async function handleCsvFileSelect(file) {
+  if (!file) return;
+  el('selectedCsvFilename').textContent = `📄 ${file.name} (${Math.round(file.size / 1024)} KB)`;
+  el('importStatusMsg').innerHTML = '<span style="color:#2563eb;">กำลังตรวจสอบไฟล์ CSV และตรวจจับข้อมูลผิดปกติ...</span>';
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const text = e.target.result;
+    state.pendingImportCsv = text;
+    try {
+      const res = await api('/api/import', {
+        method: 'POST',
+        body: {
+          action: 'preview',
+          csv_data: text,
+        },
+      });
+
+      renderImportPreview(res);
+    } catch (err) {
+      el('importStatusMsg').innerHTML = `<span style="color:#dc2626;">❌ ตรวจสอบไฟล์ไม่สำเร็จ: ${err.message}</span>`;
+      el('importPreviewWrap').style.display = 'none';
+      el('btnCommitBatchImport').disabled = true;
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+function renderImportPreview(res) {
+  const wrap = el('importPreviewWrap');
+  const tbody = el('importPreviewTbody');
+  const badges = el('importSummaryBadges');
+  const btn = el('btnCommitBatchImport');
+  if (!wrap || !tbody) return;
+
+  badges.innerHTML = `
+    <span class="badge-status-pill badge-complete">แถวที่พร้อมบันทึก: ${res.valid_count}</span>
+    ${res.anomaly_count > 0 ? `<span class="badge-status-pill badge-incomplete" style="background:#fef3c7; color:#92400e;">พบค่าต้องสงสัย: ${res.anomaly_count}</span>` : ''}
+    ${res.error_count > 0 ? `<span class="badge-status-pill badge-missing" style="background:#fee2e2; color:#b91c1c;">แถวที่มีข้อผิดพลาด: ${res.error_count}</span>` : ''}
+  `;
+
+  tbody.innerHTML = (res.rows || []).slice(0, 50).map((r) => {
+    const total = (r.quality || 0) + (r.below || 0) + (r.domestic || 0) + (r.damaged || 0);
+    let statusHtml = '<span style="color:#16a34a; font-weight:600;">✓ ถูกต้อง</span>';
+    if (r.errors && r.errors.length > 0) {
+      statusHtml = `<span style="color:#dc2626; font-size:11px;">✗ ${r.errors[0]}</span>`;
+    } else if (r.anomalies && r.anomalies.length > 0) {
+      const a = r.anomalies[0];
+      statusHtml = `<span style="color:#b45309; font-size:11px;">⚠️ ${a.label} (${a.value}): ${a.message}</span>`;
+    }
+
+    return `
+      <tr style="${r.errors?.length ? 'background:#fff1f2;' : (r.anomalies?.length ? 'background:#fffbeb;' : '')}">
+        <td>${r.rowIndex}</td>
+        <td>${r.round || '-'}</td>
+        <td>${provinceLabel(r.province_code)}</td>
+        <td>${r.plot || '-'}</td>
+        <td>${r.bunch || '-'}</td>
+        <td>${total}</td>
+        <td>${r.weight || '-'}</td>
+        <td>${r.circum || '-'}</td>
+        <td>${statusHtml}</td>
+      </tr>
+    `;
+  }).join('');
+
+  wrap.style.display = 'block';
+  el('importStatusMsg').innerHTML = res.valid_count > 0 
+    ? `<span style="color:#16a34a;">พร้อมนำเข้าข้อมูลจำนวน <strong>${res.valid_count}</strong> แถว</span>`
+    : '<span style="color:#dc2626;">ไม่มีข้อมูลแถวที่ถูกต้องสำหรับนำเข้า</span>';
+
+  btn.disabled = res.valid_count === 0;
+}
+
+async function commitBatchImport() {
+  if (!state.pendingImportCsv) return;
+  const btn = el('btnCommitBatchImport');
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลังบันทึกลงฐานข้อมูล...';
+  el('importStatusMsg').innerHTML = '<span style="color:#2563eb;">กำลังบันทึกข้อมูลลงฐานข้อมูล Cloudflare D1...</span>';
+
+  try {
+    const res = await api('/api/import', {
+      method: 'POST',
+      body: {
+        action: 'commit',
+        csv_data: state.pendingImportCsv,
+      },
+    });
+
+    el('importStatusMsg').innerHTML = `<span style="color:#16a34a; font-weight:bold;">🎉 นำเข้าข้อมูลสำเร็จเรียบร้อย! บันทึกแล้ว ${res.inserted_count} แถว</span>`;
+    await loadDashboard();
+    renderCompletion();
+    setTimeout(() => {
+      closeBatchImportModal();
+      btn.textContent = '🚀 ยืนยันบันทึกข้อมูลลงฐานข้อมูล';
+    }, 1800);
+  } catch (err) {
+    el('importStatusMsg').innerHTML = `<span style="color:#dc2626;">❌ นำเข้าไม่สำเร็จ: ${err.message}</span>`;
+    btn.disabled = false;
+    btn.textContent = '🚀 ยืนยันบันทึกข้อมูลลงฐานข้อมูล';
+  }
+}
+
+// ==========================================
+// 6. 21-DAY HARVEST & SURVEY CALENDAR
+// ==========================================
+function openHarvestCalendarModal() {
+  el('harvestCalendarModal').hidden = false;
+  if (!el('calStartDate').value) {
+    const now = new Date();
+    el('calStartDate').value = `${now.getFullYear()}-01-15`;
+  }
+  renderHarvestCycles();
+}
+
+function closeHarvestCalendarModal() {
+  el('harvestCalendarModal').hidden = true;
+}
+
+function renderHarvestCycles() {
+  const container = el('calendarCyclesContainer');
+  const startInput = el('calStartDate');
+  if (!container || !startInput) return;
+
+  const startDate = new Date(startInput.value || '2026-01-15');
+  const now = new Date();
+
+  const surveyRoundMap = {
+    2: 1,
+    5: 2,
+    8: 3,
+    11: 4,
+    14: 5,
+    17: 6,
+  };
+
+  const cycles = [];
+  for (let c = 1; c <= 18; c++) {
+    const cycleDate = new Date(startDate.getTime() + (c - 1) * 21 * 86400000);
+    const roundNumber = surveyRoundMap[c] || null;
+    const isPast = cycleDate < now;
+    const diffDays = Math.round((cycleDate - now) / 86400000);
+
+    let statusText = '';
+    if (diffDays < -10) statusText = 'เก็บเกี่ยวเสร็จสิ้นแล้ว';
+    else if (diffDays >= -10 && diffDays <= 7) statusText = '🌴 กำลังอยู่ในช่วงตัด / พร้อมเก็บ';
+    else statusText = `อีก ${diffDays} วัน`;
+
+    cycles.push({
+      cutNo: c,
+      date: cycleDate,
+      roundNumber,
+      isPast,
+      statusText,
+    });
+  }
+
+  container.innerHTML = cycles.map((c) => {
+    const dateFormatted = c.date.toLocaleDateString('th-TH', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    const isRound = c.roundNumber !== null;
+    return `
+      <div class="cal-cycle-card ${isRound ? 'highlight-round' : ''} ${c.isPast ? 'cycle-past' : ''}">
+        <div class="cal-cycle-head">
+          <span class="cal-cycle-num">มีดที่ ${c.cutNo}</span>
+          ${isRound 
+            ? `<span class="cal-cycle-badge cal-badge-round">🎯 รอบสำรวจที่ ${c.roundNumber}</span>`
+            : '<span class="cal-cycle-badge cal-badge-harvest">รอบตัดปกติ 21 วัน</span>'
+          }
+        </div>
+        <div class="cal-cycle-date">📅 ${dateFormatted}</div>
+        <div class="cal-cycle-desc">
+          <strong>สถานะ:</strong> ${c.statusText}<br>
+          ${isRound ? '📌 <em>กำหนดการประเมินคุณภาพ 4 เกรดและชั่งน้ำหนัก</em>' : 'ดูแลการให้น้ำ ปุ๋ย และตรวจเช็คหนอนหัวดำ'}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ==========================================
+// 7. EXECUTIVE PRINTABLE ONE-PAGE REPORT
+// ==========================================
+function openExecutivePrintReport() {
+  if (!state.data) return;
+  const modal = el('executivePrintModal');
+  if (!modal) return;
+
+  const entries = state.data.entries || [];
+  const round = state.activeRound;
+
+  el('reportPrintDate').textContent = `ข้อมูล ณ วันที่ ${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })} | รอบการประเมินที่ ${round}`;
+
+  const roundEntries = entries.filter((e) => e.round === round);
+  const activeSet = roundEntries.length > 0 ? roundEntries : entries;
+
+  let totalQuality = 0;
+  let totalBelow = 0;
+  let totalDomestic = 0;
+  let totalDamaged = 0;
+  let sumWeight = 0;
+  let countWeight = 0;
+  let sumCircum = 0;
+  let countCircum = 0;
+  let sumPriceStd = 0, countPriceStd = 0;
+  let sumPriceBelow = 0, countPriceBelow = 0;
+  let sumPriceDom = 0, countPriceDom = 0;
+  let sumPriceDam = 0, countPriceDam = 0;
+
+  activeSet.forEach((e) => {
+    totalQuality += e.quality || 0;
+    totalBelow += e.below || 0;
+    totalDomestic += e.domestic || 0;
+    totalDamaged += e.damaged || 0;
+    if (e.weight > 0) { sumWeight += e.weight; countWeight++; }
+    if (e.circum > 0) { sumCircum += e.circum; countCircum++; }
+    if (e.price_standard > 0) { sumPriceStd += e.price_standard; countPriceStd++; }
+    if (e.price_below > 0) { sumPriceBelow += e.price_below; countPriceBelow++; }
+    if (e.price_domestic > 0) { sumPriceDom += e.price_domestic; countPriceDom++; }
+    if (e.price_damaged > 0) { sumPriceDam += e.price_damaged; countPriceDam++; }
+  });
+
+  const grandTotal = totalQuality + totalBelow + totalDomestic + totalDamaged;
+  const avgBunch = activeSet.length > 0 ? (grandTotal / activeSet.length).toFixed(1) : '0';
+  const jumboPct = grandTotal > 0 ? ((totalQuality / grandTotal) * 100).toFixed(1) : '0';
+
+  el('reportKpiRow').innerHTML = `
+    <div class="report-kpi-item">
+      <span class="label">จำนวนแปลงที่ประเมิน</span>
+      <span class="val">${activeSet.length} ทะลาย</span>
+    </div>
+    <div class="report-kpi-item">
+      <span class="label">ผลผลิตรวมทั้งหมด</span>
+      <span class="val">${grandTotal.toLocaleString()} ลูก</span>
+    </div>
+    <div class="report-kpi-item">
+      <span class="label">ผลผลิตเฉลี่ยต่อทะลาย</span>
+      <span class="val">${avgBunch} ลูก</span>
+    </div>
+    <div class="report-kpi-item">
+      <span class="label">สัดส่วนเกรดจัมโบ้ (1.80+)</span>
+      <span class="val">${jumboPct}%</span>
+    </div>
+  `;
+
+  const grades = [
+    { name: 'จัมโบ้ (1.80 ขึ้นไป)', def: 'ส่งออกต่างประเทศ คุณภาพพรีเมียม', count: totalQuality, avgPrice: countPriceStd ? (sumPriceStd / countPriceStd).toFixed(1) : '-' },
+    { name: 'เกรดมาตรฐาน (1.40 - 1.79)', def: 'ส่งออกต่างประเทศ / โมเดิร์นเทรด', count: totalBelow, avgPrice: countPriceBelow ? (sumPriceBelow / countPriceBelow).toFixed(1) : '-' },
+    { name: 'เกรดในประเทศ (1.20 - 1.39)', def: 'บริโภคสดและแปรรูปในประเทศ', count: totalDomestic, avgPrice: countPriceDom ? (sumPriceDom / countPriceDom).toFixed(1) : '-' },
+    { name: 'ตกเกรด (ต่ำกว่า 1.20)', def: 'ผลเล็ก ไม่ได้มาตรฐาน / แปรรูปกะทิ', count: totalDamaged, avgPrice: countPriceDam ? (sumPriceDam / countPriceDam).toFixed(1) : '-' },
+  ];
+
+  el('reportGradeTbody').innerHTML = grades.map((g) => {
+    const pct = grandTotal > 0 ? ((g.count / grandTotal) * 100).toFixed(1) : '0';
+    return `
+      <tr>
+        <td><strong>${g.name}</strong></td>
+        <td>${g.def}</td>
+        <td class="text-right">${g.count.toLocaleString()}</td>
+        <td class="text-right">${pct}%</td>
+        <td class="text-right">${g.avgPrice}</td>
+      </tr>
+    `;
+  }).join('') + `
+    <tr style="background:#f8fafc; font-weight:bold;">
+      <td colspan="2">รวมทั้งหมด</td>
+      <td class="text-right">${grandTotal.toLocaleString()}</td>
+      <td class="text-right">100.0%</td>
+      <td class="text-right">-</td>
+    </tr>
+  `;
+
+  const provRows = PROVINCES.map((prov) => {
+    const provEntries = activeSet.filter((e) => e.province_code === prov.code);
+    let pQ = 0, pTot = 0, pW = 0, pWCount = 0, pC = 0, pCCount = 0;
+    provEntries.forEach((e) => {
+      pQ += e.quality || 0;
+      pTot += (e.quality || 0) + (e.below || 0) + (e.domestic || 0) + (e.damaged || 0);
+      if (e.weight > 0) { pW += e.weight; pWCount++; }
+      if (e.circum > 0) { pC += e.circum; pCCount++; }
+    });
+    const pAvgB = provEntries.length > 0 ? (pTot / provEntries.length).toFixed(1) : '-';
+    const pJPct = pTot > 0 ? ((pQ / pTot) * 100).toFixed(1) + '%' : '-';
+    const pAvgW = pWCount > 0 ? (pW / pWCount).toFixed(2) : '-';
+    const pAvgC = pCCount > 0 ? (pC / pCCount).toFixed(1) : '-';
+    const status = provEntries.length >= 20 ? 'ครบถ้วน (10 แปลง)' : `บันทึกแล้ว ${provEntries.length}/20 ทะลาย`;
+
+    return `
+      <tr>
+        <td><strong>${prov.label}</strong></td>
+        <td class="text-right">${provEntries.length} ทะลาย</td>
+        <td class="text-right">${pTot.toLocaleString()}</td>
+        <td class="text-right">${pAvgB}</td>
+        <td class="text-right">${pJPct}</td>
+        <td class="text-right">${pAvgW}</td>
+        <td class="text-right">${pAvgC}</td>
+        <td class="text-center">${status}</td>
+      </tr>
+    `;
+  }).join('');
+
+  el('reportProvinceTbody').innerHTML = provRows;
+
+  const flagged = scanAllAnomalies(activeSet);
+  if (flagged.length === 0) {
+    el('reportAuditSealText').innerHTML = '✅ ข้อมูลผ่านเกณฑ์การตรวจสอบคุณภาพสมบูรณ์ 100% ไม่พบค่าหลุดเกณฑ์หรือเลข 0 เกิน';
+  } else {
+    el('reportAuditSealText').innerHTML = `⚠️ พบข้อสังเกตข้อมูลจำนวน ${flagged.length} จุด (ผ่านการบันทึกยืนยันโดยเจ้าหน้าที่ผู้มีอำนาจ)`;
+  }
+
+  modal.hidden = false;
+}
+
+function closeExecutivePrintReport() {
+  if (el('executivePrintModal')) el('executivePrintModal').hidden = true;
+}
+
+// ============================================================================
+// COCONUT KNOWLEDGE HUB & 3D ATLAS CONTROLLER
+// ============================================================================
+
+function switchKnowledgeSubtab(subtab) {
+  state.activeKnowledgeSubtab = subtab;
+  el('btnSubnav3D')?.classList.toggle('active', subtab === '3d');
+  el('btnSubnavArticles')?.classList.toggle('active', subtab === 'articles');
+  el('btnSubnav9Stages')?.classList.toggle('active', subtab === 'stages');
+
+  if (el('subtabContent3D')) el('subtabContent3D').hidden = subtab !== '3d';
+  if (el('subtabContentArticles')) el('subtabContentArticles').hidden = subtab !== 'articles';
+  if (el('subtabContentStages')) el('subtabContentStages').hidden = subtab !== 'stages';
+
+  if (subtab === 'articles' && !state.knowledgeCatalog) {
+    loadKnowledgeTab();
+  }
+}
+
+async function loadKnowledgeTab() {
+  if (!state.knowledgeCatalog) {
+    try {
+      const res = await fetch('/data/coconut-knowledge/catalog.json');
+      if (res.ok) {
+        state.knowledgeCatalog = await res.json();
+      }
+    } catch (e) {
+      console.warn('Failed to load knowledge catalog:', e);
+    }
+  }
+  renderKnowledgeTopics(el('knowledgeSearchInput')?.value || '');
+}
+
+function renderKnowledgeTopics(searchQuery = '') {
+  const container = el('knowledgeTopicGrid');
+  if (!container) return;
+
+  const catalog = state.knowledgeCatalog || [];
+  const q = searchQuery.trim().toLowerCase();
+
+  const filtered = catalog.filter((item) => {
+    if (!q) return true;
+    return (
+      (item.title && item.title.toLowerCase().includes(q)) ||
+      (item.subtitle && item.subtitle.toLowerCase().includes(q)) ||
+      (item.category && item.category.toLowerCase().includes(q)) ||
+      (item.number && item.number.includes(q))
+    );
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);">
+        ไม่พบบทความที่ตรงกับคำค้นหา "${searchQuery}"
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map((item) => `
+    <div class="coconut-topic-card" data-slug="${item.slug}">
+      <div class="topic-card-head">
+        <div class="topic-card-icon">${item.icon || '🌴'}</div>
+        <div class="topic-card-meta">
+          <span class="topic-card-number">หัวข้อ ${item.number}</span>
+          <span class="topic-card-readtime">⏱️ ${item.readTime || '15 นาที'}</span>
+        </div>
+      </div>
+      <h4>${item.title}</h4>
+      <p>${item.subtitle || ''}</p>
+      <div class="topic-card-footer">
+        <span class="topic-badge-cat">${item.category || 'ความรู้'}</span>
+        <span class="topic-btn-read">อ่านบทความฉบับเต็ม ↗</span>
+      </div>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.coconut-topic-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      openKnowledgeArticle(card.dataset.slug);
+    });
+  });
+}
+
+async function openKnowledgeArticle(slug) {
+  const item = (state.knowledgeCatalog || []).find((a) => a.slug === slug);
+  if (!item) return;
+
+  el('articleModalIcon').textContent = item.icon || '🌴';
+  el('articleModalBadge').textContent = item.category || 'องค์ความรู้';
+  el('articleModalReadTime').textContent = `⏱️ ${item.readTime || '15 นาที'}`;
+  el('articleModalTitle').textContent = `${item.number} | ${item.title}`;
+  el('articleModalContent').innerHTML = '<div style="text-align:center; padding:40px; color:var(--muted);">กำลังโหลดบทความวิชาการ...</div>';
+  el('knowledgeArticleModal').hidden = false;
+
+  try {
+    const res = await fetch(`/data/coconut-knowledge/articles/${item.file}`);
+    if (!res.ok) throw new Error('ไม่พบบทความ');
+    const md = await res.text();
+    el('articleModalContent').innerHTML = renderMarkdown(md);
+  } catch (err) {
+    el('articleModalContent').innerHTML = `<div style="color:var(--red); padding:20px;">เกิดข้อผิดพลาดในการโหลดบทความ: ${err.message}</div>`;
+  }
+}
+
+function closeKnowledgeArticle() {
+  if (el('knowledgeArticleModal')) el('knowledgeArticleModal').hidden = true;
+}
+
+function reload3DAtlas() {
+  const iframe = el('coconutAtlasIframe');
+  if (iframe) {
+    const currentSrc = iframe.src.split('?')[0];
+    iframe.src = currentSrc + '?t=' + Date.now();
+  }
+}
+
+function openQuick3DModal() {
+  const modal = el('quick3DModal');
+  const iframe = el('quick3DIframe');
+  if (modal && iframe) {
+    if (!iframe.src || iframe.src.endsWith('/about:blank') || !iframe.src.includes('/coconut-3d/index.html')) {
+      iframe.src = '/coconut-3d/index.html';
+    }
+    modal.hidden = false;
+  }
+}
+
+function closeQuick3DModal() {
+  const modal = el('quick3DModal');
+  if (modal) modal.hidden = true;
+}
+
+

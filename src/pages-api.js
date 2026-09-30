@@ -27,6 +27,25 @@ export async function ensureDbInitialized(db) {
       CREATE INDEX IF NOT EXISTS idx_entry_audit_log_lookup
       ON entry_audit_log(province_code, round, plot, bunch, changed_at)
     `).run();
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS entry_photos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        round INTEGER NOT NULL,
+        province_code TEXT NOT NULL,
+        plot INTEGER NOT NULL,
+        bunch INTEGER NOT NULL,
+        caption TEXT NOT NULL DEFAULT '',
+        photo_data TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL DEFAULT 0,
+        uploaded_by INTEGER,
+        uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+      )
+    `).run();
+    await db.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_entry_photos_lookup
+      ON entry_photos(round, province_code, plot, bunch)
+    `).run();
     // Check if the price columns exist, if not, add them (self-healing for existing DBs)
     try {
       await db.prepare('SELECT price_standard FROM entries LIMIT 1').first();

@@ -103,7 +103,7 @@ export function showChalTab(tab) {
     b.classList.toggle('active', b.dataset.chalTab === tab);
   });
 
-  const tabs = ['farmers', 'forecast', 'harvest', 'macro', 'dashboard', 'io'];
+  const tabs = ['farmers', 'forecast', 'harvest', 'macro', 'dashboard', 'io', 'knowledge'];
   tabs.forEach((t) => {
     const panel = cel(`chalTab_${t}`);
     if (panel) panel.hidden = t !== tab;

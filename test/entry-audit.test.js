@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { onRequest } from '../functions/api/entry.js';
+import { onRequest as onAuditRequest } from '../functions/api/audit.js';
 
 const user = {
   id: 2,
@@ -35,6 +36,26 @@ function makeDb(entryRows = []) {
           return {};
         },
         async all() {
+          if (sql.includes('FROM entry_audit_log')) {
+            return {
+              results: [
+                {
+                  id: 1,
+                  action: 'update',
+                  round: 1,
+                  province_code: 'ratchaburi',
+                  plot: 1,
+                  bunch: 1,
+                  changed_by: 2,
+                  changed_at: '2026-09-30 12:00:00',
+                  before_json: JSON.stringify({ weight: 18.0 }),
+                  after_json: JSON.stringify({ weight: 1.8 }),
+                  user_label: 'ราชบุรี',
+                  user_role: 'province',
+                },
+              ],
+            };
+          }
           return { results: sql.includes('FROM entries') ? entryRows : [] };
         },
         async run() {
@@ -147,3 +168,26 @@ test('deleting a plot writes one audit row for each deleted bunch', async () => 
   assert.deepEqual(auditRows.map((statement) => statement.params[4]), [1, 2]);
   assert.deepEqual(auditRows.map((statement) => statement.params.at(-1)), [null, null]);
 });
+
+test('onAuditRequest returns audit history logs with proper query bounds', async () => {
+  const db = makeDb();
+  const req = new Request('https://example.test/api/audit?limit=20', {
+    method: 'GET',
+    headers: {
+      cookie: 'sid=test-session',
+    },
+  });
+
+  const response = await onAuditRequest({
+    request: req,
+    env: { DB: db },
+  });
+
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.ok(Array.isArray(data.logs));
+  assert.equal(data.logs.length, 1);
+  assert.equal(data.logs[0].province_code, 'ratchaburi');
+  assert.equal(data.logs[0].action, 'update');
+});
+

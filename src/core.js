@@ -1,6 +1,22 @@
-import { CONFIG as SHARED_CONFIG, normalizeEntryInput as sharedNormalize, calculateProgressPercent as sharedCalcProgress } from '../shared/entryValidation.js';
+import {
+  CONFIG as SHARED_CONFIG,
+  normalizeEntryInput as sharedNormalize,
+  calculateProgressPercent as sharedCalcProgress,
+  detectEntryAnomalies,
+  scanAllAnomalies,
+  checkExtraZeroSuggestion,
+  getEntryCompleteness,
+  SANITY_BOUNDS,
+} from '../shared/entryValidation.js';
 
 export const CONFIG = SHARED_CONFIG;
+export {
+  detectEntryAnomalies,
+  scanAllAnomalies,
+  checkExtraZeroSuggestion,
+  getEntryCompleteness,
+  SANITY_BOUNDS,
+};
 
 const FIELD_LABELS = {
   round: 'รอบการประเมิน',

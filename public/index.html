@@ -18,6 +18,7 @@
     </div>
     <div class="session-block">
       <span id="userLine">กำลังตรวจสอบสถานะ...</span>
+      <button id="changePinBtn" class="button ghost small" type="button" hidden>🔑 เปลี่ยน PIN</button>
       <button id="logoutBtn" class="button ghost small" hidden>ออกจากระบบ</button>
     </div>
   </header>
@@ -89,6 +90,13 @@
         <button class="tab" data-tab="bunch">วิเคราะห์รายทะลาย</button>
         <button class="tab" data-tab="economy">มูลค่าเศรษฐกิจ</button>
         <button class="tab" data-tab="stats">สถิติเชิงลึก</button>
+        <button class="tab" data-tab="audit">
+          <span>ตรวจสอบข้อมูล & ติดตาม</span>
+          <span id="auditAnomalyBadge" class="badge-anomaly-count" hidden>0</span>
+        </button>
+        <button class="tab" data-tab="knowledge">
+          <span>🌴 องค์ความรู้ & ต้นมะพร้าว 3D</span>
+        </button>
       </nav>
 
       <section id="entryTab" class="panel">
@@ -97,7 +105,25 @@
             <p class="eyebrow">บันทึกข้อมูล</p>
             <h2>แบบบันทึกผลการประเมิน</h2>
           </div>
-          <button id="loadBtn" class="button ghost">โหลดข้อมูลเดิม</button>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button id="batchImportBtn" type="button" class="button ghost small">📥 นำเข้า CSV</button>
+            <button id="harvestCalendarBtn" type="button" class="button ghost small">📅 ปฏิทิน 21 วัน</button>
+            <button id="loadBtn" class="button ghost small">โหลดข้อมูลเดิม</button>
+          </div>
+        </div>
+
+        <div id="draftNotice" class="draft-notice" style="display:none;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:16px;">💾</span>
+            <div>
+              <strong style="font-size:13px; color:#1e40af;">มีข้อมูลแบบร่างในเครื่องที่ยังไม่ได้บันทึก</strong>
+              <div id="draftNoticeMeta" style="font-size:11px; color:#3b82f6;">บันทึกล่าสุดเมื่อสักครู่</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button type="button" id="btnRestoreDraft" class="button primary small" style="padding:4px 10px; font-size:12px;">กู้คืนข้อมูล</button>
+            <button type="button" id="btnDiscardDraft" class="button ghost small" style="padding:4px 10px; font-size:12px;">ลบทิ้ง</button>
+          </div>
         </div>
 
         <form id="entryForm" class="entry-grid">
@@ -119,10 +145,15 @@
           </label>
           <label>
             ทะลาย
-            <select id="bunch">
-              <option value="1">ทะลายที่ 1</option>
-              <option value="2">ทะลายที่ 2</option>
-            </select>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <select id="bunch" style="flex: 1;">
+                <option value="1">ทะลายที่ 1</option>
+                <option value="2">ทะลายที่ 2</option>
+              </select>
+              <button type="button" id="btnQuick3DAtlas" class="button ghost small" title="เปิดดูต้นมะพร้าว 3D เพื่อเทียบระยะจั่นและทลาย" style="white-space: nowrap; height: 44px; display: flex; align-items: center; gap: 6px; border-color: #86efac; color: #166534; background: #f0fdf4;">
+                🌴 ดูระยะจั่น 3D
+              </button>
+            </div>
           </label>
 
           <div class="divider"></div>
@@ -134,7 +165,12 @@
               <div class="grade-card-fields">
                 <label>
                   จำนวนผล (ลูก)
-                  <input id="quality" type="number" min="0" step="1" value="0">
+                  <div class="stepper-wrap">
+                    <button type="button" class="step-btn step-dec" data-target="quality" data-delta="-1">−</button>
+                    <input id="quality" class="stepper-input" type="number" min="0" step="1" value="0">
+                    <button type="button" class="step-btn step-inc" data-target="quality" data-delta="1">+</button>
+                    <button type="button" class="step-btn step-quick" data-target="quality" data-delta="5">+5</button>
+                  </div>
                 </label>
                 <label>
                   ราคา (บาท)
@@ -149,7 +185,12 @@
               <div class="grade-card-fields">
                 <label>
                   จำนวนผล (ลูก)
-                  <input id="below" type="number" min="0" step="1" value="0">
+                  <div class="stepper-wrap">
+                    <button type="button" class="step-btn step-dec" data-target="below" data-delta="-1">−</button>
+                    <input id="below" class="stepper-input" type="number" min="0" step="1" value="0">
+                    <button type="button" class="step-btn step-inc" data-target="below" data-delta="1">+</button>
+                    <button type="button" class="step-btn step-quick" data-target="below" data-delta="5">+5</button>
+                  </div>
                 </label>
                 <label>
                   ราคา (บาท)
@@ -164,7 +205,12 @@
               <div class="grade-card-fields">
                 <label>
                   จำนวนผล (ลูก)
-                  <input id="domestic" type="number" min="0" step="1" value="0">
+                  <div class="stepper-wrap">
+                    <button type="button" class="step-btn step-dec" data-target="domestic" data-delta="-1">−</button>
+                    <input id="domestic" class="stepper-input" type="number" min="0" step="1" value="0">
+                    <button type="button" class="step-btn step-inc" data-target="domestic" data-delta="1">+</button>
+                    <button type="button" class="step-btn step-quick" data-target="domestic" data-delta="5">+5</button>
+                  </div>
                 </label>
                 <label>
                   ราคา (บาท)
@@ -179,7 +225,12 @@
               <div class="grade-card-fields">
                 <label>
                   จำนวนผล (ลูก)
-                  <input id="damaged" type="number" min="0" step="1" value="0">
+                  <div class="stepper-wrap">
+                    <button type="button" class="step-btn step-dec" data-target="damaged" data-delta="-1">−</button>
+                    <input id="damaged" class="stepper-input" type="number" min="0" step="1" value="0">
+                    <button type="button" class="step-btn step-inc" data-target="damaged" data-delta="1">+</button>
+                    <button type="button" class="step-btn step-quick" data-target="damaged" data-delta="5">+5</button>
+                  </div>
                 </label>
                 <label>
                   ราคา (บาท)
@@ -208,6 +259,33 @@
             <input id="notes" type="text" placeholder="บันทึกข้อสังเกตเพิ่มเติม">
           </label>
 
+          <!-- Photo Attachment Section (D1 Native Storage) -->
+          <div class="photo-attachment-panel">
+            <div class="photo-attachment-head">
+              <div>
+                <strong class="photo-head-title">
+                  📷 ภาพถ่ายทะลายมะพร้าวและแปลง (Cloudflare D1)
+                  <span id="photoCountBadge" class="photo-count-badge" style="display:none;">0 รูป</span>
+                </strong>
+                <p class="photo-head-sub">
+                  ถ่ายจากกล้องมือถือหรือเลือกรูปภาพ ระบบจะย่อขนาด WebP (~50-80 KB) จัดเก็บลง D1 อัตโนมัติ ปลอดภัย ไม่ต้องใช้บัตรเครดิต
+                </p>
+              </div>
+              <div class="photo-head-actions">
+                <label class="button ghost small photo-upload-label">
+                  <span>📸 ถ่ายภาพ / แนบรูป</span>
+                  <input type="file" id="photoFileInput" accept="image/*" capture="environment" style="display:none;">
+                </label>
+              </div>
+            </div>
+
+            <div id="photoGallery" class="photo-gallery-strip">
+              <!-- Dynamically populated thumbnails -->
+              <div class="photo-empty-hint">ยังไม่มีภาพถ่ายแนบสำหรับจุดนี้ (กดปุ่มถ่ายภาพด้านบนเพื่อแนบรูป)</div>
+            </div>
+          </div>
+
+          <div id="entryAnomalyBanner" class="anomaly-banner" hidden></div>
           <button type="submit" class="button primary wide" style="margin-top: 8px;">บันทึกข้อมูล</button>
         </form>
         <p id="entryStatus" class="status"></p>
@@ -277,6 +355,7 @@
             <h2>สรุปคุณภาพมะพร้าวน้ำหอม</h2>
           </div>
           <div class="dashboard-actions">
+            <button id="printReportBtn" type="button" class="button ghost" style="display:inline-flex; align-items:center; gap:6px;">🖨️ พิมพ์รายงานสรุปผู้บริหาร</button>
             <a id="downloadExcel" class="button primary" href="/api/export">ดาวน์โหลด Excel</a>
             <button id="refreshBtn" class="button ghost">รีเฟรช</button>
           </div>
@@ -452,7 +531,427 @@
           <div id="outlierTable" class="table-wrap"></div>
         </section>
       </section>
+
+      <!-- AUDIT & QC / SUBMISSION MONITORING TAB -->
+      <section id="auditTab" class="panel" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">ระบบตรวจสอบและติดตามผล (Data QC & Audit)</p>
+            <h2>ศูนย์ตรวจสอบความถูกต้องและติดตามการบันทึก</h2>
+          </div>
+          <div class="section-head-right" style="display:flex; gap:8px; align-items:center;">
+            <button id="auditRefreshBtn" class="button ghost small" type="button">🔄 รีเฟรชข้อมูล</button>
+            <button id="auditExportBtn" class="button ghost small" type="button">📥 ส่งออกผลการตรวจสอบ</button>
+          </div>
+        </div>
+
+        <!-- KPI Summary Cards -->
+        <div class="audit-kpi-grid">
+          <div class="audit-kpi-card">
+            <div class="kpi-icon">📋</div>
+            <div class="kpi-info">
+              <span class="kpi-label">แปลงที่บันทึกแล้ว</span>
+              <strong class="kpi-val" id="auditKpiRecorded">0/48</strong>
+              <small class="kpi-sub" id="auditKpiRecordedPct">0% ของเป้าหมาย</small>
+            </div>
+          </div>
+          <div class="audit-kpi-card kpi-card-green">
+            <div class="kpi-icon">🟢</div>
+            <div class="kpi-info">
+              <span class="kpi-label">บันทึกครบสมบูรณ์</span>
+              <strong class="kpi-val" id="auditKpiComplete">0</strong>
+              <small class="kpi-sub">ครบทั้งผลผลิตและราคา</small>
+            </div>
+          </div>
+          <div class="audit-kpi-card kpi-card-orange">
+            <div class="kpi-icon">🟠</div>
+            <div class="kpi-info">
+              <span class="kpi-label">บันทึกยังไม่ครบ</span>
+              <strong class="kpi-val" id="auditKpiIncomplete">0</strong>
+              <small class="kpi-sub">ขาดน้ำหนัก/รอบวง/ราคา</small>
+            </div>
+          </div>
+          <div class="audit-kpi-card kpi-card-gray">
+            <div class="kpi-icon">⚪</div>
+            <div class="kpi-info">
+              <span class="kpi-label">ยังไม่ได้บันทึก</span>
+              <strong class="kpi-val" id="auditKpiMissing">0</strong>
+              <small class="kpi-sub">ไม่มีข้อมูลในระบบ</small>
+            </div>
+          </div>
+          <div class="audit-kpi-card kpi-card-red">
+            <div class="kpi-icon">🚩</div>
+            <div class="kpi-info">
+              <span class="kpi-label">จุดต้องสงสัย / 0 เกิน</span>
+              <strong class="kpi-val" id="auditKpiAnomalies">0</strong>
+              <small class="kpi-sub" id="auditKpiAnomaliesSub">ข้อมูลหลุดเกณฑ์ปกติ</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 1: Matrix Tracker -->
+        <div class="audit-section-panel">
+          <div class="audit-section-head">
+            <div>
+              <h3>📊 ตารางติดตามสถานะการส่งรายจังหวัด (4 จังหวัด × 6 รอบ)</h3>
+              <p class="audit-section-sub">ติดตามสถานะความคืบหน้า วันเวลาที่บันทึกล่าสุด และใครเป็นผู้บันทึก</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table audit-matrix-table" id="auditMatrixTable">
+              <thead>
+                <tr>
+                  <th>จังหวัด</th>
+                  <th>รอบ 1</th>
+                  <th>รอบ 2</th>
+                  <th>รอบ 3</th>
+                  <th>รอบ 4</th>
+                  <th>รอบ 5</th>
+                  <th>รอบ 6</th>
+                  <th>ภาพรวม</th>
+                  <th>บันทึกล่าสุดเมื่อ</th>
+                  <th>ผู้บันทึก</th>
+                  <th>ตรวจพบค่าผิดปกติ</th>
+                </tr>
+              </thead>
+              <tbody id="auditMatrixBody">
+                <tr><td colspan="11" style="text-align:center; padding: 24px; color: var(--muted);">กำลังประมวลผลสถานะ...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Section 2: Outlier & Extra Zero Alerts -->
+        <div class="audit-section-panel">
+          <div class="audit-section-head">
+            <div>
+              <h3>🚩 รายการตรวจพบข้อมูลผิดปกติ & สงสัยว่ามีเลข 0 เกิน (Data Outlier Scanner)</h3>
+              <p class="audit-section-sub">ระบบสแกนข้อมูลมะพร้าวน้ำหอมทุกจุด หากพบค่าหลุดเกณฑ์ (เช่น น้ำหนัก 18 กก., ผล 120 ลูก, รอบวง 500 ซม., ราคา 200 บาท) จะแจ้งเตือนพร้อมแนะนำค่าที่ถูกต้อง</p>
+            </div>
+            <div class="filter-pills" id="anomalyFilterPills">
+              <button type="button" class="filter-pill active" data-filter="all">ทั้งหมด (<span id="countAllAnomalies">0</span>)</button>
+              <button type="button" class="filter-pill" data-filter="extra_zero">เฉพาะสงสัย 0 เกิน (<span id="countZeroAnomalies">0</span>)</button>
+              <button type="button" class="filter-pill" data-filter="severe">เฉพาะค่ารุนแรง (<span id="countSevereAnomalies">0</span>)</button>
+            </div>
+          </div>
+          <div id="anomalyListContainer" class="anomaly-list-container">
+            <!-- Dynamically populated or empty banner -->
+          </div>
+        </div>
+
+        <!-- Section 3: Audit Activity Trail -->
+        <div class="audit-section-panel">
+          <div class="audit-section-head">
+            <div>
+              <h3>🕒 ประวัติการบันทึกและแก้ไขข้อมูลล่าสุด (Activity Audit Trail)</h3>
+              <p class="audit-section-sub">บันทึกประวัติย้อนหลังทุกครั้งที่มีการบันทึก แก้ไข หรือลบข้อมูล พร้อมตรวจสอบ Snapshot ก่อน-หลังแก้ไข</p>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <select id="auditLogProvinceFilter" style="font-size:12px; padding:4px 8px; border-radius:6px; border:1px solid var(--line);">
+                <option value="">ทุกจังหวัด</option>
+                <option value="nakhon_pathom">นครปฐม</option>
+                <option value="ratchaburi">ราชบุรี</option>
+                <option value="samut_sakhon">สมุทรสาคร</option>
+                <option value="samut_songkhram">สมุทรสงคราม</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="auditLogTable">
+              <thead>
+                <tr>
+                  <th style="width:140px">วันเวลา</th>
+                  <th style="width:130px">ผู้ดำเนินการ</th>
+                  <th style="width:90px">การกระทำ</th>
+                  <th style="width:140px">ตำแหน่ง</th>
+                  <th>รายละเอียดการแก้ไข</th>
+                </tr>
+              </thead>
+              <tbody id="auditLogBody">
+                <tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--muted);">กำลังโหลดประวัติกิจกรรม...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Knowledge Hub & 3D Coconut Atlas Tab -->
+      <section id="knowledgeTab" class="panel" hidden>
+        <!-- Header Banner -->
+        <div class="coconut-header-banner">
+          <div class="coconut-header-copy">
+            <div class="coconut-kicker">DOAE BOTANICAL & AGRONOMY KNOWLEDGE ATLAS</div>
+            <h2>🌴 คลังองค์ความรู้ & แบบจำลองต้นมะพร้าว 3 มิติ</h2>
+            <p>
+              แบบจำลองพฤกษศาสตร์ต้นมะพร้าว 3D (360 องศา) วิเคราะห์การพัฒนา 9 ระยะจากจั่นสู่ทลาย
+              พร้อม 8 บทความองค์ความรู้เชิงลึกด้านสรีรวิทยา การจัดการน้ำ ปุ๋ย อารักขาพืช และมาตรฐาน GI
+            </p>
+          </div>
+          <div class="coconut-header-stats">
+            <div class="coconut-stat-box">
+              <strong>9</strong>
+              <span>ระยะจั่น 3D</span>
+            </div>
+            <div class="coconut-stat-box">
+              <strong>8</strong>
+              <span>บทความวิจัย</span>
+            </div>
+            <div class="coconut-stat-box">
+              <strong>4</strong>
+              <span>จังหวัด GI</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-navigation Pills -->
+        <div class="knowledge-subnav-bar">
+          <div class="knowledge-pills" role="tablist">
+            <button type="button" id="btnSubnav3D" class="knowledge-pill active" data-subtab="3d">
+              <span class="pill-icon">🌿</span>
+              <span>แบบจำลองต้นมะพร้าว 3D (Interactive Atlas)</span>
+            </button>
+            <button type="button" id="btnSubnavArticles" class="knowledge-pill" data-subtab="articles">
+              <span class="pill-icon">📚</span>
+              <span>8 บทความองค์ความรู้วิชาการ (Knowledge Hub)</span>
+            </button>
+            <button type="button" id="btnSubnav9Stages" class="knowledge-pill" data-subtab="stages">
+              <span class="pill-icon">📋</span>
+              <span>คู่มือ 9 ระยะจั่นสู่ทลาย (Field Cheat Sheet)</span>
+            </button>
+          </div>
+          <div class="knowledge-quick-actions">
+            <a href="/coconut-3d/index.html" target="_blank" rel="noopener" class="button ghost small" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+              ↗️ เปิด 3D หน้าต่างแยก
+            </a>
+          </div>
+        </div>
+
+        <!-- Subtab 1: Interactive 3D Coconut Tree -->
+        <div id="subtabContent3D" class="knowledge-subtab-pane">
+          <div class="section-head" style="margin-bottom:12px;">
+            <div>
+              <p class="eyebrow">BOTANICAL 3D ATLAS</p>
+              <h3>จากจั่น…สู่ทลาย: สำรวจต้นมะพร้าว 360°</h3>
+              <p style="font-size:13px; color:var(--muted); margin-top:2px;">
+                คลิกปุ่มหมายเลข 1–9 เพื่อสำรวจจั่นและทลายต่างวัยบนต้นเดียวกัน หมุนด้วยเมาส์/สัมผัส สลับกลางวัน/กลางคืน และทดลองจำลองเก็บเกี่ยว "ตัดจั่น 1"
+              </p>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button type="button" id="btnReload3DIframe" class="button ghost small">🔄 รีเฟรชฉาก 3D</button>
+            </div>
+          </div>
+
+          <div class="coconut-atlas-container">
+            <iframe id="coconutAtlasIframe" src="/coconut-3d/index.html" title="จากจั่น…สู่ทลาย 3D Coconut Atlas" allowfullscreen loading="lazy"></iframe>
+          </div>
+          <div class="coconut-atlas-footer-note">
+            💡 <strong>วิธีใช้งาน:</strong> คลิกและลากเพื่อหมุนมุมมองต้นมะพร้าว 360° | เลื่อนลูกกลิ้งเมาส์เพื่อซูม | กดปุ่มหมายเลข 1 ถึง 9 เพื่อเปลี่ยนมุมมองโฟกัสทีละจั่น | กดปุ่ม "ตัดจั่น 1" เพื่อจำลองการตัดทลายแก่
+          </div>
+        </div>
+
+        <!-- Subtab 2: 8 Knowledge Articles -->
+        <div id="subtabContentArticles" class="knowledge-subtab-pane" hidden>
+          <div class="section-head" style="margin-bottom:16px;">
+            <div>
+              <p class="eyebrow">SCIENTIFIC KNOWLEDGE REPOSITORY</p>
+              <h3>8 บทความองค์ความรู้เชิงลึกเพื่อการผลิตและการส่งออก</h3>
+              <p style="font-size:13px; color:var(--muted); margin-top:2px;">
+                รวบรวมงานวิจัย สรีรวิทยาการสร้างสารหอม 2-AP วิศวกรรมน้ำ-ปุ๋ย การอารักขาพืช และมาตรฐาน GI
+              </p>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <input type="text" id="knowledgeSearchInput" placeholder="🔍 ค้นหาหัวข้อหรือคำสำคัญ..." style="padding:8px 14px; border-radius:8px; border:1px solid var(--line); font-size:13px; width:220px;" />
+            </div>
+          </div>
+
+          <div id="knowledgeTopicGrid" class="coconut-topic-grid">
+            <!-- Dynamically populated from catalog.json -->
+            <div style="grid-column:1/-1; text-align:center; padding:30px; color:var(--muted);">กำลังโหลดรายการบทความ...</div>
+          </div>
+        </div>
+
+        <!-- Subtab 3: 9 Stages Reference Guide -->
+        <div id="subtabContentStages" class="knowledge-subtab-pane" hidden>
+          <div class="section-head" style="margin-bottom:16px;">
+            <div>
+              <p class="eyebrow">FIELD IDENTIFICATION GUIDE</p>
+              <h3>เกณฑ์มาตรฐานการจำแนก 9 ระยะการพัฒนาของจั่นและทลายมะพร้าว</h3>
+              <p style="font-size:13px; color:var(--muted); margin-top:2px;">
+                ตารางอ้างอิงทางพฤกษศาสตร์และเกณฑ์ตรวจสอบภาคสนามสำหรับเจ้าหน้าที่ DOAE และเกษตรกร
+              </p>
+            </div>
+          </div>
+
+          <div class="stages-guide-grid">
+            <div class="stage-guide-card stage-highlight">
+              <div class="stage-badge-col">
+                <span class="stage-no">01</span>
+                <span class="stage-tag ready">พร้อมตัด</span>
+              </div>
+              <div class="stage-body-col">
+                <h4>ระยะเก็บเกี่ยว (Harvest-Ready Green Fruit)</h4>
+                <div class="stage-meta-row">
+                  <span>⏱️ อายุ: 190–205 วัน</span>
+                  <span>🥥 เนื้อ: 1.5–2 ชั้น (3–5 มม.)</span>
+                  <span>🍯 Brix: 6.5–7.5°</span>
+                  <span>⚖️ น้ำหนัก: 1.40–2.0+ กก.</span>
+                </div>
+                <p>ผลขนาดเต็ม เปลือกเขียวอมเหลือง จานรองผล (Perianth) มีสีน้ำตาลแห้งรอบขั้ว น้ำหวานกลมกล่อม มีกลิ่นหอมของสาร 2-AP สูงสุด ตัดเป็น "มีด 1"</p>
+              </div>
+            </div>
+
+            <div class="stage-guide-card">
+              <div class="stage-badge-col">
+                <span class="stage-no">02</span>
+                <span class="stage-tag">มีด 2 ถัดไป</span>
+              </div>
+              <div class="stage-body-col">
+                <h4>ระยะผลเต็มขนาด (Full-Sized Immature Fruit)</h4>
+                <div class="stage-meta-row">
+                  <span>⏱️ อายุ: 165–185 วัน</span>
+                  <span>🥥 เนื้อ: วุ้นบาง 1 ชั้น</span>
+                  <span>🍯 Brix: 5.5–6.2°</span>
+                  <span>⚖️ น้ำหนัก: 1.30–1.70 กก.</span>
+                </div>
+                <p>ผลขยายขนาดเกือบเต็มที่ กะลาเริ่มเปลี่ยนจากสีขาวเป็นน้ำตาลอ่อน เริ่มเกิดเนื้อวุ้นบางชั้นเดียว น้ำรสหวานอมเปรี้ยวอ่อน พร้อมเป็นมีดถัดไปในอีก 20–21 วัน</p>
+              </div>
+            </div>
+
+            <div class="stage-guide-card">
+              <div class="stage-badge-col">
+                <span class="stage-no">03</span>
+                <span class="stage-tag">ขยายปลาย</span>
+              </div>
+              <div class="stage-body-col">
+                <h4>ระยะขยายผลช่วงปลาย (Late Fruit Sizing)</h4>
+                <div class="stage-meta-row">
+                  <span>⏱️ อายุ: 140–160 วัน</span>
+                  <span>🥥 เนื้อ: ยังไม่สร้างเนื้อ</span>
+                  <span>💧 น้ำ: ปริมาณน้ำสูงสุด</span>
+                </div>
+                <p>ผลโตเต็มรูปทรง กะลายังอ่อนและมีสีขาว เนื้อเยื่อเอนโดสเปิร์มยังเป็นของเหลวใสเต็มผล เป็นช่วงสะสมน้ำตาลและโพแทสเซียมอย่างรวดเร็ว</p>
+              </div>
+            </div>
+
+            <div class="stage-guide-card">
+              <div class="stage-badge-col">
+                <span class="stage-no">04</span>
+                <span class="stage-tag">ขยายกลาง</span>
+              </div>
+              <div class="stage-body-col">
+                <h4>ระยะขยายผลช่วงกลาง (Mid Fruit Sizing)</h4>
+                <div class="stage-meta-row">
+                  <span>⏱️ อายุ: 115–135 วัน</span>
+                  <span>🥥 กะลา: เริ่มก่อรูปเป็นทรง</span>
+                </div>
+                <p>ผลขยายขนาดตามยาวและเส้นรอบวงอย่างรวดเร็ว ผิวผลเรียบเนียนสีเขียวสด โพรงน้ำเริ่มก่อตัวขึ้น</p>
+              </div>
+            </div>
+
+            <div class="stage-guide-card">
+              <div class="stage-badge-col">
+                <span class="stage-no">05</span>
+                <span class="stage-tag">ผลอ่อน</span>
+              </div>
+              <div class="stage-body-col">
+                <h4>ระยะผลอ่อน (Young Fruit)</h4>
+                <div class="stage-meta-row">
+                  <span>⏱️ อายุ: 90–110 วัน</span>
+                  <span>🥥 ขนาด: เท่ากำปั้น/ไข่ห่าน</span>
+                </div>
+                <p>ผลอ่อนเริ่มเห็นรูปทรงมะพร้าวชัดเจน ก้นผลเริ่มมน ก้านผลขยายหนาเพื่อรองรับน้ำหนักที่จะเพิ่มขึ้น</p>
+              </div>
+            </div>
+
+            <div class="stage-guide-card">
+              <div class="stage-badge-col">
+                <span class="stage-no">06</span>
+                <span class="stage-tag">ผลเล็ก</span>
+              </div>
+              <div class="stage-body-col">
+                <h4>ระยะผลเล็ก (Button / Initial Fruit Development)</h4>
+                <div class="stage-meta-row">
+                  <span>⏱️ อายุ: 65–85 วัน</span>
+                  <span>🥥 ขนาด: เท่าผลหมาก</span>
+                </div>
+                <p>กลีบเลี้ยงหุ้มฐานผลแน่น ผลโตขนาดเท่าผลหมากหรือไข่นกกระทา สิ้นสุดช่วงการสลัดผลตามธรรมชาติ (Natural Fruit Drop)</p>
+              </div>
+            </div>
+
+            <div class="stage-guide-card">
+              <div class="stage-badge-col">
+                <span class="stage-no">07</span>
+                <span class="stage-tag">ติดผล</span>
+              </div>
+              <div class="stage-body-col">
+                <h4>ระยะติดผลแรกเริ่ม (Post-Anthesis / Setting)</h4>
+                <div class="stage-meta-row">
+                  <span>⏱️ อายุ: 40–60 วัน</span>
+                  <span>🌸 สถานะ: ผสมติดแล้ว</span>
+                </div>
+                <p>ดอกตัวเมียได้รับการผสมเกสรเรียบร้อย รังไข่เริ่มขยายพองตัว กลีบดอกแห้งติดฐานผล เป็นระยะวิกฤตที่ต้องระวังการขาดน้ำ</p>
+              </div>
+            </div>
+
+            <div class="stage-guide-card">
+              <div class="stage-badge-col">
+                <span class="stage-no">08</span>
+                <span class="stage-tag">ดอกบาน</span>
+              </div>
+              <div class="stage-body-col">
+                <h4>ระยะดอกบาน (Flowering / Anthesis)</h4>
+                <div class="stage-meta-row">
+                  <span>⏱️ อายุ: 15–35 วัน</span>
+                  <span>🐝 กิจกรรม: ผสมเกสร</span>
+                </div>
+                <p>ดอกตัวผู้บานก่อนแล้วร่วงตามด้วยดอกตัวเมียบานพร้อมรับการผสมเกสร ส่งกลิ่นหอมดึงดูดผึ้งและแมลงช่วยผสมเกสร</p>
+              </div>
+            </div>
+
+            <div class="stage-guide-card">
+              <div class="stage-badge-col">
+                <span class="stage-no">09</span>
+                <span class="stage-tag">แทงจั่น</span>
+              </div>
+              <div class="stage-body-col">
+                <h4>ระยะจั่นอ่อน / แทงจั่น (Emerging Spathe)</h4>
+                <div class="stage-meta-row">
+                  <span>⏱️ อายุ: 0–15 วัน</span>
+                  <span>🌱 ซอกใบ: กาบหุ้มแน่น</span>
+                </div>
+                <p>กาบหุ้มจั่น (Spathe) แทงออกจากซอกทางใบ มีปลายแหลมคล้ายหอก สีเขียวอมเหลือง ยังไม่แตกเปิดออก</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </section>
+
+    <!-- Confirm Anomaly Modal Dialog -->
+    <div id="anomalyConfirmModal" class="modal-backdrop" hidden>
+      <div class="modal-card" style="max-width: 520px;">
+        <div class="modal-head" style="border-bottom: 1px solid #fee2e2; background: #fff5f5;">
+          <h3 style="color: #b91c1c; display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px;">
+            ⚠️ ยืนยันการบันทึกข้อมูลที่ผิดปกติ
+          </h3>
+        </div>
+        <div class="modal-body" style="padding: 20px;">
+          <p style="font-size: 14px; margin-bottom: 12px; color: var(--ink);">
+            ระบบตรวจพบตัวเลขที่ <strong>สูงผิดปกติมาก หรืออาจมีเลข 0 เกินมา</strong> สำหรับมะพร้าวน้ำหอม:
+          </p>
+          <div id="modalAnomalyList" style="background: #fff8f8; border: 1px solid #fed7d7; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+            <!-- Injected list of anomalies with suggestions -->
+          </div>
+          <p style="font-size: 13px; color: var(--muted); margin: 0;">
+            หากเป็นความผิดพลาดในการพิมพ์ แนะนำให้กดยกเลิกแล้วแก้ไขเป็นตัวเลขที่ถูกต้อง (เช่น ลืมจุดทศนิยม หรือพิมพ์ 0 เกิน)
+          </p>
+        </div>
+        <div class="modal-actions" style="background: #fafafa; border-top: 1px solid #eee; padding: 14px 20px; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" id="btnCancelAnomalySave" class="button ghost">กลับไปแก้ไข</button>
+          <button type="button" id="btnConfirmAnomalySave" class="button danger" style="background: #dc2626; color: white; border: none;">ยืนยันจะบันทึกค่านี้</button>
+        </div>
+      </div>
+    </div>
   
     <!-- CHALLENGE / NEW MODE WORKSPACE -->
     <section id="appViewChallenge" class="workspace" hidden>
@@ -463,6 +962,7 @@
         <button class="tab" data-chal-tab="macro">🗺️ สถิติพื้นที่ & ผลผลิต 2569 (Sheet 4)</button>
         <button class="tab" data-chal-tab="dashboard">📈 ภาพรวม & วิเคราะห์</button>
         <button class="tab" data-chal-tab="io">📥 นำเข้า / ส่งออก Excel</button>
+        <button class="tab" data-chal-tab="knowledge">🌴 องค์ความรู้ & ต้นมะพร้าว 3D</button>
       </nav>
 
       <!-- Tab 1: Farmers & Plots (Sheet 1) -->
@@ -529,6 +1029,9 @@
             <label for="chalForecastPlotSelect" style="font-weight:700; font-size:13px; color:var(--ink);">เลือกแปลงเกษตรกร:</label>
             <select id="chalForecastPlotSelect" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-weight:600; min-width:260px;"></select>
           </div>
+          <button type="button" id="btnChalQuick3DAtlas" class="button ghost small" style="white-space:nowrap; border-color:#86efac; color:#166534; background:#f0fdf4; display:flex; align-items:center; gap:6px;">
+            🌴 ดูระยะจั่น 1–9 ในโมเดล 3D
+          </button>
         </div>
 
         <!-- 5 Trees Selector -->
@@ -919,6 +1422,41 @@
           </div>
         </div>
       </section>
+
+      <!-- Tab 7: Knowledge Hub & 3D Coconut Tree in Challenge Mode -->
+      <section id="chalTab_knowledge" class="panel" hidden>
+        <div class="coconut-header-banner">
+          <div class="coconut-header-copy">
+            <div class="coconut-kicker">DOAE BOTANICAL & AGRONOMY KNOWLEDGE ATLAS</div>
+            <h2>🌴 แบบจำลองต้นมะพร้าว 3 มิติ & คลังองค์ความรู้</h2>
+            <p>
+              คู่มือพฤกษศาสตร์สำหรับจำแนกและนับจั่น 20 ทะลายในแปลงเกษตรกร สำรวจต้นมะพร้าว 3D 360 องศา
+              พร้อมเกณฑ์เทียบเคียง 9 ระยะ และบทความวิจัยเชิงลึก
+            </p>
+          </div>
+          <div class="coconut-header-stats">
+            <div class="coconut-stat-box">
+              <strong>9</strong>
+              <span>ระยะจั่น 3D</span>
+            </div>
+            <div class="coconut-stat-box">
+              <strong>20</strong>
+              <span>ทะลาย/ต้น</span>
+            </div>
+            <div class="coconut-stat-box">
+              <strong>8</strong>
+              <span>บทความวิจัย</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="coconut-atlas-container">
+          <iframe src="/coconut-3d/index.html" title="แบบจำลองต้นมะพร้าว 3D (Challenge Mode)" allowfullscreen loading="lazy"></iframe>
+        </div>
+        <div class="coconut-atlas-footer-note">
+          💡 <strong>สำหรับผู้สำรวจแปลง:</strong> ใช้โมเดล 3D นี้เทียบเคียงขนาดและรูปร่างของจั่นที่แทงออกมาจากซอกทางใบ เพื่อบันทึกข้อมูลใน Sheet 2 (คาดการณ์ผลผลิต 20 ทะลาย) ได้แม่นยำยิ่งขึ้น
+        </div>
+      </section>
     </section>
 
     <!-- Modal Form: Add / Edit Farmer Plot (Sheet 1) -->
@@ -1024,6 +1562,306 @@
             <button type="submit" class="button primary">💾 บันทึกข้อมูลแปลง</button>
           </div>
         </form>
+      </div>
+    <!-- Photo Viewer Modal / Lightbox -->
+    <div id="photoLightboxModal" class="modal-backdrop" hidden>
+      <div class="modal-card" style="max-width: 680px;">
+        <div class="modal-head" style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid var(--line);">
+          <h3 id="photoModalTitle" style="margin:0; font-size:15px; color:var(--ink);">📷 ภาพถ่ายทะลายมะพร้าว</h3>
+          <button type="button" id="btnClosePhotoModal" class="button ghost small" style="padding:4px 10px;">✕ ปิด</button>
+        </div>
+        <div class="modal-body" style="padding:16px; text-align:center; background:#0f172a;">
+          <img id="photoModalImg" src="" alt="ภาพถ่ายมะพร้าว" style="max-width:100%; max-height:65vh; border-radius:8px; object-fit:contain; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+          <div id="photoModalMeta" style="margin-top:10px; color:#cbd5e1; font-size:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;"></div>
+        </div>
+        <div class="modal-actions" style="display:flex; justify-content:space-between; padding:12px 18px; background:#f8fafc; border-top:1px solid var(--line);">
+          <button type="button" id="btnDeletePhoto" class="button danger small" style="background:#dc2626; color:white; border:none;">🗑️ ลบภาพนี้</button>
+          <a id="btnDownloadPhoto" class="button ghost small" download="coconut-photo.webp" href="#">💾 บันทึกรูปภาพ</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Change PIN Modal -->
+    <div id="changePinModal" class="modal-backdrop" hidden>
+      <div class="modal-card" style="max-width: 440px;">
+        <div class="modal-head" style="padding:14px 20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="margin:0; font-size:16px; color:var(--ink); display:flex; align-items:center; gap:8px;">
+            🔑 เปลี่ยนรหัสผ่าน / PIN จังหวัด
+          </h3>
+          <button type="button" id="btnCloseChangePinModal" class="button ghost small" style="padding:4px 8px;">✕</button>
+        </div>
+        <form id="changePinForm" style="padding:20px;">
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <p style="font-size:13px; color:var(--muted); margin:0;">
+              ตั้งค่า PIN ใหม่สำหรับเข้าใช้งานระบบส่งข้อมูลของจังหวัดนี้ (ตัวเลข 4-12 หลัก)
+            </p>
+            <label style="display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:600;">
+              PIN เดิมในปัจจุบัน:
+              <input type="password" id="currentPin" inputmode="numeric" placeholder="กรอก PIN เดิม" required style="padding:8px 12px; border-radius:6px; border:1px solid var(--line); font-size:14px;">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:600;">
+              PIN ใหม่ (ตัวเลข 4-12 หลัก):
+              <input type="password" id="newPin" inputmode="numeric" placeholder="เช่น 2568" required minlength="4" maxlength="12" style="padding:8px 12px; border-radius:6px; border:1px solid var(--line); font-size:14px;">
+            </label>
+            <label style="display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:600;">
+              ยืนยัน PIN ใหม่อีกครั้ง:
+              <input type="password" id="confirmNewPin" inputmode="numeric" placeholder="กรอก PIN ใหม่อีกครั้ง" required minlength="4" maxlength="12" style="padding:8px 12px; border-radius:6px; border:1px solid var(--line); font-size:14px;">
+            </label>
+            <div id="changePinStatus" style="font-size:13px;"></div>
+          </div>
+          <div class="modal-actions" style="margin-top:20px; display:flex; justify-content:flex-end; gap:8px;">
+            <button type="button" id="btnCancelChangePin" class="button ghost">ยกเลิก</button>
+            <button type="submit" class="button primary">บันทึก PIN ใหม่</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Batch CSV Import Modal -->
+    <div id="batchImportModal" class="modal-backdrop" hidden>
+      <div class="modal-card" style="max-width: 820px; max-height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-head" style="padding:14px 20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 style="margin:0; font-size:16px; color:var(--ink); display:flex; align-items:center; gap:8px;">
+              📥 นำเข้าข้อมูลผลการประเมินแบบกลุ่ม (Batch CSV Import)
+            </h3>
+            <p style="font-size:12px; color:var(--muted); margin-top:2px;">นำเข้าไฟล์ CSV พร้อมระบบตรวจสอบข้อมูลผิดปกติและ 0 เกินอัตโนมัติก่อนบันทึกจริง</p>
+          </div>
+          <button type="button" id="btnCloseBatchImportModal" class="button ghost small" style="padding:4px 8px;">✕</button>
+        </div>
+        <div class="modal-body" style="padding:20px; overflow-y:auto; flex:1;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; background:#f8fafc; padding:12px 16px; border-radius:8px; border:1px solid var(--line); flex-wrap:wrap; gap:10px;">
+            <div>
+              <strong style="font-size:13px; color:var(--ink);">ต้องการดูแม่แบบคอลัมน์มาตรฐาน?</strong>
+              <p style="font-size:12px; color:var(--muted); margin:0;">ดาวน์โหลดไฟล์แม่แบบ CSV ที่มีหัวตารางและตัวอย่างข้อมูลพร้อมใช้งาน</p>
+            </div>
+            <a href="/api/import?template=true" download="coconut_quality_template.csv" class="button ghost small" style="white-space:nowrap;">📄 ดาวน์โหลดแม่แบบ CSV</a>
+          </div>
+
+          <div style="border: 2px dashed var(--line); border-radius: 10px; padding: 24px; text-align: center; background: #fafafa;" id="csvDropZone">
+            <span style="font-size:32px; display:block; margin-bottom:8px;">📑</span>
+            <strong style="font-size:14px; display:block; margin-bottom:4px;">เลือกไฟล์ CSV สำหรับนำเข้า</strong>
+            <p style="font-size:12px; color:var(--muted); margin-bottom:12px;">รองรับไฟล์ .csv (UTF-8) คอลัมน์: round, province_code, plot, bunch, quality, below, domestic, damaged...</p>
+            <input type="file" id="batchCsvFileInput" accept=".csv,text/csv" style="display:none;">
+            <button type="button" id="btnSelectCsvFile" class="button primary small">เลือกไฟล์ CSV จากเครื่อง</button>
+            <span id="selectedCsvFilename" style="display:block; margin-top:8px; font-size:12px; font-weight:600; color:var(--primary);"></span>
+          </div>
+
+          <!-- Preview & Anomaly Table -->
+          <div id="importPreviewWrap" style="margin-top:16px; display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+              <h4 style="margin:0; font-size:14px; color:var(--ink);">ผลการตรวจเช็คไฟล์ก่อนนำเข้า (Pre-flight Validation)</h4>
+              <div id="importSummaryBadges" style="display:flex; gap:6px; font-size:12px;"></div>
+            </div>
+            <div class="table-wrap" style="max-height:240px; overflow-y:auto; border:1px solid var(--line); border-radius:6px;">
+              <table class="data-table" id="importPreviewTable" style="font-size:12px;">
+                <thead>
+                  <tr>
+                    <th>แถว</th>
+                    <th>รอบ</th>
+                    <th>จังหวัด</th>
+                    <th>แปลง</th>
+                    <th>ทะลาย</th>
+                    <th>ผลรวม</th>
+                    <th>กก.</th>
+                    <th>ซม.</th>
+                    <th>สถานะการตรวจสอบ</th>
+                  </tr>
+                </thead>
+                <tbody id="importPreviewTbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="importStatusMsg" style="margin-top:12px; font-size:13px;"></div>
+        </div>
+        <div class="modal-actions" style="padding:14px 20px; background:#f8fafc; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:8px;">
+          <button type="button" id="btnCancelBatchImport" class="button ghost">ปิด</button>
+          <button type="button" id="btnCommitBatchImport" class="button primary" disabled>🚀 ยืนยันบันทึกข้อมูลลงฐานข้อมูล</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 21-Day Harvest & Inspection Calendar Modal -->
+    <div id="harvestCalendarModal" class="modal-backdrop" hidden>
+      <div class="modal-card" style="max-width: 840px; max-height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-head" style="padding:14px 20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 style="margin:0; font-size:16px; color:var(--ink); display:flex; align-items:center; gap:8px;">
+              📅 ปฏิทินรอบการตัดมะพร้าว 21 วัน & กำหนดการสำรวจ 6 รอบ
+            </h3>
+            <p style="font-size:12px; color:var(--muted); margin-top:2px;">คำนวณรอบการเก็บเกี่ยวมะพร้าวน้ำหอมทุก 20-21 วัน และวางแผนลงพื้นที่สำรวจคุณภาพ</p>
+          </div>
+          <button type="button" id="btnCloseCalendarModal" class="button ghost small" style="padding:4px 8px;">✕</button>
+        </div>
+        <div class="modal-body" style="padding:20px; overflow-y:auto; flex:1;">
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px 16px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <label style="font-size:13px; font-weight:600; color:#166534;">
+                วันเริ่มตัดทะลายแรกของปี:
+                <input type="date" id="calStartDate" style="margin-left:6px; padding:6px 10px; border-radius:6px; border:1px solid #86efac; font-size:13px;">
+              </label>
+            </div>
+            <div style="font-size:12px; color:#15803d;">
+              🌴 มะพร้าวน้ำหอมให้ผลผลิตต่อเนื่อง ตัดเฉลี่ย 17-18 ครั้ง/ปี (ทุก 20-21 วัน)
+            </div>
+          </div>
+
+          <!-- Schedule Timeline Grid -->
+          <div id="calendarCyclesContainer" class="calendar-cycles-grid">
+            <!-- Dynamically populated 21-day cycles and matching 6 survey rounds -->
+          </div>
+        </div>
+        <div class="modal-actions" style="padding:12px 20px; background:#f8fafc; border-top:1px solid var(--line); display:flex; justify-content:flex-end;">
+          <button type="button" id="btnOkCalendarModal" class="button primary small">เข้าใจแล้ว / ปิดหน้าต่าง</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Executive Print Modal & Printable Area -->
+    <div id="executivePrintModal" class="modal-backdrop" hidden>
+      <div class="modal-card print-report-card" style="max-width: 900px; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-head no-print" style="padding:14px 20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 style="margin:0; font-size:16px; color:var(--ink);">🖨️ ตัวอย่างรายงานสรุปผู้บริหาร (One-Page Executive Report)</h3>
+            <p style="font-size:12px; color:var(--muted); margin-top:2px;">จัดหน้าแบบทางการตามมาตรฐานกรมส่งเสริมการเกษตร (DOAE) พร้อมพิมพ์ทันที</p>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button type="button" id="btnExecutePrint" class="button primary small" style="display:inline-flex; align-items:center; gap:6px;">🖨️ สั่งพิมพ์ (Print / PDF)</button>
+            <button type="button" id="btnClosePrintModal" class="button ghost small">✕ ปิด</button>
+          </div>
+        </div>
+        
+        <div class="modal-body print-document-body" style="padding:30px; overflow-y:auto; flex:1; background:#ffffff;">
+          <div id="printableReportArea" class="printable-report-paper">
+            <!-- Official Header -->
+            <div class="report-header">
+              <div class="report-emblem-box">DOAE</div>
+              <div class="report-title-box">
+                <h2>กรมส่งเสริมการเกษตร กระทรวงเกษตรและสหกรณ์</h2>
+                <h3>รายงานสรุปผลการติดตามและประเมินคุณภาพมะพร้าวน้ำหอม 4 จังหวัด</h3>
+                <p id="reportPrintDate" class="report-date-line">ข้อมูล ณ วันที่ ...</p>
+              </div>
+            </div>
+
+            <div class="report-divider"></div>
+
+            <!-- Executive KPIs -->
+            <div class="report-section-title">๑. ภาพรวมผลการประเมินคุณภาพในโครงการ</div>
+            <div id="reportKpiRow" class="report-kpi-row">
+              <!-- Dynamically populated KPI items -->
+            </div>
+
+            <!-- Grade Breakdown Table -->
+            <div class="report-section-title" style="margin-top:20px;">๒. สัดส่วนผลผลิตจำแนกตามเกรดคุณภาพ (๔ เกรด)</div>
+            <table class="report-table" id="reportGradeTable">
+              <thead>
+                <tr>
+                  <th>เกรดคุณภาพ</th>
+                  <th>คำจำกัดความขนาด</th>
+                  <th class="text-right">ผลรวม (ลูก)</th>
+                  <th class="text-right">สัดส่วน (%)</th>
+                  <th class="text-right">ราคาเฉลี่ย (บาท/ลูก)</th>
+                </tr>
+              </thead>
+              <tbody id="reportGradeTbody"></tbody>
+            </table>
+
+            <!-- Province Comparison Table -->
+            <div class="report-section-title" style="margin-top:20px;">๓. สรุปผลการประเมินจำแนกรายจังหวัด</div>
+            <table class="report-table" id="reportProvinceTable">
+              <thead>
+                <tr>
+                  <th>จังหวัด</th>
+                  <th class="text-right">แปลงที่ประเมิน</th>
+                  <th class="text-right">ผลผลิตรวม (ลูก)</th>
+                  <th class="text-right">เฉลี่ย/ทะลาย</th>
+                  <th class="text-right">จัมโบ้ (%)</th>
+                  <th class="text-right">นน.เฉลี่ย (กก.)</th>
+                  <th class="text-right">รอบวง (ซม.)</th>
+                  <th class="text-center">สถานะความครบถ้วน</th>
+                </tr>
+              </thead>
+              <tbody id="reportProvinceTbody"></tbody>
+            </table>
+
+            <!-- Quality Assurance & Sign-off Block -->
+            <div class="report-audit-block">
+              <strong>การรับรองความถูกต้องของข้อมูล (Data Verification & QC Seal):</strong>
+              <p id="reportAuditSealText">ระบบได้ทำการตรวจสอบความถูกต้องและผ่านเกณฑ์การสแกนความผิดปกติ (Anomaly Detection)</p>
+            </div>
+
+            <div class="report-signatures">
+              <div class="sig-col">
+                <div class="sig-line">...........................................................</div>
+                <div class="sig-name">(เจ้าหน้าที่ผู้จัดทำรายงาน)</div>
+                <div class="sig-role">ผู้ปฏิบัติงานภาคสนาม</div>
+              </div>
+              <div class="sig-col">
+                <div class="sig-line">...........................................................</div>
+                <div class="sig-name">(หัวหน้ากลุ่มยุทธศาสตร์และสารสนเทศ)</div>
+                <div class="sig-role">ผู้ตรวจรับรองรายงาน</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Knowledge Article Reader Modal -->
+    <div id="knowledgeArticleModal" class="modal-backdrop" hidden>
+      <div class="modal-card article-reader-card" style="max-width: 960px; max-height: 92vh; display: flex; flex-direction: column;">
+        <div class="modal-head" style="padding: 16px 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+          <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+            <div id="articleModalIcon" style="font-size: 28px; width: 44px; height: 44px; display: grid; place-items: center; background: #dcfce7; border-radius: 12px; flex-shrink: 0;">🌴</div>
+            <div style="min-width: 0;">
+              <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 2px;">
+                <span id="articleModalBadge" class="badge-category" style="background:#166534; color:#fff; font-size:11px; padding:2px 8px; border-radius:10px; font-weight:600;">การเพาะปลูก</span>
+                <span id="articleModalReadTime" style="font-size:12px; color:var(--muted);">⏱️ 15 นาที</span>
+              </div>
+              <h3 id="articleModalTitle" style="margin: 0; font-size: 16px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                หัวข้อบทความ
+              </h3>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+            <button type="button" id="btnPrintArticle" class="button ghost small" style="display: inline-flex; align-items: center; gap: 6px;">🖨️ พิมพ์</button>
+            <button type="button" id="btnCloseArticleModal" class="button ghost small" style="font-size: 16px; padding: 4px 10px;">✕</button>
+          </div>
+        </div>
+
+        <div class="modal-body article-reader-body" style="padding: 32px 36px; overflow-y: auto; flex: 1; background: #ffffff;">
+          <div id="articleModalContent" class="article-markdown-rendered">
+            <!-- Rendered Markdown goes here -->
+          </div>
+        </div>
+
+        <div class="modal-actions" style="padding: 12px 24px; background: #f8fafc; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 12px; color: var(--muted);">🌾 ฐานความรู้มะพร้าวน้ำหอม กรมส่งเสริมการเกษตร (DOAE)</span>
+          <button type="button" id="btnBottomCloseArticleModal" class="button primary small">ปิดหน้าต่าง</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick 3D Botanical Atlas Modal (In-Form Popup) -->
+    <div id="quick3DModal" class="modal-backdrop" hidden>
+      <div class="modal-card quick-3d-card" style="max-width: 1040px; height: 86vh; display: flex; flex-direction: column;">
+        <div class="modal-head" style="padding: 14px 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: #071813; color: #ecfdf5;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 22px;">🌴</span>
+            <div>
+              <h3 style="margin: 0; font-size: 15px; color: #fff;">คู่มือเปรียบเทียบระยะจั่นและทลาย 3D (Quick Reference)</h3>
+              <p style="font-size: 11px; color: #a7f3d0; margin-top: 2px;">คลิกหมุนดู 360° และคลิกปุ่ม 1–9 เพื่อตรวจวัดระยะจั่นก่อนบันทึกคะแนน</p>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <a href="/coconut-3d/index.html" target="_blank" rel="noopener" class="button ghost small" style="color: #ecfdf5; border-color: #34d39944; text-decoration: none;">↗️ หน้าต่างแยก</a>
+            <button type="button" id="btnCloseQuick3DModal" class="button ghost small" style="color: #ecfdf5; border-color: #34d39944;">✕ ปิด</button>
+          </div>
+        </div>
+
+        <div class="modal-body" style="padding: 0; flex: 1; overflow: hidden; background: #071813;">
+          <iframe id="quick3DIframe" src="" style="width: 100%; height: 100%; border: 0;" title="3D Coconut Quick Visualizer"></iframe>
+        </div>
       </div>
     </div>
 

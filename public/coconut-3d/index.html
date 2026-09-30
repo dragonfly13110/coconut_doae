@@ -1,0 +1,3534 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>จากจั่นสู่ทลาย | Coconut 3D</title>
+    <style>
+      body {
+        margin: 0;
+        background: #071813;
+      }
+      #coconut-atlas {
+        min-height: 100svh;
+        border-radius: 0 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="coconut-atlas">
+      <style>
+        #coconut-atlas {
+          --ink: #f2f4e8;
+          --muted: #c0cfbd;
+          --gold: #f2d98f;
+          position: relative;
+          width: 100%;
+          height: 790px;
+          overflow: hidden;
+          background: #12251e;
+          color: var(--ink);
+          font-family: Tahoma, 'Noto Sans Thai', sans-serif;
+          border-radius: 18px;
+          isolation: isolate;
+        }
+        #coconut-atlas * {
+          box-sizing: border-box;
+        }
+        #coconut-atlas canvas {
+          display: block;
+          width: 100%;
+          height: 100%;
+          touch-action: none;
+          position: relative;
+          z-index: 0;
+        }
+        #coconut-atlas > canvas {
+          position: absolute;
+          inset: 0;
+        }
+        #coconut-atlas::after {
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          content: '';
+          pointer-events: none;
+          background:
+            radial-gradient(circle at 52% 44%, transparent 34%, #07181318 78%),
+            linear-gradient(
+              180deg,
+              #f8e8b015 0%,
+              transparent 42%,
+              #0718132a 100%
+            );
+          mix-blend-mode: soft-light;
+        }
+        #coconut-atlas[data-scene-mode='night']::after {
+          background:
+            radial-gradient(circle at 52% 42%, transparent 28%, #02081732 78%),
+            linear-gradient(
+              180deg,
+              #708dbb12 0%,
+              transparent 42%,
+              #02081746 100%
+            );
+          mix-blend-mode: normal;
+        }
+        #coconut-atlas .top,
+        #coconut-atlas .left-tools,
+        #coconut-atlas .hint,
+        #coconut-atlas .zoom,
+        #coconut-atlas .markers,
+        #coconut-atlas .scene-status,
+        #coconut-atlas .bottom {
+          z-index: 2;
+        }
+        #coconut-atlas button,
+        #coconut-atlas select {
+          font: inherit;
+          color: inherit;
+        }
+        #coconut-atlas button {
+          cursor: pointer;
+          border: 1px solid #cbdfbc26;
+          background: #10281fd9;
+          border-radius: 9px;
+          padding: 10px 13px;
+          transition:
+            background 0.2s,
+            border-color 0.2s;
+        }
+        #coconut-atlas button:hover {
+          background: #284638;
+        }
+        #coconut-atlas button[aria-pressed='true'] {
+          background: #d7e68e;
+          color: #16251c;
+          border-color: #d7e68e;
+        }
+        #coconut-atlas button:focus-visible {
+          outline: 2px solid #e6edb3;
+          outline-offset: 3px;
+        }
+        #coconut-atlas .top-right {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 16px;
+          pointer-events: auto;
+        }
+        #coconut-atlas .corner-btn {
+          padding: 8px 12px;
+          font-size: 11px;
+          backdrop-filter: blur(14px);
+        }
+        #coconut-atlas .scene-mode {
+          display: grid;
+          gap: 6px;
+          min-width: 170px;
+          padding: 9px;
+          border: 1px solid #e9efcf2e;
+          border-radius: 13px;
+          background: #10281f85;
+          box-shadow:
+            inset 0 1px 0 #ffffff18,
+            0 10px 26px #07181324;
+          backdrop-filter: blur(16px);
+        }
+        #coconut-atlas .scene-mode-label {
+          color: #d9e5c4;
+          font-size: 9px;
+          letter-spacing: 1.5px;
+          text-align: right;
+        }
+        #coconut-atlas .scene-mode-options {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 5px;
+        }
+        #coconut-atlas .scene-mode button {
+          min-width: 0;
+          padding: 7px 8px;
+          border-color: #d9e5c440;
+          background: #081b1466;
+          font-size: 11px;
+          text-align: center;
+        }
+        #coconut-atlas .scene-mode button:hover {
+          background: #2f4f3c;
+        }
+        #coconut-atlas .scene-mode button[aria-pressed='true'] {
+          border-color: #f2d98f;
+          background: #f2d98f;
+          color: #1a281d;
+        }
+        #coconut-atlas .view-mode {
+          min-width: 205px;
+        }
+        #coconut-atlas .view-mode button {
+          font-size: 10px;
+        }
+        #coconut-atlas[data-view-mode='2d'] > canvas {
+          visibility: hidden;
+        }
+        #coconut-atlas[data-view-mode='2d'] .left-tools,
+        #coconut-atlas[data-view-mode='2d'] .hint,
+        #coconut-atlas[data-view-mode='2d'] .zoom,
+        #coconut-atlas[data-view-mode='2d'] .markers,
+        #coconut-atlas[data-view-mode='2d'] .scene-status {
+          display: none;
+        }
+        #coconut-atlas .ca-2d-view {
+          position: absolute;
+          inset: 0;
+          z-index: 2;
+          overflow-y: auto;
+          padding: 178px 28px 248px;
+          background:
+            radial-gradient(circle at 50% 18%, #f6e7b9 0, #f6e7b900 35%),
+            linear-gradient(180deg, #d7e5c5 0%, #a7c392 45%, #6f8f65 100%);
+          color: #203a2b;
+        }
+        #coconut-atlas .ca-2d-header {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 18px;
+          max-width: 1160px;
+          margin: 0 auto 16px;
+        }
+        #coconut-atlas .ca-2d-kicker {
+          color: #43664b;
+          font-size: 10px;
+          letter-spacing: 2px;
+          font-weight: 700;
+        }
+        #coconut-atlas .ca-2d-header h2 {
+          margin: 5px 0 3px;
+          color: #183827;
+          font-size: 22px;
+          line-height: 1.35;
+        }
+        #coconut-atlas .ca-2d-header p {
+          margin: 0;
+          color: #31553d;
+          font-size: 11px;
+          line-height: 1.6;
+        }
+        #coconut-atlas .ca-2d-count {
+          flex: 0 0 auto;
+          padding: 9px 12px;
+          border: 1px solid #ffffff9c;
+          border-radius: 12px;
+          background: #f7f1d88c;
+          color: #35543b;
+          font-size: 11px;
+          white-space: nowrap;
+          box-shadow: 0 8px 20px #365b3b18;
+        }
+        #coconut-atlas .ca-2d-orchard {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(130px, 1fr));
+          align-items: stretch;
+          gap: 12px;
+          max-width: 1160px;
+          margin: 0 auto;
+        }
+        #coconut-atlas .ca-2d-tree-card {
+          min-width: 0;
+          padding: 9px 9px 11px;
+          border: 1px solid #ffffff9c;
+          border-radius: 16px;
+          background: #f7f1d88c;
+          color: #23412f;
+          text-align: left;
+          box-shadow: 0 12px 24px #365b3b20;
+          backdrop-filter: blur(5px);
+        }
+        #coconut-atlas .ca-2d-tree-card:hover {
+          background: #fff8dfc9;
+          border-color: #f6e3a5;
+          transform: translateY(-2px);
+        }
+        #coconut-atlas .ca-2d-tree-card[aria-pressed='true'] {
+          border-color: #47744e;
+          background: #fff8dfeb;
+          box-shadow:
+            0 0 0 3px #e6e79c99,
+            0 14px 30px #365b3b2e;
+        }
+        #coconut-atlas .ca-2d-tree-card:disabled {
+          cursor: default;
+          opacity: 0.58;
+          transform: none;
+        }
+        #coconut-atlas .ca-2d-tree-card canvas {
+          width: 100%;
+          height: 212px;
+          position: relative;
+          border-radius: 11px;
+          touch-action: manipulation;
+          background: #dbe8c1;
+        }
+        #coconut-atlas .ca-2d-tree-caption {
+          display: flex;
+          align-items: baseline;
+          gap: 7px;
+          margin-top: 8px;
+        }
+        #coconut-atlas .ca-2d-tree-number {
+          color: #527342;
+          font:
+            19px Georgia,
+            serif;
+        }
+        #coconut-atlas .ca-2d-tree-name {
+          overflow: hidden;
+          color: #244631;
+          font-size: 11px;
+          font-weight: 700;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        #coconut-atlas .ca-2d-tree-note {
+          display: block;
+          margin-top: 3px;
+          color: #55715a;
+          font-size: 9px;
+          line-height: 1.45;
+        }
+        #coconut-atlas .ca-2d-tip {
+          max-width: 1160px;
+          margin: 13px auto 0;
+          color: #34543d;
+          font-size: 10px;
+          text-align: center;
+        }
+        #coconut-atlas[data-scene-mode='night'] .scene-mode {
+          border-color: #b9d1f133;
+          background: #0b1930a8;
+        }
+        #coconut-atlas[data-scene-mode='night'] .scene-mode-label {
+          color: #c7d9f3;
+        }
+        #coconut-atlas[data-scene-mode='night'] .scene-mode button {
+          border-color: #b9d1f13d;
+          background: #101f39a8;
+        }
+        #coconut-atlas[data-scene-mode='night'] .scene-mode button:hover {
+          background: #253e60;
+        }
+        #coconut-atlas[data-scene-mode='night']
+          .scene-mode
+          button[aria-pressed='true'] {
+          border-color: #c5dafa;
+          background: #c5dafa;
+          color: #172540;
+        }
+        #coconut-atlas[data-scene-mode='day'] .eyebrow {
+          color: #315c4a;
+          text-shadow: 0 1px 2px #fff6d255;
+        }
+        #coconut-atlas[data-scene-mode='day'] h1 {
+          color: #17352b;
+          text-shadow: 0 2px 10px #fff4cf45;
+        }
+        #coconut-atlas[data-scene-mode='day'] .sub {
+          color: #284f40;
+          text-shadow: 0 1px 6px #fff4cf4d;
+        }
+        #coconut-atlas[data-scene-mode='day'] .badge {
+          color: #274c3b;
+          border-top-color: #315c4a45;
+          text-shadow: 0 1px 5px #fff4cf4d;
+        }
+        #coconut-atlas[data-scene-mode='day'] .count {
+          color: #1c4935;
+        }
+        #coconut-atlas[data-scene-mode='day'] .hint,
+        #coconut-atlas[data-scene-mode='day'] .scene-status {
+          color: #315c4a;
+          text-shadow: 0 1px 5px #fff4cf66;
+        }
+        #coconut-atlas .top {
+          position: absolute;
+          left: 30px;
+          right: 30px;
+          top: 26px;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          pointer-events: none;
+        }
+        #coconut-atlas .eyebrow {
+          font-size: 10px;
+          letter-spacing: 3px;
+          color: #c4d39d;
+          margin-bottom: 12px;
+        }
+        #coconut-atlas h1 {
+          font-weight: 400;
+          font-size: 34px;
+          line-height: 1.35;
+          margin: 0 0 8px;
+          color: #f1f2e6;
+        }
+        #coconut-atlas .sub {
+          color: #b1c0ad;
+          font-size: 12px;
+          line-height: 1.8;
+        }
+        #coconut-atlas .badge {
+          font:
+            italic 14px Georgia,
+            serif;
+          color: #ccd5bb;
+          border-top: 1px solid #8d9d7044;
+          padding-top: 8px;
+          text-align: right;
+        }
+        #coconut-atlas .count {
+          font-size: 42px;
+          font-family: Georgia, serif;
+          font-style: normal;
+          display: block;
+          line-height: 1.1;
+          margin-bottom: 7px;
+          color: #e3e7c6;
+        }
+        #coconut-atlas .left-tools {
+          position: absolute;
+          left: 28px;
+          top: 200px;
+          display: flex;
+          gap: 7px;
+          flex-direction: column;
+        }
+        #coconut-atlas .left-tools button {
+          font-size: 12px;
+          text-align: left;
+          backdrop-filter: blur(14px);
+        }
+        #coconut-atlas .harvest-panel {
+          margin-top: 13px;
+          padding-top: 12px;
+          border-top: 1px solid #bbd6b92b;
+        }
+        #coconut-atlas .harvest-heading {
+          color: #e5ecb3;
+          font-size: 11px;
+          margin-bottom: 8px;
+        }
+        #coconut-atlas .harvest-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+          margin-top: 8px;
+        }
+        #coconut-atlas button:disabled {
+          opacity: 0.45;
+          cursor: default;
+        }
+        #coconut-atlas .harvest-row select {
+          max-width: 100%;
+          background: #10281f;
+          border: 1px solid #bbd6b94d;
+          border-radius: 8px;
+          padding: 8px;
+        }
+        #coconut-atlas [hidden] {
+          display: none !important;
+        }
+        #coconut-atlas .harvest-row label {
+          color: #c7d5c0;
+          font-size: 11px;
+        }
+        #coconut-atlas .harvest-row input {
+          width: 68px;
+          border: 1px solid #bbd6b94d;
+          border-radius: 8px;
+          background: #071813cc;
+          color: #f1f2e6;
+          padding: 8px;
+          text-align: center;
+        }
+        #coconut-atlas .harvest-row input:focus-visible {
+          outline: 2px solid #e6edb3;
+          outline-offset: 2px;
+        }
+        #coconut-atlas .harvest-row button {
+          padding: 8px 10px;
+          font-size: 11px;
+          background: #b9cf72;
+          color: #17251b;
+          border-color: #d7e68e;
+        }
+        #coconut-atlas .harvest-status {
+          color: #a9c6aa;
+          font-size: 10px;
+          line-height: 1.5;
+          margin-top: 7px;
+        }
+        #coconut-atlas .bottom {
+          position: absolute;
+          bottom: 20px;
+          left: 28px;
+          right: 28px;
+          pointer-events: none;
+        }
+        #coconut-atlas .detail {
+          max-width: 385px;
+          margin-left: auto;
+          background: linear-gradient(125deg, #10291eef, #0a201aed);
+          border: 1px solid #bbd6b92b;
+          border-radius: 15px;
+          padding: 17px 20px;
+          pointer-events: auto;
+          backdrop-filter: blur(18px);
+          margin-bottom: 12px;
+          box-shadow: 0 12px 40px #0002;
+        }
+        #coconut-atlas .detail-top {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin-bottom: 8px;
+          cursor: pointer;
+          list-style: none;
+        }
+        #coconut-atlas .detail-top::-webkit-details-marker {
+          display: none;
+        }
+        #coconut-atlas .detail-top::after {
+          content: 'ขยาย ▾';
+          margin-left: auto;
+          white-space: nowrap;
+          font-size: 11px;
+          color: var(--gold);
+        }
+        #coconut-atlas .detail[open] > .detail-top::after {
+          content: 'ย่อ ▴';
+        }
+        #coconut-atlas .detail-top:focus-visible {
+          outline: 2px solid var(--gold);
+          outline-offset: 4px;
+        }
+        #coconut-atlas .no {
+          font:
+            38px Georgia,
+            serif;
+          color: #dbeaa2;
+        }
+        #coconut-atlas h2 {
+          font-size: 18px;
+          line-height: 1.4;
+          margin: 0;
+          font-weight: 400;
+        }
+        #coconut-atlas .en {
+          font-size: 9px;
+          letter-spacing: 1.5px;
+          color: #9fbba0;
+          margin-top: 5px;
+        }
+        #coconut-atlas .desc {
+          font-size: 12px;
+          line-height: 1.85;
+          color: #c7d5c0;
+          margin: 0;
+        }
+        #coconut-atlas .rail {
+          display: grid;
+          grid-template-columns: repeat(9, 1fr);
+          gap: 6px;
+          pointer-events: auto;
+          padding: 9px;
+          background: #0b211be8;
+          border: 1px solid #a9c6aa26;
+          border-radius: 14px;
+          backdrop-filter: blur(20px);
+        }
+        #coconut-atlas .stage {
+          padding: 10px 4px 9px;
+          border: 0;
+          background: transparent;
+          min-width: 0;
+          text-align: center;
+        }
+        #coconut-atlas .stage strong {
+          display: block;
+          font:
+            21px Georgia,
+            serif;
+          margin-bottom: 6px;
+        }
+        #coconut-atlas .stage span {
+          font-size: 10px;
+          display: block;
+          white-space: nowrap;
+        }
+        #coconut-atlas .foot {
+          font-size: 10px;
+          color: #a4b6a0;
+          margin-top: 10px;
+          display: flex;
+          justify-content: space-between;
+          gap: 8px;
+          pointer-events: auto;
+        }
+        #coconut-atlas .foot a {
+          color: #b6c99d;
+          text-decoration: none;
+        }
+        #coconut-atlas .markers {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+        }
+        #coconut-atlas .pin {
+          position: absolute;
+          pointer-events: auto;
+          min-width: 30px;
+          min-height: 30px;
+          padding: 0;
+          border-radius: 50%;
+          font:
+            14px Georgia,
+            serif;
+          border: 1px solid #e7edb88a;
+          background: #182c20dc;
+          color: #e2edb4;
+          box-shadow: 0 2px 15px #0008;
+          transform: translate(-50%, -50%);
+        }
+        #coconut-atlas .pin.active {
+          background: #e7edb5;
+          color: #172a1e;
+          box-shadow: 0 0 0 6px #e7edb519;
+        }
+        #coconut-atlas .hint {
+          position: absolute;
+          right: 28px;
+          top: 110px;
+          color: #9aac98;
+          font-size: 10px;
+          letter-spacing: 0.5px;
+          pointer-events: none;
+        }
+        #coconut-atlas .loading {
+          position: absolute;
+          inset: 0;
+          display: grid;
+          place-items: center;
+          background: #0c2018;
+          z-index: 20;
+          text-align: center;
+          font-size: 15px;
+          line-height: 2;
+        }
+        #coconut-atlas .loading small {
+          display: block;
+          font-size: 11px;
+          color: #b0c593;
+        }
+        #coconut-atlas .scene-status {
+          position: absolute;
+          right: 28px;
+          bottom: 185px;
+          font-size: 10px;
+          color: #a1b49f;
+          letter-spacing: 1px;
+          pointer-events: none;
+        }
+        #coconut-atlas .zoom {
+          position: absolute;
+          right: 28px;
+          top: 145px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        #coconut-atlas .zoom button {
+          font-size: 17px;
+          padding: 7px 12px;
+        }
+        #coconut-atlas .detail.hidden {
+          visibility: hidden;
+        }
+        @media (max-width: 600px) {
+          #coconut-atlas {
+            height: 780px;
+            border-radius: 12px;
+          }
+          #coconut-atlas .top {
+            left: 18px;
+            right: 18px;
+            top: 20px;
+          }
+          #coconut-atlas h1 {
+            font-size: 26px;
+          }
+          #coconut-atlas .eyebrow {
+            font-size: 8px;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+          }
+          #coconut-atlas .badge {
+            font-size: 11px;
+          }
+          #coconut-atlas .count {
+            font-size: 31px;
+          }
+          #coconut-atlas .top-right {
+            gap: 8px;
+          }
+          #coconut-atlas .scene-mode {
+            min-width: 145px;
+            padding: 7px;
+          }
+          #coconut-atlas .scene-mode-label {
+            font-size: 8px;
+            letter-spacing: 1px;
+          }
+          #coconut-atlas .scene-mode button {
+            padding: 6px 5px;
+            font-size: 10px;
+          }
+          #coconut-atlas .sub {
+            font-size: 10px;
+            max-width: 240px;
+          }
+          #coconut-atlas .left-tools {
+            left: 16px;
+            top: 139px;
+            flex-direction: row;
+            flex-wrap: wrap;
+            max-width: 300px;
+            gap: 5px;
+          }
+          #coconut-atlas .left-tools button {
+            font-size: 10px;
+            padding: 8px 9px;
+          }
+          #coconut-atlas .harvest-panel {
+            margin-top: 9px;
+            padding-top: 9px;
+          }
+          #coconut-atlas .harvest-row {
+            gap: 5px;
+          }
+          #coconut-atlas .harvest-row input,
+          #coconut-atlas .harvest-row button {
+            padding: 7px 8px;
+          }
+          #coconut-atlas .hint {
+            right: 17px;
+            top: 246px;
+            font-size: 9px;
+          }
+          #coconut-atlas .zoom {
+            right: 16px;
+            top: 280px;
+          }
+          #coconut-atlas .bottom {
+            left: 12px;
+            right: 12px;
+            bottom: 13px;
+          }
+          #coconut-atlas .detail {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            max-width: 100%;
+          }
+          #coconut-atlas .no {
+            font-size: 28px;
+          }
+          #coconut-atlas h2 {
+            font-size: 16px;
+          }
+          #coconut-atlas .desc {
+            font-size: 11px;
+            line-height: 1.65;
+          }
+          #coconut-atlas .rail {
+            gap: 0;
+            padding: 5px 1px;
+            border-radius: 10px;
+          }
+          #coconut-atlas .stage {
+            padding: 9px 0;
+            min-height: 54px;
+          }
+          #coconut-atlas .stage strong {
+            font-size: 18px;
+            margin-bottom: 5px;
+          }
+          #coconut-atlas .stage span {
+            font-size: 8px;
+            letter-spacing: -0.3px;
+          }
+          #coconut-atlas .foot {
+            font-size: 8px;
+            line-height: 1.5;
+            flex-wrap: wrap;
+            gap: 2px;
+          }
+          #coconut-atlas .scene-status {
+            bottom: 256px;
+            right: 16px;
+            font-size: 8px;
+          }
+          #coconut-atlas .pin {
+            min-width: 29px;
+            min-height: 29px;
+            font-size: 13px;
+          }
+          #coconut-atlas .ca-2d-view {
+            padding: 223px 13px 315px;
+          }
+          #coconut-atlas .ca-2d-header {
+            display: block;
+            margin-bottom: 10px;
+          }
+          #coconut-atlas .ca-2d-header h2 {
+            font-size: 18px;
+          }
+          #coconut-atlas .ca-2d-header p {
+            font-size: 10px;
+          }
+          #coconut-atlas .ca-2d-count {
+            display: inline-block;
+            margin-top: 9px;
+            padding: 7px 9px;
+            font-size: 9px;
+          }
+          #coconut-atlas .ca-2d-orchard {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+          }
+          #coconut-atlas .ca-2d-tree-card {
+            padding: 6px 6px 8px;
+            border-radius: 12px;
+          }
+          #coconut-atlas .ca-2d-tree-card canvas {
+            height: 150px;
+            border-radius: 8px;
+          }
+          #coconut-atlas .ca-2d-tree-caption {
+            gap: 5px;
+            margin-top: 5px;
+          }
+          #coconut-atlas .ca-2d-tree-number {
+            font-size: 16px;
+          }
+          #coconut-atlas .ca-2d-tree-name {
+            font-size: 9px;
+          }
+          #coconut-atlas .ca-2d-tree-note {
+            font-size: 8px;
+          }
+          #coconut-atlas .ca-2d-tip {
+            margin-top: 9px;
+            font-size: 9px;
+          }
+        }
+        #coconut-atlas:fullscreen {
+          height: 100dvh;
+          min-height: 0;
+        }
+        #coconut-atlas .detail {
+          max-height: 48%;
+          overflow-y: auto;
+        }
+        #coconut-atlas .scene-mode button {
+          min-height: 44px;
+        }
+        #coconut-atlas .scene-status {
+          display: none;
+        }
+        @media (max-width: 600px) {
+          #coconut-atlas .badge,
+          #coconut-atlas .scene-mode-label {
+            display: none;
+          }
+          #coconut-atlas .top {
+            display: block;
+          }
+          #coconut-atlas .top-right {
+            position: absolute;
+            top: 73px;
+            right: 0;
+          }
+          #coconut-atlas .view-mode {
+            position: absolute;
+            top: -53px;
+            right: 0;
+            min-width: 145px;
+          }
+          #coconut-atlas .left-tools {
+            top: 150px;
+            max-width: calc(100% - 72px);
+          }
+          #coconut-atlas .left-tools button {
+            min-height: 36px;
+          }
+          #coconut-atlas .detail {
+            max-height: 270px;
+          }
+          #coconut-atlas .hint {
+            display: none;
+          }
+          #coconut-atlas .zoom {
+            top: 160px;
+          }
+        }
+      </style>
+      <div class="loading">
+        กำลังสร้างต้นมะพร้าว…<small
+          >รายละเอียดทางใบ • ผิวผล • จั่นและทลาย 9 ระยะ</small
+        >
+      </div>
+      <canvas
+        aria-label="ต้นมะพร้าวสามมิติ มีจั่นและทลาย 9 ระยะ ลากเพื่อหมุน ใช้ปุ่มเพื่อซูมและเลือกทลาย"
+      ></canvas>
+      <section
+        id="ca-2d-view"
+        class="ca-2d-view"
+        aria-label="มุมมอง 2D ต้นมะพร้าวหลายต้น"
+        hidden
+      >
+        <div class="ca-2d-header">
+          <div>
+            <div class="ca-2d-kicker">COCONUT / ORCHARD VIEW</div>
+            <h2>หลายต้น หลายช่วงวัย</h2>
+            <p>เปรียบเทียบระยะของจั่นและทลายบนต้นมะพร้าวหลายต้น</p>
+          </div>
+          <div id="ca-2d-count" class="ca-2d-count" aria-live="polite">
+            กำลังเตรียมต้นมะพร้าว
+          </div>
+        </div>
+        <div
+          class="ca-2d-orchard"
+          role="group"
+          aria-label="ต้นมะพร้าวหลายช่วงวัย"
+        ></div>
+        <div class="ca-2d-tip">
+          คลิกต้นที่สนใจเพื่อเลือกช่วงวัย แล้วสลับกลับไปดูรายละเอียดแบบ 3D ได้
+        </div>
+      </section>
+      <div class="top">
+        <div>
+          <div class="eyebrow">COCONUT / BOTANICAL ATLAS</div>
+          <h1>จากจั่น…สู่ทลาย</h1>
+          <div class="sub">
+            สำรวจต้นมะพร้าว 360°<br />จั่นและทลายต่างวัยบนต้นเดียวกัน
+          </div>
+        </div>
+        <div class="top-right">
+          <button id="ca-fullscreen" aria-pressed="false" class="corner-btn">
+            เต็มจอ
+          </button>
+          <div class="scene-mode" role="group" aria-label="เลือกบรรยากาศฉาก">
+            <span class="scene-mode-label">บรรยากาศฉาก</span>
+            <div class="scene-mode-options">
+              <button id="ca-day" type="button" aria-pressed="true">
+                กลางวัน
+              </button>
+              <button id="ca-night" type="button" aria-pressed="false">
+                กลางคืน
+              </button>
+            </div>
+          </div>
+          <div
+            class="scene-mode view-mode"
+            role="group"
+            aria-label="เลือกมุมมองต้นมะพร้าว"
+          >
+            <span class="scene-mode-label">มุมมองการสำรวจ</span>
+            <div class="scene-mode-options">
+              <button id="ca-view-3d" type="button" aria-pressed="true">
+                3D ต้นเดียว
+              </button>
+              <button id="ca-view-2d" type="button" aria-pressed="false">
+                2D หลายต้น
+              </button>
+            </div>
+          </div>
+          <div class="badge"><span class="count">09</span>Cocos nucifera</div>
+        </div>
+      </div>
+      <div class="left-tools">
+        <button data-view="full" aria-pressed="true">ดูทั้งต้น</button
+        ><button data-view="crown" aria-pressed="false">ซูมคอมะพร้าว</button
+        ><button id="ca-leaves" aria-pressed="false">ซ่อนทางใบ</button
+        ><button id="ca-rotate" aria-pressed="false">หมุนอัตโนมัติ</button
+        ><button id="ca-labels" aria-pressed="true">หมายเลขทลาย</button>
+        <button id="ca-pan" aria-pressed="false">เลื่อนกล้อง</button>
+        <button id="ca-study" aria-pressed="true">โหมดศึกษาทลาย</button>
+        <button id="ca-economy" aria-pressed="false">ประหยัดเครื่อง</button>
+        <button id="ca-tour" aria-pressed="false">ทัวร์อัตโนมัติ</button>
+        <button id="ca-shot">บันทึกภาพ</button>
+      </div>
+      <div class="hint" role="status">
+        ลากเพื่อหมุน · ลากขวา/สองนิ้วเพื่อเลื่อน · ถ่างเพื่อซูม
+      </div>
+      <div class="zoom">
+        <button id="ca-plus" aria-label="ซูมเข้า">+</button
+        ><button id="ca-minus" aria-label="ซูมออก">−</button>
+      </div>
+      <div class="markers"></div>
+      <div class="scene-status" role="status" aria-live="polite">
+        INTERACTIVE 3D SPECIMEN
+      </div>
+      <div class="bottom">
+        <details class="detail" open>
+          <summary class="detail-top" aria-label="ย่อหรือขยายรายละเอียดทลาย">
+            <div class="no">09</div>
+            <div>
+              <h2>หนึ่งต้น หลายช่วงวัย</h2>
+              <div class="en">EXPLORE THE COCONUT CROWN</div>
+            </div>
+          </summary>
+          <p class="desc">
+            เลือกหมายเลข 1–9 เพื่อเข้าไปดูแต่ละทลาย
+            ตั้งแต่ผลพร้อมเก็บเกี่ยวจนถึงจั่นอ่อนใกล้ยอด
+          </p>
+          <div class="harvest-row">
+            <button id="ca-prev" type="button">จั่นก่อนหน้า</button>
+            <button id="ca-next" type="button">จั่นถัดไป</button>
+          </div>
+          <div class="harvest-panel" aria-label="จำลองเก็บเกี่ยวมะพร้าว">
+            <div class="harvest-heading">จำลองเก็บเกี่ยวทีละทลาย</div>
+            <div class="harvest-row">
+              <button id="ca-standing" type="button" aria-pressed="true">
+                บนต้น / ยังไม่เก็บ
+              </button>
+              <button
+                id="ca-ground"
+                type="button"
+                aria-pressed="false"
+                disabled
+              >
+                ทลายที่เก็บแล้ว
+              </button>
+              <select
+                id="ca-harvested"
+                aria-label="เลือกทลายที่เก็บแล้ว"
+                hidden
+              ></select>
+            </div>
+            <div class="harvest-row">
+              <label for="ca-harvest-count">จำนวนลูก</label>
+              <input
+                id="ca-harvest-count"
+                type="number"
+                min="1"
+                max="13"
+                step="1"
+                value="9"
+                inputmode="numeric"
+              />
+              <button id="ca-harvest" type="button">ตัดจั่น 1</button>
+              <button id="ca-grow" type="button" hidden>
+                จำลองเติบโตรอบถัดไป
+              </button>
+            </div>
+            <div id="ca-harvest-status" class="harvest-status" role="status">
+              บนต้น 9 จั่น • ยังไม่ได้เก็บเกี่ยว
+            </div>
+            <div id="ca-total" class="harvest-status" role="status"></div>
+            <button id="ca-reset" type="button">เริ่มจำลองใหม่</button>
+            <div class="harvest-status">
+              ปุ่มเติบโตจำลองการผ่านเวลา: จั่นเลื่อนวัยและออกจั่นใหม่
+              ไม่ใช่ระยะเวลาจริง
+            </div>
+          </div>
+        </details>
+        <div class="rail" aria-label="เลือกจั่นหรือทลาย"></div>
+        <div class="foot">
+          <span
+            >ภาพจำลอง 9 ระยะเพื่อเปรียบเทียบ •
+            ขนาดและตำแหน่งปรับเพื่อการมองเห็น</span
+          ><a
+            href="https://agritech.tnau.ac.in/horticulture/horti_pcrops_coconut_botany.html"
+            target="_blank"
+            rel="noopener"
+            >อ้างอิงพฤกษศาสตร์: TNAU ↗</a
+          >
+        </div>
+      </div>
+    </div>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/vendor/three.module.js"
+        }
+      }
+    </script>
+    <script type="module">
+      import * as THREE from 'three';
+      import { createCoconutHarvest } from '/coconut-3d/coconutHarvest.js';
+      import { panCamera } from '/coconut-3d/coconutCamera.js';
+      import { createCoconutOrchard } from '/coconut-3d/coconutOrchard.js';
+      (() => {
+        'use strict';
+        const root = document.getElementById('coconut-atlas'),
+          $ = (s) => root.querySelector(s),
+          canvas = $('canvas');
+        try {
+          const T = THREE,
+            V = (x = 0, y = 0, z = 0) => new T.Vector3(x, y, z);
+          let skyTexture = null;
+          function createSkyTexture(mode) {
+            const c = document.createElement('canvas');
+            c.width = 2048;
+            c.height = 1024;
+            const q = c.getContext('2d');
+            const night = mode === 'night';
+            const colors = night
+              ? ['#07152f', '#102b48', '#334d63', '#18283a']
+              : ['#559bc2', '#98cbdc', '#dae7dd', '#6f8662'];
+            const gradient = q.createLinearGradient(0, 0, 0, c.height);
+            colors.forEach((color, index) =>
+              gradient.addColorStop(index / (colors.length - 1), color)
+            );
+            q.fillStyle = gradient;
+            q.fillRect(0, 0, c.width, c.height);
+
+            const celestialX = c.width * 0.78;
+            const celestialY = c.height * 0.39;
+            const glow = q.createRadialGradient(
+              celestialX,
+              celestialY,
+              2,
+              celestialX,
+              celestialY,
+              night ? 150 : 190
+            );
+            glow.addColorStop(0, night ? '#d8e7ff6e' : '#fff3bb9e');
+            glow.addColorStop(0.3, night ? '#b4d0f52e' : '#fff3bb38');
+            glow.addColorStop(1, '#ffffff00');
+            q.fillStyle = glow;
+            q.fillRect(0, 0, c.width, c.height);
+
+            q.save();
+            if (night) {
+              for (let i = 0; i < 150; i++) {
+                const x = (i * 83.17) % c.width;
+                const y = 38 + ((i * 47.31) % (c.height * 0.62));
+                const radius = 0.5 + ((i * 13) % 10) / 14;
+                q.globalAlpha = 0.28 + ((i * 17) % 50) / 100;
+                q.fillStyle = i % 7 === 0 ? '#dce9ff' : '#f3f0d2';
+                q.beginPath();
+                q.arc(x, y, radius, 0, Math.PI * 2);
+                q.fill();
+              }
+              q.globalAlpha = 1;
+              q.fillStyle = '#f3e9c6';
+              q.beginPath();
+              q.arc(celestialX, celestialY, 35, 0, Math.PI * 2);
+              q.fill();
+              q.fillStyle = '#d8d0ae55';
+              for (let i = 0; i < 8; i++) {
+                q.beginPath();
+                q.arc(
+                  celestialX - 18 + ((i * 19) % 34),
+                  celestialY - 15 + ((i * 11) % 28),
+                  2 + (i % 3),
+                  0,
+                  Math.PI * 2
+                );
+                q.fill();
+              }
+            } else {
+              q.globalAlpha = 0.72;
+              q.fillStyle = '#fff2b9';
+              q.beginPath();
+              q.arc(celestialX, celestialY, 39, 0, Math.PI * 2);
+              q.fill();
+              q.globalAlpha = 0.18;
+              q.fillStyle = '#ffffff';
+              for (let i = 0; i < 7; i++) {
+                const x = 120 + ((i * 241) % 920);
+                const y = 250 + ((i * 37) % 125);
+                q.beginPath();
+                q.ellipse(
+                  x,
+                  y,
+                  70 + (i % 3) * 20,
+                  13 + (i % 2) * 6,
+                  0,
+                  0,
+                  Math.PI * 2
+                );
+                q.fill();
+              }
+            }
+            q.restore();
+
+            const horizon = q.createLinearGradient(
+              0,
+              c.height * 0.68,
+              0,
+              c.height
+            );
+            horizon.addColorStop(0, night ? '#6f85952e' : '#fff0c040');
+            horizon.addColorStop(1, night ? '#081a2caa' : '#395943aa');
+            q.fillStyle = horizon;
+            q.fillRect(0, c.height * 0.68, c.width, c.height * 0.32);
+            q.fillStyle = night ? '#091d2d88' : '#38574366';
+            q.beginPath();
+            q.moveTo(0, c.height * 0.83);
+            for (let x = 0; x <= c.width; x += 80) {
+              q.lineTo(x, c.height * (0.79 + ((x / 80) % 3) * 0.018));
+            }
+            q.lineTo(c.width, c.height);
+            q.lineTo(0, c.height);
+            q.closePath();
+            q.fill();
+
+            const texture = new T.CanvasTexture(c);
+            texture.mapping = T.EquirectangularReflectionMapping;
+            texture.colorSpace = T.SRGBColorSpace;
+            texture.needsUpdate = true;
+            return texture;
+          }
+          let seed = 92741;
+          const rand = () => {
+              seed = (Math.imul(seed, 1664525) + 1013904223) | 0;
+              return (seed >>> 0) / 4294967296;
+            },
+            range = (a, b) => a + (b - a) * rand();
+          const scene = new T.Scene();
+          scene.background = new T.Color('#0a1b15');
+          scene.fog = new T.FogExp2('#0a1b15', 0.022);
+          const renderer = new T.WebGLRenderer({
+            canvas,
+            antialias: true,
+            alpha: false,
+            powerPreference: 'high-performance',
+            preserveDrawingBuffer: true,
+          });
+          renderer.setPixelRatio(Math.min(devicePixelRatio, 1.65));
+          renderer.shadowMap.enabled = true;
+          renderer.shadowMap.type = T.PCFSoftShadowMap;
+          renderer.outputColorSpace = T.SRGBColorSpace;
+          renderer.toneMapping = T.ACESFilmicToneMapping;
+          renderer.toneMappingExposure = 1.3;
+          const camera = new T.PerspectiveCamera(38, 1, 0.08, 120);
+          const hemisphereLight = new T.HemisphereLight(
+            '#fff1d6',
+            '#48634b',
+            2.35
+          );
+          scene.add(hemisphereLight);
+          function light(c, i, p, shadow = false) {
+            let l = new T.DirectionalLight(c, i);
+            l.position.copy(p);
+            scene.add(l);
+            if (shadow) {
+              l.castShadow = true;
+              l.shadow.mapSize.set(2048, 2048);
+              Object.assign(l.shadow.camera, {
+                left: -8,
+                right: 8,
+                top: 12,
+                bottom: -5,
+                near: 1,
+                far: 32,
+              });
+              l.shadow.bias = -0.0003;
+              l.shadow.normalBias = 0.022;
+              l.target.position.set(0, 4, 0);
+              scene.add(l.target);
+            }
+            return l;
+          }
+          const keyLight = light('#fff0c2', 3.4, V(-6, 13, 7), true);
+          const fillLight = light('#bedfbb', 2, V(5, 9, -5));
+          const rimLight = light('#85bdaa', 0.8, V(2, 5, 9));
+          function tex(kind) {
+            let c = document.createElement('canvas');
+            c.width = 512;
+            c.height = 1024;
+            let q = c.getContext('2d'),
+              im = q.createImageData(512, 1024);
+            for (let y = 0; y < 1024; y++)
+              for (let x = 0; x < 512; x++) {
+                let n = (rand() - 0.5) * 22,
+                  ring = Math.pow(
+                    Math.max(
+                      0,
+                      Math.cos(y * 0.125 + Math.sin(x * 0.017) * 0.28)
+                    ),
+                    14
+                  ),
+                  v = Math.sin(x * 0.67 + Math.sin(y * 0.015) * 0.4) * 3;
+                let rgb =
+                  kind === 'bark'
+                    ? [
+                        110 - ring * 43 + n + v,
+                        99 - ring * 42 + n + v,
+                        76 - ring * 31 + n + v,
+                      ]
+                    : kind === 'fruit'
+                      ? [
+                          163 + n + Math.sin(x * 0.1) * 7,
+                          183 + n + Math.sin(x * 0.1) * 8,
+                          74 + n * 0.5,
+                        ]
+                      : [83 + n, 107 + n, 34 + n * 0.4];
+                let k = (y * 512 + x) * 4;
+                im.data.set([...rgb, 255], k);
+              }
+            q.putImageData(im, 0, 0);
+            if (kind === 'bark') {
+              for (let i = 0; i < 1300; i++) {
+                q.strokeStyle = rand() > 0.5 ? '#201d112e' : '#ece5bd22';
+                q.lineWidth = range(0.4, 1.4);
+                let x = range(0, 512),
+                  y = range(0, 1024);
+                q.beginPath();
+                q.moveTo(x, y);
+                q.lineTo(x + range(-3, 3), y + range(3, 45));
+                q.stroke();
+              }
+            } else {
+              for (let i = 0; i < 12000; i++) {
+                q.fillStyle = rand() > 0.5 ? '#514e271d' : '#f4f5b21a';
+                q.fillRect(
+                  range(0, 512),
+                  range(0, 1024),
+                  range(0.3, 1.2),
+                  range(1, 5)
+                );
+              }
+            }
+            let t = new T.CanvasTexture(c);
+            t.colorSpace = T.SRGBColorSpace;
+            t.wrapS = t.wrapT = T.RepeatWrapping;
+            t.anisotropy = 4;
+            return t;
+          }
+          const barktex = tex('bark'),
+            fruittex = tex('fruit');
+          const bark = new T.MeshStandardMaterial({
+              map: barktex,
+              bumpMap: barktex,
+              bumpScale: 0.055,
+              roughness: 0.94,
+              color: '#a99e8b',
+            }),
+            fiberMat = new T.MeshStandardMaterial({
+              color: '#735031',
+              roughness: 1,
+              side: T.DoubleSide,
+            }),
+            stemMat = new T.MeshStandardMaterial({
+              color: '#788e36',
+              roughness: 0.68,
+            }),
+            scarMat = new T.MeshStandardMaterial({
+              color: '#61503a',
+              roughness: 1,
+            }),
+            flowerStem = new T.MeshStandardMaterial({
+              color: '#c0b167',
+              roughness: 0.78,
+            }),
+            flowerMat = new T.MeshStandardMaterial({
+              color: '#efdda4',
+              roughness: 0.75,
+            });
+          const crown = new T.Group();
+          scene.add(crown);
+          const foliage = new T.Group();
+          scene.add(foliage);
+          const leafGroups = [];
+          function mesh(g, m, parent = scene) {
+            let o = new T.Mesh(g, m);
+            o.castShadow = true;
+            o.receiveShadow = true;
+            parent.add(o);
+            return o;
+          }
+          function curve(points) {
+            return new T.CatmullRomCurve3(points);
+          }
+          function tube(
+            points,
+            r,
+            material,
+            parent = scene,
+            segments = 18,
+            sides = 7
+          ) {
+            return mesh(
+              new T.TubeGeometry(curve(points), segments, r, sides, false),
+              material,
+              parent
+            );
+          }
+          function merge(geoms) {
+            let p = [],
+              n = [],
+              uv = [],
+              idx = [],
+              offset = 0;
+            for (let g of geoms) {
+              let a = g.attributes;
+              for (let v of a.position.array) p.push(v);
+              for (let v of a.normal.array) n.push(v);
+              if (a.uv) for (let v of a.uv.array) uv.push(v);
+              else for (let i = 0; i < a.position.count; i++) uv.push(0, 0);
+              if (g.index) for (let i of g.index.array) idx.push(i + offset);
+              else
+                for (let i = 0; i < a.position.count; i++) idx.push(i + offset);
+              offset += a.position.count;
+              g.dispose();
+            }
+            let g = new T.BufferGeometry();
+            g.setAttribute('position', new T.Float32BufferAttribute(p, 3));
+            g.setAttribute('normal', new T.Float32BufferAttribute(n, 3));
+            g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2));
+            g.setIndex(idx);
+            return g;
+          }
+          // Gently curved, ringed trunk; the newest leaf bases remain clustered at the crown.
+          const trunkPoints = [];
+          for (let i = 0; i <= 90; i++) {
+            let y = (i / 90) * 6.05;
+            trunkPoints.push(V(0.17 * Math.sin(y * 0.46), y, 0.055 * y));
+          }
+          const trunkCurve = curve(trunkPoints);
+          let trunkGeo = new T.TubeGeometry(trunkCurve, 180, 0.235, 36, false);
+          let pa = trunkGeo.attributes.position;
+          for (let i = 0; i < pa.count; i++) {
+            let y = pa.getY(i),
+              cx = 0.17 * Math.sin(y * 0.46),
+              cz = 0.055 * y;
+            let s =
+              1 +
+              0.35 * Math.exp(-y * 2) +
+              0.055 * Math.sin(y * 39) +
+              0.015 * Math.sin(y * 81);
+            pa.setX(i, cx + (pa.getX(i) - cx) * s);
+            pa.setZ(i, cz + (pa.getZ(i) - cz) * s);
+          }
+          trunkGeo.computeVertexNormals();
+          mesh(trunkGeo, bark);
+          let rings = [];
+          for (let i = 1; i < 52; i++) {
+            let y = i * 0.112,
+              pts = [];
+            for (let j = 0; j <= 40; j++) {
+              let a = (j / 40) * Math.PI * 2;
+              pts.push(
+                V(
+                  0.17 * Math.sin(y * 0.46) +
+                    Math.cos(a) * (0.238 + 0.07 * Math.exp(-y * 2)),
+                  y + 0.011 * Math.sin(a * 3 + i),
+                  0.055 * y + Math.sin(a) * (0.238 + 0.07 * Math.exp(-y * 2))
+                )
+              );
+            }
+            rings.push(new T.TubeGeometry(curve(pts), 40, 0.008, 4, false));
+          }
+          mesh(merge(rings), scarMat);
+          let cx = 0.17 * Math.sin(6 * 0.46),
+            cz = 0.33;
+          // Folded leaflets: a narrow lanceolate lamina, curved midrib and shaded pleat.
+          const leafMaterials = [];
+          for (let i = 0; i < 7; i++) {
+            let col = new T.Color().setHSL(
+              0.215 + range(-0.018, 0.015),
+              0.44 + rand() * 0.18,
+              0.2 + i * 0.018
+            );
+            leafMaterials.push(
+              new T.MeshStandardMaterial({
+                color: col,
+                roughness: 0.56,
+                metalness: 0.02,
+                side: T.DoubleSide,
+              })
+            );
+          }
+          function blade(start, dir, len, width, droop, twist) {
+            let p = [],
+              u = [],
+              idx = [],
+              sides = V(-dir.z, 0, dir.x).normalize();
+            for (let j = 0; j <= 12; j++) {
+              let t = j / 12,
+                center = start.clone().addScaledVector(dir, len * t);
+              center.y += 0.17 * len * Math.sin(t * Math.PI) - droop * t * t;
+              center.addScaledVector(sides, Math.sin(t * Math.PI) * twist);
+              let w =
+                width * Math.pow(Math.sin(Math.PI * t), 0.68) * (1 - 0.4 * t) +
+                0.0003;
+              for (let s = -1; s <= 1; s++) {
+                let a = center.clone().addScaledVector(sides, s * w);
+                a.y += s === 0 ? w * 0.38 : -w * 0.05;
+                p.push(a.x, a.y, a.z);
+                u.push((s + 1) / 2, t);
+              }
+              if (j < 12) {
+                let k = j * 3;
+                idx.push(
+                  k,
+                  k + 3,
+                  k + 1,
+                  k + 1,
+                  k + 3,
+                  k + 4,
+                  k + 1,
+                  k + 4,
+                  k + 2,
+                  k + 2,
+                  k + 4,
+                  k + 5
+                );
+              }
+            }
+            let g = new T.BufferGeometry();
+            g.setAttribute('position', new T.Float32BufferAttribute(p, 3));
+            g.setAttribute('uv', new T.Float32BufferAttribute(u, 2));
+            g.setIndex(idx);
+            g.computeVertexNormals();
+            return g;
+          }
+          for (let i = 0; i < 27; i++) {
+            let a = i * 2.399963 + 0.3,
+              layer = i / 26,
+              L =
+                layer < 0.3
+                  ? range(3.8, 4.7)
+                  : layer < 0.74
+                    ? range(3.8, 4.8)
+                    : range(2.6, 3.8),
+              rise =
+                layer < 0.3
+                  ? range(0.1, 0.6)
+                  : layer < 0.74
+                    ? range(0.85, 1.7)
+                    : range(2.4, 3.3),
+              drop =
+                layer < 0.3
+                  ? range(2, 2.8)
+                  : layer < 0.74
+                    ? range(1.3, 2)
+                    : range(0.45, 1.1),
+              h = 5.55 + layer * 0.93;
+            let group = new T.Group();
+            group.position.set(cx, h, cz);
+            group.rotation.y = a;
+            foliage.add(group);
+            leafGroups.push({
+              group,
+              phase: rand() * 7,
+              rest: group.rotation.z,
+            });
+            let rachis = curve([
+              V(0.08, 0, 0),
+              V(L * 0.22, rise * 0.57, 0),
+              V(L * 0.56, rise, 0),
+              V(L * 0.82, rise * 0.59 - drop * 0.3, 0),
+              V(L, rise * 0.3 - drop, 0),
+            ]);
+            let stemGeo = new T.TubeGeometry(rachis, 50, 0.039, 8, false),
+              sp = stemGeo.attributes.position;
+            for (let k = 0; k < sp.count; k++) {
+              let t = Math.floor(k / 9) / 50,
+                center = rachis.getPointAt(Math.min(1, t));
+              /* taper follows the curve parameter */ let c0 = rachis.getPoint(
+                Math.min(1, t)
+              );
+              let p = V(sp.getX(k), sp.getY(k), sp.getZ(k));
+              p.sub(c0)
+                .multiplyScalar(1.4 * (1 - t) + 0.13)
+                .add(c0);
+              sp.setXYZ(k, p.x, p.y, p.z);
+            }
+            stemGeo.computeVertexNormals();
+            mesh(stemGeo, stemMat, group);
+            let geoms = Array.from({ length: 7 }, () => []),
+              ribs = [];
+            for (let j = 0; j < 53; j++) {
+              let t = 0.14 + (j / 53) * 0.855;
+              for (let sign of [-1, 1]) {
+                let st = rachis.getPoint(Math.min(0.997, t + sign * 0.0016)),
+                  ll =
+                    (0.32 + 0.95 * Math.pow(Math.sin(Math.PI * t), 0.8)) *
+                    (0.91 + rand() * 0.18),
+                  direction = V(
+                    0.31 + rand() * 0.12,
+                    -0.08,
+                    sign * (0.84 + rand() * 0.1)
+                  ).normalize(),
+                  w = 0.038 + Math.sin(t * Math.PI) * 0.012;
+                let dd = 0.12 + ll * 0.31 + (layer < 0.3 ? 0.23 : 0),
+                  tw = range(-0.07, 0.07);
+                geoms[(i + j) % 7].push(blade(st, direction, ll, w, dd, tw));
+                if (j % 2 === 0) {
+                  let end = st.clone().addScaledVector(direction, ll);
+                  end.y -= dd;
+                  let mid = st.clone().lerp(end, 0.5);
+                  mid.y += ll * 0.12;
+                  ribs.push(
+                    new T.TubeGeometry(
+                      curve([st, mid, end]),
+                      7,
+                      0.0018,
+                      3,
+                      false
+                    )
+                  );
+                }
+              }
+            }
+            for (let k = 0; k < 7; k++)
+              if (geoms[k].length)
+                mesh(merge(geoms[k]), leafMaterials[k], group);
+            mesh(merge(ribs), stemMat, group);
+            // Broad sheathing petiole and rough fibers at the base, under the leaf axil.
+            let base = tube(
+              [
+                V(cx, h - 0.22, cz),
+                V(cx + Math.cos(a) * 0.22, h + 0.04, cz - Math.sin(a) * 0.22),
+                V(cx + Math.cos(a) * 0.65, h + 0.22, cz - Math.sin(a) * 0.65),
+              ],
+              0.085,
+              stemMat,
+              crown,
+              12,
+              8
+            );
+            base.scale.y = 1;
+          }
+          // Central unopened spear leaves.
+          for (let i = 0; i < 3; i++) {
+            let d = V(
+              Math.cos(i * 2.1) * 0.2,
+              1,
+              Math.sin(i * 2.1) * 0.2
+            ).normalize();
+            let g = blade(
+              V(cx, 6.42, cz),
+              d,
+              2.15 - i * 0.23,
+              0.055,
+              0.05,
+              0.03
+            );
+            mesh(g, leafMaterials[5], foliage);
+          }
+          // Coarse reticulate fibers, dry triangular leaf-base remnants.
+          let fib = [];
+          for (let i = 0; i < 440; i++) {
+            let a = rand() * Math.PI * 2,
+              y = range(5.25, 6.6),
+              r = range(0.22, 0.36),
+              st = V(cx + Math.cos(a) * r, y, cz + Math.sin(a) * r),
+              en = st
+                .clone()
+                .add(
+                  V(
+                    Math.cos(a) * range(0.08, 0.4),
+                    range(-0.4, 0.2),
+                    Math.sin(a) * range(0.08, 0.4)
+                  )
+                ),
+              mid = st
+                .clone()
+                .lerp(en, 0.5)
+                .add(V(range(-0.06, 0.06), 0.035, range(-0.06, 0.06)));
+            fib.push(
+              new T.TubeGeometry(
+                curve([st, mid, en]),
+                5,
+                range(0.0015, 0.0045),
+                3,
+                false
+              )
+            );
+          }
+          mesh(merge(fib), fiberMat, crown);
+          for (let i = 0; i < 21; i++) {
+            let a = i * 2.399,
+              y = 5.16 + i * 0.061;
+            let g = blade(
+              V(cx + Math.cos(a) * 0.19, y, cz + Math.sin(a) * 0.19),
+              V(Math.cos(a), 0.26, Math.sin(a)).normalize(),
+              range(0.35, 0.62),
+              0.12,
+              0.24,
+              0.1
+            );
+            mesh(g, i % 2 ? fiberMat : scarMat, crown);
+          }
+          // Nine distinct reproductive groups, oldest below, youngest near the inner crown.
+          const data = [
+            [
+              'พร้อมเก็บเกี่ยว',
+              'HARVEST-READY GREEN FRUIT',
+              'ผลขนาดเต็ม เปลือกเขียวอมเหลือง จำลองระยะเก็บผลอ่อนเพื่อบริโภคน้ำ เกณฑ์เก็บจริงขึ้นกับพันธุ์และตลาด',
+              'เก็บเกี่ยว',
+            ],
+            [
+              'ผลเต็มขนาด',
+              'FULL-SIZED FRUIT',
+              'ผลขยายเกือบเต็มขนาด รวมกันเป็นทลายที่ห้อยต่ำกว่าช่อรุ่นใหม่',
+              'ผลเต็ม',
+            ],
+            [
+              'ผลกำลังขยาย',
+              'EXPANDING FRUIT',
+              'ผลโตขึ้นต่อเนื่อง เห็นรูปทรงยาวรีและสันผลอ่อน ๆ ชัดขึ้น',
+              'ขยายผล',
+            ],
+            [
+              'ผลขนาดกลาง',
+              'MEDIUM FRUIT',
+              'ทลายรุ่นกลาง ผลยังเล็กกว่ารุ่นล่าง สีเปลือกเป็นเขียวสด',
+              'ผลกลาง',
+            ],
+            [
+              'ผลอ่อน',
+              'YOUNG FRUIT',
+              'ผลอ่อนเริ่มเห็นรูปทรงมะพร้าว แต่ขนาดยังเล็กและก้านช่อมองเห็นได้มาก',
+              'ผลอ่อน',
+            ],
+            [
+              'ผลเล็ก',
+              'SMALL FRUIT',
+              'ผลขนาดเล็กกระจายตามแขนงช่อ มีกลีบประดับติดที่ขั้วผล',
+              'ผลเล็ก',
+            ],
+            [
+              'เริ่มติดผล',
+              'INITIAL FRUIT SET',
+              'รังไข่ของดอกเพศเมียเริ่มพัฒนาเป็นผลเล็ก ส่วนปลายแขนงยังมีร่องรอยดอก',
+              'ติดผล',
+            ],
+            [
+              'ช่อดอกบาน',
+              'OPEN INFLORESCENCE',
+              'แขนงจั่นมีดอกเพศผู้ขนาดเล็กจำนวนมาก และดอกเพศเมียที่ใหญ่กว่าอยู่ใกล้โคนแขนง',
+              'ดอกบาน',
+            ],
+            [
+              'จั่นอ่อนใกล้ยอด',
+              'EMERGING INFLORESCENCE',
+              'จั่นอ่อนอยู่ตามซอกใบใกล้ยอด กาบหุ้มเริ่มแยก เผยช่อดอกอ่อนอยู่ด้านใน',
+              'จั่นอ่อน',
+            ],
+          ];
+          const bunches = [],
+            pickables = [],
+            anchors = [],
+            pins = [],
+            stageButtons = [];
+          const nutGeo = (() => {
+            let g = new T.SphereGeometry(1, 36, 26),
+              p = g.attributes.position;
+            for (let i = 0; i < p.count; i++) {
+              let x = p.getX(i),
+                y = p.getY(i),
+                z = p.getZ(i),
+                a = Math.atan2(z, x),
+                s = (1 + 0.055 * Math.cos(3 * a)) * (0.92 + 0.12 * y);
+              p.setXYZ(i, x * s, y * 1.17, z * s * 0.95);
+            }
+            g.computeVertexNormals();
+            return g;
+          })();
+          const nutMats = Array.from(
+            { length: 7 },
+            (_, i) =>
+              new T.MeshStandardMaterial({
+                color: new T.Color().setHSL(
+                  0.215 - i * 0.004,
+                  0.54,
+                  0.47 - i * 0.017
+                ),
+                map: fruittex,
+                bumpMap: fruittex,
+                bumpScale: 0.012,
+                roughness: 0.47 + i * 0.025,
+              })
+          );
+          function nut(parent, pos, size, mat, id) {
+            const fruit = new T.Group();
+            fruit.name = 'coconut-fruit';
+            parent.add(fruit);
+            parent = fruit;
+            let obj = mesh(nutGeo, mat, parent);
+            obj.position.copy(pos);
+            obj.scale.set(size, size, size);
+            obj.rotation.set(range(-0.15, 0.15), rand() * 6, range(-0.2, 0.2));
+            obj.userData.stage = id;
+            obj.name = 'fruit-or-female-flower';
+            pickables.push(obj);
+            let calyx = new T.Group();
+            calyx.position.copy(pos).add(V(0, size * 1.1, 0));
+            parent.add(calyx);
+            for (let k = 0; k < 3; k++) {
+              let c = mesh(new T.SphereGeometry(1, 9, 6), stemMat, calyx);
+              c.scale.set(size * 0.24, size * 0.11, size * 0.36);
+              c.rotation.y = (k * Math.PI * 2) / 3;
+              c.position.set(
+                Math.sin(k * 2.094) * size * 0.12,
+                0,
+                Math.cos(k * 2.094) * size * 0.12
+              );
+            }
+            let tip = mesh(
+              new T.SphereGeometry(size * 0.06, 8, 5),
+              scarMat,
+              parent
+            );
+            tip.position.copy(pos).add(V(0, -size * 1.16, 0));
+            return obj;
+          }
+          for (let s = 0; s < 9; s++) {
+            let g = new T.Group(),
+              a = 0.8 + s * 2.399963,
+              h = 5.55 + s * 0.135;
+            g.position.set(cx, h, cz);
+            g.rotation.y = a;
+            crown.add(g);
+            g.name = 'reproductive-stage-' + (s + 1);
+            bunches.push(g);
+            let radius = s < 7 ? 1.12 - s * 0.06 : 0.55,
+              down = s < 7 ? -0.45 + s * 0.1 : 0.5;
+            let axis = curve([
+              V(0.14, 0, 0),
+              V(0.46, 0.17, 0),
+              V(radius, down + 0.2, 0),
+              V(radius + 0.14, down - 0.35, 0),
+            ]);
+            let ped = new T.TubeGeometry(
+              axis,
+              24,
+              s < 5 ? 0.042 : 0.028,
+              9,
+              false
+            );
+            mesh(ped, s < 6 ? stemMat : flowerStem, g);
+            let branches = [];
+            if (s < 7) {
+              let sizes = [0.255, 0.235, 0.208, 0.177, 0.142, 0.104, 0.061],
+                N = [13, 10, 10, 11, 11, 12, 13][s],
+                sz = sizes[s];
+              for (let k = 0; k < N; k++) {
+                let ang = k * 2.399963 + 0.3,
+                  level = Math.floor(k / 4),
+                  r = (s < 3 ? 0.37 : 0.28) * (1 - level * 0.1),
+                  pos = V(
+                    radius + Math.cos(ang) * r,
+                    down - 0.08 - level * sz * 1.27 + Math.sin(ang) * 0.07,
+                    Math.sin(ang) * r
+                  );
+                let st = axis.getPoint(0.4 + (k / N) * 0.5),
+                  en = pos.clone().add(V(0, sz * 1.12, 0));
+                branches.push(
+                  new T.TubeGeometry(
+                    curve([
+                      st,
+                      st
+                        .clone()
+                        .lerp(en, 0.55)
+                        .add(V(0, 0.08, 0)),
+                      en,
+                    ]),
+                    12,
+                    0.013 * (1 - s * 0.07),
+                    6,
+                    false
+                  )
+                );
+                nut(g, pos, sz * range(0.92, 1.06), nutMats[Math.min(s, 6)], s);
+              }
+              for (let j = 0; j < (s > 4 ? 19 : 10); j++) {
+                let t = 0.42 + (j / (s > 4 ? 19 : 10)) * 0.5,
+                  st = axis.getPoint(t),
+                  en = st
+                    .clone()
+                    .add(
+                      V(
+                        range(0.12, 0.32),
+                        range(-0.36, -0.09),
+                        range(-0.4, 0.4)
+                      )
+                    );
+                branches.push(
+                  new T.TubeGeometry(
+                    curve([
+                      st,
+                      st
+                        .clone()
+                        .lerp(en, 0.6)
+                        .add(V(0, 0.06, 0)),
+                      en,
+                    ]),
+                    10,
+                    0.004,
+                    4,
+                    false
+                  )
+                );
+              }
+              anchors.push(V(radius, down - 0.28, 0));
+            } else {
+              let flowerPositions = [],
+                fCount = s === 7 ? 28 : 20;
+              for (let j = 0; j < fCount; j++) {
+                let t = 0.22 + (j / fCount) * 0.74,
+                  st = axis.getPoint(t),
+                  ang = j * 2.39996,
+                  len = (s === 7 ? 0.6 : 0.42) * (1 - 0.4 * t),
+                  en = st
+                    .clone()
+                    .add(
+                      V(
+                        Math.cos(ang) * len * 0.6,
+                        len * 0.64,
+                        Math.sin(ang) * len
+                      )
+                    );
+                let c = curve([
+                  st,
+                  st
+                    .clone()
+                    .lerp(en, 0.5)
+                    .add(V(0.07, 0.1, 0)),
+                  en,
+                ]);
+                branches.push(new T.TubeGeometry(c, 12, 0.007, 5, false));
+                for (let k = 2; k < 19; k++) {
+                  let p = c.getPoint(k / 20);
+                  for (let sign of [-1, 1])
+                    flowerPositions.push(
+                      p
+                        .clone()
+                        .add(V(sign * 0.012, rand() * 0.012, sign * 0.009))
+                    );
+                }
+                if (j % 3 === 0) {
+                  let p = c.getPoint(0.13);
+                  nut(g, p, 0.043, flowerMat, s);
+                }
+              }
+              let flowers = new T.InstancedMesh(
+                  new T.SphereGeometry(1, 6, 4),
+                  flowerMat,
+                  flowerPositions.length
+                ),
+                dummy = new T.Object3D();
+              for (let j = 0; j < flowerPositions.length; j++) {
+                dummy.position.copy(flowerPositions[j]);
+                dummy.scale.set(0.012, 0.022, 0.012);
+                dummy.rotation.set(rand(), rand() * 4, rand());
+                dummy.updateMatrix();
+                flowers.setMatrixAt(j, dummy.matrix);
+              }
+              flowers.castShadow = true;
+              g.add(flowers);
+              anchors.push(V(radius, down + 0.15, 0));
+              // Boat-shaped split spathe, opening around the young spadix.
+              for (let side of [-1, 1]) {
+                let verts = [],
+                  inds = [];
+                for (let j = 0; j <= 22; j++) {
+                  let t = j / 22,
+                    ww = Math.sin(Math.PI * t) * 0.14;
+                  for (let k = 0; k <= 6; k++) {
+                    let u = k / 6;
+                    verts.push(
+                      0.19 + t * 0.7,
+                      -0.12 +
+                        t * 0.98 +
+                        Math.sin(t * Math.PI) * 0.06 +
+                        Math.sin(u * Math.PI) * ww * 0.3,
+                      side *
+                        (0.018 +
+                          ww * u +
+                          (s === 7 ? 0.28 : 0.06) * Math.sin(Math.PI * t))
+                    );
+                  }
+                  if (j < 22)
+                    for (let k = 0; k < 6; k++) {
+                      let n = j * 7 + k;
+                      inds.push(n, n + 7, n + 1, n + 1, n + 7, n + 8);
+                    }
+                }
+                let geo = new T.BufferGeometry();
+                geo.setAttribute(
+                  'position',
+                  new T.Float32BufferAttribute(verts, 3)
+                );
+                geo.setIndex(inds);
+                geo.computeVertexNormals();
+                mesh(
+                  geo,
+                  new T.MeshStandardMaterial({
+                    color: s === 7 ? '#a89148' : '#a7ae50',
+                    roughness: 0.75,
+                    side: T.DoubleSide,
+                  }),
+                  g
+                );
+              }
+            }
+            if (branches.length)
+              mesh(merge(branches), s > 5 ? flowerStem : stemMat, g);
+            let btn = document.createElement('button');
+            btn.className = 'stage';
+            btn.innerHTML =
+              '<strong>' +
+              String(s + 1).padStart(2, '0') +
+              '</strong><span>' +
+              data[s][3] +
+              '</span>';
+            btn.setAttribute('aria-label', s + 1 + ' ' + data[s][0]);
+            btn.setAttribute('aria-pressed', 'false');
+            btn.onclick = () => {
+              stopTour();
+              focusStage(s);
+            };
+            $('.rail').append(btn);
+            stageButtons.push(btn);
+            let pin = document.createElement('button');
+            pin.className = 'pin';
+            pin.textContent = s + 1;
+            pin.setAttribute('aria-label', 'ดู' + data[s][0]);
+            pin.onclick = () => {
+              stopTour();
+              focusStage(s);
+            };
+            $('.markers').append(pin);
+            pins.push(pin);
+          }
+          // Ground: a quiet botanical display with real modeled grasses and soft contact shadow.
+          const floorMaterial = new T.MeshStandardMaterial({
+            color: '#10241b',
+            roughness: 1,
+          });
+          let floor = mesh(new T.PlaneGeometry(180, 180), floorMaterial);
+          floor.rotation.x = -Math.PI / 2;
+          floor.position.y = -0.065;
+          floor.castShadow = false;
+          const stageDiscMaterial = new T.MeshStandardMaterial({
+            color: '#294936',
+            roughness: 0.92,
+            metalness: 0.02,
+          });
+          const stageDisc = mesh(
+            new T.CircleGeometry(5.7, 96),
+            stageDiscMaterial
+          );
+          stageDisc.rotation.x = -Math.PI / 2;
+          stageDisc.position.y = -0.059;
+          stageDisc.receiveShadow = true;
+          const stageRimMaterial = new T.MeshStandardMaterial({
+            color: '#8ca26a',
+            roughness: 0.75,
+            transparent: true,
+            opacity: 0.2,
+            side: T.DoubleSide,
+          });
+          const stageRim = mesh(
+            new T.RingGeometry(5.55, 5.7, 96),
+            stageRimMaterial
+          );
+          stageRim.rotation.x = -Math.PI / 2;
+          stageRim.position.y = -0.057;
+          stageRim.receiveShadow = true;
+          const orchardView = createCoconutOrchard();
+          scene.add(orchardView.orchard);
+          // Distant grove shares two geometries; keep detail on the study tree.
+          const groveTrunk = new T.CylinderGeometry(0.12, 0.23, 1, 5);
+          const groveLeaf = new T.SphereGeometry(1, 6, 4);
+          const groveBark = new T.MeshStandardMaterial({
+            color: '#796e50',
+            roughness: 1,
+          });
+          const groveGreen = new T.MeshStandardMaterial({
+            color: '#52765b',
+            roughness: 1,
+          });
+          for (let i = 0; i < 18; i++) {
+            const angle = (i / 18) * Math.PI * 2;
+            const radius = 48 + (i % 4) * 4;
+            const height = 3.6 + (i % 5) * 0.5;
+            const palm = new T.Group();
+            palm.position.set(
+              Math.cos(angle) * radius,
+              0,
+              Math.sin(angle) * radius
+            );
+            const trunk = new T.Mesh(groveTrunk, groveBark);
+            trunk.scale.y = height;
+            trunk.position.y = height / 2;
+            palm.add(trunk);
+            for (let j = 0; j < 6; j++) {
+              const leafAngle = (j / 6) * Math.PI * 2;
+              const leaf = new T.Mesh(groveLeaf, groveGreen);
+              leaf.scale.set(2.4, 0.13, 0.45);
+              leaf.rotation.set(0, -leafAngle, -0.18);
+              leaf.position.set(
+                Math.cos(leafAngle) * 1.65,
+                height,
+                Math.sin(leafAngle) * 1.65
+              );
+              palm.add(leaf);
+            }
+            scene.add(palm);
+          }
+          let soiltex = (() => {
+            let c = document.createElement('canvas');
+            c.width = c.height = 256;
+            let q = c.getContext('2d');
+            q.fillStyle = '#4b4b2e';
+            q.fillRect(0, 0, 256, 256);
+            for (let i = 0; i < 19000; i++) {
+              q.fillStyle = rand() > 0.5 ? '#b5ac7620' : '#151e1630';
+              q.fillRect(rand() * 256, rand() * 256, rand() * 2, rand() * 2);
+            }
+            let t = new T.CanvasTexture(c);
+            t.colorSpace = T.SRGBColorSpace;
+            t.wrapS = t.wrapT = T.RepeatWrapping;
+            t.repeat.set(6, 6);
+            return t;
+          })();
+          const groundMaterial = new T.MeshStandardMaterial({
+            map: soiltex,
+            color: '#71805a',
+            roughness: 1,
+          });
+          let ground = mesh(new T.CircleGeometry(2.15, 100), groundMaterial);
+          ground.rotation.x = -Math.PI / 2;
+          ground.position.y = -0.038;
+          ground.castShadow = false;
+          let grassGeo = [],
+            grassM = new T.MeshStandardMaterial({
+              color: '#4d6940',
+              roughness: 0.86,
+              side: T.DoubleSide,
+            });
+          for (let i = 0; i < 2100; i++) {
+            let a = rand() * 6.283,
+              r = Math.sqrt(rand()) * 2.15;
+            if (r < 0.32) continue;
+            let p = V(Math.cos(a) * r, 0, Math.sin(a) * r);
+            let len = range(0.035, 0.18) * (1 - r / 5);
+            grassGeo.push(
+              blade(
+                p,
+                V(range(-0.45, 0.45), 1, range(-0.45, 0.45)).normalize(),
+                len,
+                range(0.002, 0.006),
+                0.02,
+                0.015
+              )
+            );
+          }
+          mesh(merge(grassGeo), grassM);
+          const pebbleMaterial = new T.MeshStandardMaterial({
+            color: '#92917a',
+            roughness: 1,
+          });
+          let pebbles = new T.InstancedMesh(
+              new T.IcosahedronGeometry(1, 1),
+              pebbleMaterial,
+              85
+            ),
+            pd = new T.Object3D();
+          for (let i = 0; i < 85; i++) {
+            let a = rand() * 6.28,
+              r = range(0.35, 2);
+            pd.position.set(Math.cos(a) * r, 0.016, Math.sin(a) * r);
+            pd.scale.set(
+              range(0.012, 0.039),
+              range(0.009, 0.026),
+              range(0.012, 0.04)
+            );
+            pd.rotation.set(rand(), rand() * 6, rand());
+            pd.updateMatrix();
+            pebbles.setMatrixAt(i, pd.matrix);
+          }
+          scene.add(pebbles);
+          const harvest = createCoconutHarvest(T, crown, bunches);
+          scene.add(harvest.ground);
+          let selectedHarvest = -1;
+          function syncHarvest() {
+            $('#ca-total').textContent =
+              `รวมเก็บแล้ว ${harvest.harvested.length} ทลาย • ${harvest.harvested.reduce((sum, bunch) => sum + bunch.userData.fruitCount, 0)} ลูก`;
+            const onGround = mode === 'harvest';
+            $('#ca-standing').setAttribute('aria-pressed', String(!onGround));
+            $('#ca-ground').setAttribute('aria-pressed', String(onGround));
+            $('#ca-ground').disabled = !harvest.harvested.length;
+            $('#ca-grow').hidden = !harvest.needsGrowth;
+            $('#ca-harvested').hidden = !onGround;
+            $('#ca-harvest').disabled = !onGround && harvest.needsGrowth;
+            $('#ca-harvest').textContent = onGround
+              ? 'ปรับจำนวนลูก'
+              : `ตัดจั่น ${bunches[0].userData.cohort}`;
+            $('.count').textContent = String(bunches.length).padStart(2, '0');
+            $('#ca-harvest-status').textContent = onGround
+              ? `จั่น ${harvest.harvested[selectedHarvest].userData.cohort} วางบนพื้น • ${harvest.harvested[selectedHarvest].userData.fruitCount} ลูกในทลาย`
+              : `บนต้น ${bunches.length} จั่น • เก็บแล้ว ${harvest.harvested.length} ทลาย${harvest.needsGrowth ? ' • กดจำลองเติบโตเพื่อเติมจั่นใหม่' : ' • พร้อมตัดรอบถัดไป'}`;
+            pickables.length = 0;
+            bunches.forEach((bunch, i) =>
+              bunch.traverseVisible((part) => {
+                if (part.name === 'fruit-or-female-flower') {
+                  part.userData.stage = i;
+                  delete part.userData.harvestIndex;
+                  pickables.push(part);
+                }
+              })
+            );
+            harvest.harvested.forEach((bunch, index) =>
+              bunch.traverseVisible((part) => {
+                if (part.name === 'fruit-or-female-flower') {
+                  part.userData.harvestIndex = index;
+                  pickables.push(part);
+                }
+              })
+            );
+          }
+          function cutStageOne() {
+            try {
+              const value = $('#ca-harvest-count').value;
+              if (mode === 'harvest') {
+                clearAnimsFor(harvest.harvested[selectedHarvest]);
+                harvest.update(selectedHarvest, value);
+              } else {
+                const hanging = bunches[0],
+                  fromPos = hanging.position.clone(),
+                  fromQuat = hanging.quaternion.clone();
+                const bunch = harvest.cut(value);
+                const option = document.createElement('option');
+                option.value = harvest.harvested.length - 1;
+                option.textContent = `จั่น ${bunch.userData.cohort}`;
+                $('#ca-harvested').append(option);
+                selectedHarvest = harvest.harvested.length - 1;
+                if (!prefersReduce) {
+                  anims.push({
+                    type: 'fall',
+                    bunch,
+                    fromPos,
+                    fromQuat,
+                    toPos: bunch.position.clone(),
+                    toQuat: bunch.quaternion.clone(),
+                    start: clock.getElapsedTime(),
+                    dur: 1.15,
+                  });
+                  spawnBurst(fromPos.x, fromPos.y - 0.4, fromPos.z);
+                  shake = 0.05;
+                }
+              }
+              focusHarvest();
+            } catch (error) {
+              $('#ca-harvest-status').textContent = error.message;
+              $('#ca-harvest-count').focus();
+            }
+          }
+          // Floating pollen motes catch the grazing light, sparsely distributed.
+          let dustP = [];
+          for (let i = 0; i < 115; i++)
+            dustP.push(range(-7, 7), range(0.5, 10), range(-6, 6));
+          let dg = new T.BufferGeometry();
+          dg.setAttribute('position', new T.Float32BufferAttribute(dustP, 3));
+          const dustMaterial = new T.PointsMaterial({
+            color: '#d6d7a0',
+            size: 0.017,
+            transparent: true,
+            opacity: 0.35,
+            depthWrite: false,
+          });
+          let dust = new T.Points(dg, dustMaterial);
+          scene.add(dust);
+          // Ambient life: fireflies by night, butterflies by day, drifting leaflets,
+          // a pulsing glow ring on the studied bunch, and a tween queue for cuts/growth.
+          const prefersReduce = matchMedia(
+            '(prefers-reduced-motion: reduce)'
+          ).matches;
+          const anims = [];
+          let shake = 0;
+          function clearAnimsFor(bunch) {
+            for (let i = anims.length - 1; i >= 0; i--)
+              if (anims[i].bunch === bunch) anims.splice(i, 1);
+          }
+          function bounceOut(t) {
+            const n1 = 7.5625,
+              d1 = 2.75;
+            if (t < 1 / d1) return n1 * t * t;
+            if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75;
+            if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375;
+            return n1 * (t -= 2.625 / d1) * t + 0.984375;
+          }
+          function spawnBurst(bx, by, bz) {
+            const mat = new T.MeshBasicMaterial({
+                color: '#a9c95e',
+                transparent: true,
+                opacity: 0.9,
+              }),
+              geo = new T.TetrahedronGeometry(0.08),
+              group = new T.Group();
+            for (let i = 0; i < 8; i++) {
+              let m = new T.Mesh(geo, mat);
+              m.position.set(bx, by, bz);
+              m.userData.v = V(
+                range(-1.1, 1.1),
+                range(0.4, 1.7),
+                range(-1.1, 1.1)
+              );
+              m.rotation.set(rand() * 3, rand() * 3, rand() * 3);
+              group.add(m);
+            }
+            scene.add(group);
+            anims.push({
+              type: 'burst',
+              group,
+              start: clock.getElapsedTime(),
+              dur: 0.9,
+            });
+          }
+          const glowTex = (() => {
+            let c = document.createElement('canvas');
+            c.width = c.height = 128;
+            let q = c.getContext('2d'),
+              g = q.createRadialGradient(64, 64, 4, 64, 64, 62);
+            g.addColorStop(0, 'rgba(255,240,190,0.95)');
+            g.addColorStop(0.35, 'rgba(255,224,150,0.4)');
+            g.addColorStop(1, 'rgba(255,224,150,0)');
+            q.fillStyle = g;
+            q.fillRect(0, 0, 128, 128);
+            return new T.CanvasTexture(c);
+          })();
+          const glowSprite = new T.Sprite(
+            new T.SpriteMaterial({
+              map: glowTex,
+              color: '#ffe9a8',
+              transparent: true,
+              opacity: 0,
+              blending: T.AdditiveBlending,
+              depthWrite: false,
+              depthTest: false,
+            })
+          );
+          glowSprite.scale.setScalar(2.1);
+          glowSprite.renderOrder = 6;
+          glowSprite.visible = false;
+          scene.add(glowSprite);
+          const FIREFLIES = 64;
+          const ffBase = new Float32Array(FIREFLIES * 3),
+            ffPhase = new Float32Array(FIREFLIES),
+            ffPos = new Float32Array(FIREFLIES * 3);
+          for (let i = 0; i < FIREFLIES; i++) {
+            let a = rand() * Math.PI * 2,
+              r = 2.2 + rand() * 5.4;
+            ffBase[i * 3] = Math.cos(a) * r;
+            ffBase[i * 3 + 1] = 0.4 + rand() * 5.8;
+            ffBase[i * 3 + 2] = Math.sin(a) * r;
+            ffPhase[i] = rand() * 12;
+          }
+          const ffGeo = new T.BufferGeometry();
+          ffGeo.setAttribute('position', new T.BufferAttribute(ffPos, 3));
+          const fireflyMat = new T.PointsMaterial({
+            color: '#d9f79a',
+            size: 0.1,
+            transparent: true,
+            opacity: 0,
+            blending: T.AdditiveBlending,
+            depthWrite: false,
+          });
+          const fireflies = new T.Points(ffGeo, fireflyMat);
+          fireflies.visible = false;
+          scene.add(fireflies);
+          function makeButterfly(tint) {
+            let b = new T.Group(),
+              body = new T.Mesh(
+                new T.SphereGeometry(0.028, 8, 6),
+                new T.MeshStandardMaterial({ color: '#3a3226', roughness: 0.8 })
+              );
+            body.scale.set(1, 1, 2.6);
+            b.add(body);
+            let wingGeo = new T.PlaneGeometry(0.16, 0.1),
+              wingMat = new T.MeshBasicMaterial({
+                color: tint,
+                side: T.DoubleSide,
+                transparent: true,
+                opacity: 0.92,
+              }),
+              wings = [];
+            for (let s of [-1, 1]) {
+              let pivot = new T.Group(),
+                wing = new T.Mesh(wingGeo, wingMat);
+              wing.rotation.x = -Math.PI / 2;
+              wing.position.x = s * 0.085;
+              pivot.add(wing);
+              b.add(pivot);
+              wings.push({ pivot, s });
+            }
+            b.userData.wings = wings;
+            return b;
+          }
+          const butterflies = new T.Group(),
+            butterflyData = [];
+          for (let i = 0; i < 4; i++) {
+            let bf = makeButterfly(
+              ['#f6d98a', '#f3f0da', '#e8b4c8', '#cfe3a8'][i]
+            );
+            butterflies.add(bf);
+            butterflyData.push({
+              obj: bf,
+              radius: 2.9 + rand() * 2.3,
+              height: 2.2 + rand() * 3.1,
+              speed: (0.16 + rand() * 0.12) * (i % 2 ? 1 : -1),
+              phase: rand() * 9,
+              flap: 12 + rand() * 5,
+            });
+          }
+          butterflies.visible = false;
+          scene.add(butterflies);
+          const LEAFLETS = 12,
+            leafletMat = new T.MeshStandardMaterial({
+              color: '#7a9a4a',
+              roughness: 0.9,
+              side: T.DoubleSide,
+              transparent: true,
+            }),
+            leaflets = new T.InstancedMesh(
+              new T.PlaneGeometry(0.17, 0.055),
+              leafletMat,
+              LEAFLETS
+            ),
+            leafletData = [],
+            ld = new T.Object3D();
+          for (let i = 0; i < LEAFLETS; i++)
+            leafletData.push({
+              p: V(
+                cx + range(-0.6, 0.6),
+                range(0.4, 6.2),
+                cz + range(-0.6, 0.6)
+              ),
+              rot: V(range(0, 3), range(0, 6), range(0, 3)),
+              spin: V(range(-2, 2), range(-3, 3), range(-2, 2)),
+              v: range(0.35, 0.62),
+              phase: rand() * 9,
+              state: 0,
+              t: 0,
+              s: 1,
+            });
+          scene.add(leaflets);
+          let currentSceneMode = 'day';
+          function updateAmbient() {
+            const motion = !prefersReduce;
+            fireflies.visible =
+              motion && currentSceneMode === 'night' && !economy;
+            butterflies.visible =
+              motion && currentSceneMode === 'day' && !economy;
+            leaflets.visible = motion && !economy;
+          }
+          const scenePalettes = {
+            day: {
+              fog: '#8da69a',
+              body: '#12251e',
+              hemisphereSky: '#fff2d4',
+              hemisphereGround: '#3e6347',
+              hemisphereIntensity: 2.35,
+              key: '#fff0c2',
+              keyIntensity: 3.4,
+              fill: '#bfe3c2',
+              fillIntensity: 2,
+              rim: '#8ec8bb',
+              rimIntensity: 0.9,
+              floor: '#1e3d2b',
+              stage: '#315b3e',
+              rimSurface: '#9eb873',
+              soil: '#77855d',
+              grass: '#557845',
+              pebble: '#9c9d83',
+              dust: '#f2e8ac',
+              dustOpacity: 0.26,
+              dustSize: 0.017,
+              bark: '#a99e8b',
+              fiber: '#735031',
+              stem: '#788e36',
+              scar: '#61503a',
+              flowerStem: '#c0b167',
+              flower: '#efdda4',
+              leaflet: '#7a9a4a',
+              status: 'DAYLIGHT · INTERACTIVE 3D',
+            },
+            night: {
+              fog: '#1a2b43',
+              body: '#081426',
+              hemisphereSky: '#9bbce9',
+              hemisphereGround: '#132b39',
+              hemisphereIntensity: 1.5,
+              key: '#b5d3f6',
+              keyIntensity: 2.15,
+              fill: '#597e9a',
+              fillIntensity: 1.55,
+              rim: '#9cb6e5',
+              rimIntensity: 1.05,
+              floor: '#0d2430',
+              stage: '#173947',
+              rimSurface: '#5e7f91',
+              soil: '#3d5b54',
+              grass: '#345746',
+              pebble: '#60736d',
+              dust: '#dce9ff',
+              dustOpacity: 0.52,
+              dustSize: 0.022,
+              bark: '#625343',
+              fiber: '#4f3c31',
+              stem: '#4e6b43',
+              scar: '#473d35',
+              flowerStem: '#aa9a70',
+              flower: '#d8c98f',
+              leaflet: '#51705a',
+              status: 'MOONLIT · INTERACTIVE 3D',
+            },
+          };
+          function setSceneMode(nextMode) {
+            const mode = nextMode === 'night' ? 'night' : 'day';
+            const palette = scenePalettes[mode];
+            orchardView.setMode(mode);
+            root.dataset.sceneMode = mode;
+            document.body.style.background = palette.body;
+            if (skyTexture) skyTexture.dispose();
+            skyTexture = createSkyTexture(mode);
+            scene.background = skyTexture;
+            scene.fog.color.set(palette.fog);
+            hemisphereLight.color.set(palette.hemisphereSky);
+            hemisphereLight.groundColor.set(palette.hemisphereGround);
+            hemisphereLight.intensity = palette.hemisphereIntensity;
+            keyLight.color.set(palette.key);
+            keyLight.intensity = palette.keyIntensity;
+            fillLight.color.set(palette.fill);
+            fillLight.intensity = palette.fillIntensity;
+            rimLight.color.set(palette.rim);
+            rimLight.intensity = palette.rimIntensity;
+            floorMaterial.color.set(palette.floor);
+            stageDiscMaterial.color.set(palette.stage);
+            stageRimMaterial.color.set(palette.rimSurface);
+            groundMaterial.color.set(palette.soil);
+            grassM.color.set(palette.grass);
+            pebbleMaterial.color.set(palette.pebble);
+            dustMaterial.color.set(palette.dust);
+            dustMaterial.opacity = palette.dustOpacity;
+            dustMaterial.size = palette.dustSize;
+            bark.color.set(palette.bark);
+            fiberMat.color.set(palette.fiber);
+            stemMat.color.set(palette.stem);
+            scarMat.color.set(palette.scar);
+            flowerStem.color.set(palette.flowerStem);
+            flowerMat.color.set(palette.flower);
+            leafMaterials.forEach((material, index) =>
+              material.color.setHSL(
+                mode === 'night' ? 0.29 : 0.215,
+                mode === 'night' ? 0.34 : 0.48,
+                mode === 'night' ? 0.17 + index * 0.014 : 0.2 + index * 0.018
+              )
+            );
+            leafletMat.color.set(palette.leaflet);
+            currentSceneMode = mode;
+            updateAmbient();
+            nutMats.forEach((material, index) =>
+              material.color.setHSL(
+                0.215 - index * 0.004,
+                mode === 'night' ? 0.4 : 0.54,
+                mode === 'night' ? 0.3 - index * 0.008 : 0.47 - index * 0.017
+              )
+            );
+            $('#ca-day').setAttribute('aria-pressed', String(mode === 'day'));
+            $('#ca-night').setAttribute(
+              'aria-pressed',
+              String(mode === 'night')
+            );
+            $('.scene-status').textContent = palette.status;
+            if (viewMode === '2d') render2DView();
+          }
+          const ray = new T.Raycaster(),
+            pointer = new T.Vector2();
+          let active = -1,
+            viewMode = '3d',
+            showLabels = true,
+            rotating = false,
+            leavesHidden = false,
+            mode = 'full';
+          let target = V(0, 4.35, 0),
+            goalTarget = target.clone(),
+            theta = 0.68,
+            goalTheta = theta,
+            phi = 1.39,
+            goalPhi = phi,
+            distance = 17.7,
+            goalDistance = distance;
+          let panMode = false,
+            moved = false,
+            pointers = new Map(),
+            lastPinch = 0,
+            manual = false;
+          function shortest(a, b) {
+            while (b - a > Math.PI) b -= Math.PI * 2;
+            while (b - a < -Math.PI) b += Math.PI * 2;
+            return b;
+          }
+          function pressed() {
+            foliage.visible = !(
+              leavesHidden ||
+              (studyMode && mode === 'stage')
+            );
+            $('#ca-leaves').textContent = foliage.visible
+              ? 'ซ่อนทางใบ'
+              : 'แสดงทางใบ';
+            $('#ca-leaves').setAttribute(
+              'aria-pressed',
+              String(!foliage.visible)
+            );
+            $('#ca-prev').disabled = active <= 0;
+            $('#ca-next').disabled = active >= bunches.length - 1;
+            root
+              .querySelectorAll('[data-view]')
+              .forEach((b) =>
+                b.setAttribute(
+                  'aria-pressed',
+                  b.dataset.view === mode ? 'true' : 'false'
+                )
+              );
+          }
+          function fullView() {
+            active = -1;
+            mode = 'full';
+            goalTarget.set(0, 4.25, 0);
+            goalDistance =
+              17.7 * Math.max(1, 0.85 / (root.clientWidth / root.clientHeight));
+            goalPhi = 1.4;
+            goalTheta = shortest(theta, 0.68);
+            pressed();
+            updateDetail();
+            manual = false;
+          }
+          function crownView() {
+            active = -1;
+            mode = 'crown';
+            goalTarget.set(cx, 6.03, cz);
+            goalDistance = root.clientWidth < 600 ? 8.1 : 7.2;
+            goalPhi = 1.33;
+            pressed();
+            updateDetail();
+            manual = false;
+          }
+          function updateDetail() {
+            stageButtons.forEach((b, i) => {
+              b.disabled = !bunches[i];
+              b.setAttribute('aria-pressed', String(i === active));
+              const stage = i + (harvest.needsGrowth ? 1 : 0);
+              const id = bunches[i]?.userData.cohort;
+              b.querySelector('strong').textContent = id ?? '+';
+              b.querySelector('span').textContent = id
+                ? data[stage][3]
+                : 'รอจั่นใหม่';
+              b.setAttribute(
+                'aria-label',
+                id ? `จั่น ${id} ${data[stage][0]}` : 'รอจั่นใหม่'
+              );
+              pins[i].textContent = id ?? '';
+              pins[i].setAttribute('aria-label', `ดูจั่น ${id ?? ''}`);
+            });
+            pins.forEach((p, i) => p.classList.toggle('active', i === active));
+            if (mode === 'harvest') {
+              const bunch = harvest.harvested[selectedHarvest];
+              $('.no').textContent = bunch.userData.cohort;
+              $('h2').textContent = 'ทลายที่เก็บแล้ว';
+              $('.en').textContent = 'HARVESTED BUNCH';
+              $('.desc').textContent =
+                `จั่น ${bunch.userData.cohort} • ${bunch.userData.fruitCount} ลูก • วางทั้งทลายห่างโคนต้น`;
+            } else if (active < 0) {
+              $('.no').textContent = String(bunches.length).padStart(2, '0');
+              $('h2').textContent =
+                mode === 'crown' ? 'สำรวจคอมะพร้าว' : 'หนึ่งต้น หลายช่วงวัย';
+              $('.en').textContent = 'EXPLORE THE COCONUT CROWN';
+              $('.desc').textContent =
+                'เลือกจั่นบนต้นจากแถบด้านล่าง เพื่อดูตั้งแต่ผลพร้อมเก็บเกี่ยวจนถึงจั่นอ่อนใกล้ยอด';
+            } else {
+              const stage = active + (harvest.needsGrowth ? 1 : 0);
+              $('.no').textContent = bunches[active].userData.cohort;
+              $('h2').textContent = data[stage][0];
+              $('.en').textContent = data[stage][1];
+              $('.desc').textContent = data[stage][2];
+            }
+            syncHarvest();
+            if (viewMode === '2d') render2DView();
+          }
+          function focusStage(i) {
+            if (!bunches[i]) return;
+            active = i;
+            $('.detail').open = true;
+            mode = 'stage';
+            rotating = false;
+            $('#ca-rotate').setAttribute('aria-pressed', 'false');
+            scene.updateMatrixWorld(true);
+            let p = bunches[i].localToWorld(
+              anchors[i + (harvest.needsGrowth ? 1 : 0)].clone()
+            );
+            goalTarget.copy(p).add(V(0, 0.13, 0));
+            goalTheta = shortest(theta, Math.atan2(p.x - cx, p.z - cz));
+            goalPhi = 1.23;
+            goalDistance = root.clientWidth < 600 ? 4.9 : 4.05;
+            manual = false;
+            pressed();
+            updateDetail();
+          }
+          function focusHarvest() {
+            if (!harvest.harvested.length) return;
+            $('.detail').open = true;
+            if (selectedHarvest < 0)
+              selectedHarvest = harvest.harvested.length - 1;
+            active = -1;
+            mode = 'harvest';
+            rotating = false;
+            $('#ca-rotate').setAttribute('aria-pressed', 'false');
+            $('#ca-harvested').value = selectedHarvest;
+            $('#ca-harvest-count').value =
+              harvest.harvested[selectedHarvest].userData.fruitCount;
+            new T.Box3()
+              .setFromObject(harvest.harvested[selectedHarvest], true)
+              .getCenter(goalTarget);
+            goalTarget.y = root.clientWidth < 600 ? -0.3 : 0.4;
+            goalTheta = shortest(theta, 0.25);
+            goalPhi = 0.85;
+            goalDistance = root.clientWidth < 600 ? 8.2 : 6.2;
+            manual = false;
+            pressed();
+            updateDetail();
+          }
+          const twoDSlots = [0, 2, 4, 6, 8];
+          const twoDTreeCards = [];
+          function draw2DTree(canvas, stageIndex, selected, available) {
+            const box = canvas.getBoundingClientRect();
+            const width = Math.max(1, Math.round(box.width || 220));
+            const height = Math.max(1, Math.round(box.height || 212));
+            const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+            canvas.width = Math.round(width * pixelRatio);
+            canvas.height = Math.round(height * pixelRatio);
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+            ctx.clearRect(0, 0, width, height);
+            const night = currentSceneMode === 'night';
+            const sky = ctx.createLinearGradient(0, 0, 0, height);
+            sky.addColorStop(0, night ? '#1b3651' : '#dcecc8');
+            sky.addColorStop(0.64, night ? '#6e8b87' : '#c1d7a8');
+            sky.addColorStop(1, night ? '#31524e' : '#87a875');
+            ctx.fillStyle = sky;
+            ctx.fillRect(0, 0, width, height);
+            ctx.fillStyle = night ? '#f1e5b933' : '#fff6cf66';
+            ctx.beginPath();
+            ctx.arc(
+              width * 0.78,
+              height * 0.2,
+              Math.max(12, width * 0.07),
+              0,
+              Math.PI * 2
+            );
+            ctx.fill();
+            ctx.fillStyle = night ? '#263f3a' : '#749668';
+            ctx.beginPath();
+            ctx.ellipse(
+              width / 2,
+              height * 0.91,
+              width * 0.43,
+              height * 0.075,
+              0,
+              0,
+              Math.PI * 2
+            );
+            ctx.fill();
+            const unit = Math.min(width / 220, height / 235);
+            const groundY = height * 0.9;
+            ctx.save();
+            ctx.translate(width / 2, groundY);
+            ctx.scale(unit, unit);
+            const trunkHeight = 126 + (8 - stageIndex) * 1.5;
+            const crownY = -trunkHeight;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            const trunk = ctx.createLinearGradient(-11, 0, 11, 0);
+            trunk.addColorStop(0, night ? '#604f3e' : '#9a704d');
+            trunk.addColorStop(0.52, night ? '#967456' : '#bd8d60');
+            trunk.addColorStop(1, night ? '#4c3c31' : '#74513a');
+            ctx.fillStyle = trunk;
+            ctx.beginPath();
+            ctx.moveTo(-11, 0);
+            ctx.quadraticCurveTo(-13, -trunkHeight * 0.46, -5, crownY);
+            ctx.lineTo(5, crownY);
+            ctx.quadraticCurveTo(13, -trunkHeight * 0.46, 11, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = night ? '#c5a47766' : '#e4bf8066';
+            ctx.lineWidth = 1.2;
+            for (let i = 1; i < 8; i++) {
+              const y = -trunkHeight * (i / 8);
+              ctx.beginPath();
+              ctx.moveTo(-8 - Math.sin(i) * 1.4, y);
+              ctx.lineTo(8 + Math.cos(i) * 1.4, y - 2);
+              ctx.stroke();
+            }
+            const leafCount = stageIndex >= 8 ? 6 : 8;
+            for (let i = 0; i < leafCount; i++) {
+              const spread = leafCount === 1 ? 0 : i / (leafCount - 1) - 0.5;
+              const angle = -Math.PI / 2 + spread * 1.75;
+              const length = 58 + (i % 3) * 7 - stageIndex * 0.8;
+              const endX = Math.cos(angle) * length;
+              const endY = crownY + Math.sin(angle) * length;
+              ctx.strokeStyle = night
+                ? '#78956d'
+                : i % 2
+                  ? '#5c854d'
+                  : '#6f9650';
+              ctx.lineWidth = 5.5;
+              ctx.beginPath();
+              ctx.moveTo(0, crownY + 3);
+              ctx.quadraticCurveTo(endX * 0.42, crownY - 8, endX, endY);
+              ctx.stroke();
+              ctx.strokeStyle = night ? '#b2c58288' : '#b9cf7988';
+              ctx.lineWidth = 1.1;
+              for (let j = 1; j < 5; j++) {
+                const t = j / 5;
+                const px = endX * t * 0.92;
+                const py =
+                  crownY + (endY - crownY) * t - Math.sin(t * Math.PI) * 6;
+                const side = i % 2 ? 1 : -1;
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(px + side * 10, py - 4);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(px - side * 10, py - 4);
+                ctx.stroke();
+              }
+            }
+            if (selected) {
+              ctx.strokeStyle = night ? '#f2d98f' : '#f8e39a';
+              ctx.lineWidth = 2.2;
+              ctx.beginPath();
+              ctx.arc(0, crownY + 5, 27, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+            if (stageIndex <= 6) {
+              const fruitCount = 7 - Math.floor(stageIndex / 2);
+              for (let i = 0; i < fruitCount; i++) {
+                const angle = -2.55 + (i / Math.max(1, fruitCount - 1)) * 1.1;
+                const x = Math.cos(angle) * (19 + (i % 2) * 5);
+                const y = crownY + 25 + (i % 3) * 8 + Math.abs(x) * 0.14;
+                ctx.fillStyle = stageIndex < 2 ? '#b7c95d' : '#8eae55';
+                ctx.beginPath();
+                ctx.ellipse(
+                  x,
+                  y,
+                  6 - stageIndex * 0.25,
+                  8 - stageIndex * 0.3,
+                  angle + 0.5,
+                  0,
+                  Math.PI * 2
+                );
+                ctx.fill();
+                ctx.fillStyle = '#526d3d88';
+                ctx.beginPath();
+                ctx.arc(x - 1, y - 2, 1.2, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            } else if (stageIndex === 7) {
+              ctx.strokeStyle = night ? '#e1d59b' : '#d8b873';
+              ctx.lineWidth = 1;
+              for (let i = 0; i < 10; i++) {
+                const x = -30 + i * 6.5;
+                ctx.beginPath();
+                ctx.moveTo(0, crownY + 13);
+                ctx.lineTo(x, crownY + 42 + (i % 3) * 4);
+                ctx.stroke();
+                ctx.fillStyle = '#f0df9d';
+                ctx.beginPath();
+                ctx.arc(x, crownY + 43 + (i % 3) * 4, 2.1, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            } else {
+              ctx.fillStyle = '#9aa451';
+              ctx.beginPath();
+              ctx.moveTo(-7, crownY + 4);
+              ctx.quadraticCurveTo(-23, crownY + 30, -7, crownY + 53);
+              ctx.quadraticCurveTo(0, crownY + 44, 7, crownY + 53);
+              ctx.quadraticCurveTo(23, crownY + 30, 7, crownY + 4);
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = '#d4d28a';
+              ctx.lineWidth = 1.4;
+              ctx.beginPath();
+              ctx.moveTo(0, crownY + 8);
+              ctx.lineTo(0, crownY + 48);
+              ctx.stroke();
+            }
+            ctx.restore();
+            if (!available) {
+              ctx.fillStyle = '#1f3a2b99';
+              ctx.fillRect(0, 0, width, height);
+              ctx.fillStyle = '#f7f1d8';
+              ctx.font = '600 12px Tahoma, sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText('รอจั่นใหม่', width / 2, height / 2);
+            }
+          }
+          function render2DView() {
+            let available = 0;
+            twoDTreeCards.forEach(
+              ({ slot, button, canvas, number, name, note }) => {
+                const actualStage = Math.min(
+                  data.length - 1,
+                  slot + (harvest.needsGrowth ? 1 : 0)
+                );
+                const bunch = bunches[slot];
+                const selected = Boolean(bunch) && active === slot;
+                if (bunch) available++;
+                button.disabled = !bunch;
+                button.setAttribute('aria-pressed', String(selected));
+                button.setAttribute(
+                  'aria-label',
+                  bunch
+                    ? `ต้นที่ ${actualStage + 1} ${data[actualStage][0]} เลือกดูรายละเอียด`
+                    : `ต้นที่ ${slot + 1} รอจั่นใหม่`
+                );
+                number.textContent = String(actualStage + 1).padStart(2, '0');
+                name.textContent = bunch ? data[actualStage][3] : 'รอจั่นใหม่';
+                note.textContent = bunch
+                  ? `จั่น ${bunch.userData.cohort} • ${data[actualStage][0]}`
+                  : 'พื้นที่ว่าง รอการเติบโต';
+                draw2DTree(canvas, actualStage, selected, Boolean(bunch));
+              }
+            );
+            $('#ca-2d-count').textContent =
+              `${available} ต้นแสดงอยู่ • เทียบ 5 ช่วงวัย`;
+          }
+          twoDSlots.forEach((slot) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'ca-2d-tree-card';
+            button.setAttribute('aria-pressed', 'false');
+            const canvas2D = document.createElement('canvas');
+            canvas2D.setAttribute('aria-hidden', 'true');
+            const caption = document.createElement('span');
+            caption.className = 'ca-2d-tree-caption';
+            const number = document.createElement('span');
+            number.className = 'ca-2d-tree-number';
+            const name = document.createElement('span');
+            name.className = 'ca-2d-tree-name';
+            caption.append(number, name);
+            const note = document.createElement('span');
+            note.className = 'ca-2d-tree-note';
+            button.append(canvas2D, caption, note);
+            button.onclick = () => {
+              if (!bunches[slot]) return;
+              stopTour();
+              focusStage(slot);
+            };
+            $('.ca-2d-orchard').append(button);
+            twoDTreeCards.push({
+              slot,
+              button,
+              canvas: canvas2D,
+              number,
+              name,
+              note,
+            });
+          });
+          function setViewMode(nextMode) {
+            viewMode = nextMode === '2d' ? '2d' : '3d';
+            const is2D = viewMode === '2d';
+            root.dataset.viewMode = viewMode;
+            $('#ca-view-3d').setAttribute('aria-pressed', String(!is2D));
+            $('#ca-view-2d').setAttribute('aria-pressed', String(is2D));
+            $('#ca-2d-view').hidden = !is2D;
+            $('#ca-2d-view').setAttribute('aria-hidden', String(!is2D));
+            canvas.setAttribute('aria-hidden', String(is2D));
+            if (is2D) {
+              stopTour();
+              if (active < 0 && bunches[0]) focusStage(0);
+              render2DView();
+            }
+          }
+          $('#ca-view-3d').onclick = () => setViewMode('3d');
+          $('#ca-view-2d').onclick = () => setViewMode('2d');
+          root.querySelectorAll('[data-view]').forEach(
+            (b) =>
+              (b.onclick = () => {
+                introUntil = 0;
+                b.dataset.view === 'full' ? fullView() : crownView();
+              })
+          );
+          $('#ca-leaves').onclick = () => {
+            leavesHidden = foliage.visible;
+            if (!leavesHidden) {
+              studyMode = false;
+              $('#ca-study').setAttribute('aria-pressed', 'false');
+            }
+            pressed();
+            $('#ca-leaves').setAttribute('aria-pressed', String(leavesHidden));
+            $('#ca-leaves').textContent = leavesHidden
+              ? 'แสดงทางใบ'
+              : 'ซ่อนทางใบ';
+          };
+          $('#ca-rotate').onclick = () => {
+            rotating = !rotating;
+            $('#ca-rotate').setAttribute('aria-pressed', String(rotating));
+          };
+          $('#ca-labels').onclick = () => {
+            showLabels = !showLabels;
+            $('#ca-labels').setAttribute('aria-pressed', String(showLabels));
+          };
+          $('#ca-harvest').onclick = cutStageOne;
+          $('#ca-standing').onclick = crownView;
+          $('#ca-ground').onclick = focusHarvest;
+          $('#ca-harvested').onchange = () => {
+            selectedHarvest = Number($('#ca-harvested').value);
+            focusHarvest();
+          };
+          $('#ca-grow').onclick = () => {
+            stopTour();
+            harvest.grow();
+            const young = bunches[bunches.length - 1];
+            if (!prefersReduce && young)
+              anims.push({
+                type: 'grow',
+                bunch: young,
+                start: clock.getElapsedTime(),
+                dur: 0.8,
+              });
+            crownView();
+          };
+          $('#ca-day').onclick = () => setSceneMode('day');
+          let studyMode = true;
+          $('#ca-study').onclick = () => {
+            studyMode = !studyMode;
+            $('#ca-study').setAttribute('aria-pressed', String(studyMode));
+            if (studyMode && active < 0) focusStage(0);
+            else pressed();
+          };
+          $('#ca-prev').onclick = () => {
+            stopTour();
+            focusStage(active - 1);
+          };
+          $('#ca-next').onclick = () => {
+            stopTour();
+            focusStage(active + 1);
+          };
+          $('#ca-reset').onclick = () => {
+            stopTour();
+            anims.length = 0;
+            harvest.reset();
+            selectedHarvest = -1;
+            $('#ca-harvested').replaceChildren();
+            $('#ca-harvest-count').value = '9';
+            fullView();
+          };
+          let economy = root.clientWidth < 600;
+          function applyEconomy() {
+            renderer.setPixelRatio(
+              Math.min(devicePixelRatio, economy ? 1 : 1.65)
+            );
+            renderer.shadowMap.enabled = !economy;
+            updateAmbient();
+            scene.traverse((part) => {
+              if (part.material) {
+                const materials = Array.isArray(part.material)
+                  ? part.material
+                  : [part.material];
+                materials.forEach((material) => {
+                  material.needsUpdate = true;
+                });
+              }
+            });
+            $('#ca-economy').setAttribute('aria-pressed', String(economy));
+          }
+          $('#ca-economy').onclick = () => {
+            economy = !economy;
+            applyEconomy();
+          };
+          applyEconomy();
+          if (root.clientWidth < 600) $('.detail').open = false;
+          pressed();
+          $('#ca-night').onclick = () => setSceneMode('night');
+          setSceneMode('day');
+          updateDetail();
+          $('#ca-pan').onclick = () => {
+            panMode = !panMode;
+            $('#ca-pan').setAttribute('aria-pressed', String(panMode));
+            canvas.style.cursor = panMode ? 'move' : 'grab';
+          };
+          $('#ca-fullscreen').onclick = async () => {
+            try {
+              if (document.fullscreenElement) await document.exitFullscreen();
+              else await root.requestFullscreen();
+            } catch {
+              $('.hint').textContent = 'เบราว์เซอร์นี้ไม่อนุญาตให้เปิดเต็มจอ';
+            }
+          };
+          document.addEventListener('fullscreenchange', () => {
+            const full = document.fullscreenElement === root;
+            $('#ca-fullscreen').setAttribute('aria-pressed', String(full));
+            $('#ca-fullscreen').textContent = full ? 'ออกจากเต็มจอ' : 'เต็มจอ';
+          });
+          // Guided tour: glide through every bunch, one stage at a time.
+          let tour = null;
+          function stopTour(message) {
+            if (tour) {
+              tour = null;
+              $('#ca-tour').setAttribute('aria-pressed', 'false');
+            }
+            if (message) $('.hint').textContent = message;
+          }
+          $('#ca-tour').onclick = () => {
+            if (tour) {
+              stopTour('จบการทัวร์');
+              return;
+            }
+            stopTour();
+            introUntil = 0;
+            tour = { index: 0, nextAt: 0 };
+            $('#ca-tour').setAttribute('aria-pressed', 'true');
+            $('.detail').open = true;
+            focusStage(0);
+            tour.nextAt = clock.getElapsedTime() + 4;
+          };
+          $('#ca-shot').onclick = () => {
+            renderer.render(scene, camera);
+            canvas.toBlob((blob) => {
+              if (!blob) {
+                $('.hint').textContent = 'บันทึกภาพไม่สำเร็จ';
+                return;
+              }
+              const a = document.createElement('a'),
+                prev = $('.hint').textContent;
+              a.href = URL.createObjectURL(blob);
+              a.download =
+                'coconut-3d-' + new Date().toISOString().slice(0, 10) + '.png';
+              a.click();
+              setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+              $('.hint').textContent = 'บันทึกภาพแล้ว ✓';
+              setTimeout(() => ($('.hint').textContent = prev), 2600);
+            }, 'image/png');
+          };
+          window.addEventListener('keydown', (e) => {
+            const tag = document.activeElement?.tagName;
+            if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA')
+              return;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+              e.preventDefault();
+              const dir = e.key === 'ArrowRight' ? 1 : -1,
+                from = active < 0 ? (dir > 0 ? -1 : bunches.length) : active,
+                next = Math.min(Math.max(from + dir, 0), bunches.length - 1);
+              stopTour();
+              focusStage(next);
+            } else if (e.key === 'Escape') {
+              stopTour('ออกจากโหมดปัจจุบัน');
+              if (mode !== 'full') fullView();
+            }
+          });
+          const finePointer = matchMedia('(pointer: fine)').matches;
+          let hoverFrame = 0;
+          canvas.addEventListener('pointermove', (e) => {
+            if (!finePointer || pointers.size || e.buttons) return;
+            if (hoverFrame++ % 3) return;
+            const box = canvas.getBoundingClientRect();
+            pointer.set(
+              ((e.clientX - box.left) / box.width) * 2 - 1,
+              (-(e.clientY - box.top) / box.height) * 2 + 1
+            );
+            ray.setFromCamera(pointer, camera);
+            canvas.style.cursor = ray.intersectObjects(pickables).length
+              ? 'pointer'
+              : panMode
+                ? 'move'
+                : 'grab';
+          });
+          function pan(dx, dy) {
+            panCamera(
+              camera,
+              goalTarget,
+              goalDistance,
+              canvas.clientHeight,
+              dx,
+              dy
+            );
+          }
+          $('#ca-plus').onclick = () => (
+            (manual = true),
+            (goalDistance = Math.max(1, goalDistance * 0.82))
+          );
+          $('#ca-minus').onclick = () => (
+            (manual = true),
+            (goalDistance = Math.min(80, goalDistance * 1.22))
+          );
+          canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+          canvas.addEventListener('pointerdown', (e) => {
+            introUntil = 0;
+            stopTour();
+            canvas.setPointerCapture(e.pointerId);
+            pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            moved = pointers.size > 1 || e.button !== 0;
+            if (pointers.size === 2) {
+              let p = [...pointers.values()];
+              lastPinch = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+            }
+          });
+          canvas.addEventListener('pointermove', (e) => {
+            if (!pointers.has(e.pointerId)) return;
+            let prev = pointers.get(e.pointerId);
+            pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            const dx = e.clientX - prev.x,
+              dy = e.clientY - prev.y;
+            manual = true;
+            if (pointers.size === 2) {
+              let p = [...pointers.values()],
+                len = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+              if (lastPinch > 0 && len > 0)
+                goalDistance = T.MathUtils.clamp(
+                  (goalDistance * lastPinch) / len,
+                  1,
+                  80
+                );
+              pan(dx / 2, dy / 2);
+              lastPinch = len;
+              moved = true;
+            } else {
+              if (Math.abs(dx) + Math.abs(dy) > 1) moved = true;
+              if (panMode || e.buttons === 2 || e.buttons === 4 || e.shiftKey) {
+                pan(dx, dy);
+              } else {
+                goalTheta -= dx * 0.006;
+                goalPhi = T.MathUtils.clamp(
+                  goalPhi - dy * 0.005,
+                  0.05,
+                  Math.PI - 0.05
+                );
+              }
+            }
+            rotating = false;
+            $('#ca-rotate').setAttribute('aria-pressed', 'false');
+          });
+          function release(e) {
+            if (!moved && pointers.size === 1) {
+              let box = canvas.getBoundingClientRect();
+              pointer.set(
+                ((e.clientX - box.left) / box.width) * 2 - 1,
+                (-(e.clientY - box.top) / box.height) * 2 + 1
+              );
+              ray.setFromCamera(pointer, camera);
+              let hits = ray.intersectObjects(pickables);
+              if (hits.length) {
+                const hit = hits[0].object.userData;
+                if (hit.harvestIndex !== undefined) {
+                  selectedHarvest = hit.harvestIndex;
+                  focusHarvest();
+                } else focusStage(hit.stage);
+              }
+            }
+            pointers.delete(e.pointerId);
+            lastPinch = 0;
+          }
+          canvas.addEventListener('pointerup', release);
+          canvas.addEventListener('pointercancel', (e) => {
+            pointers.delete(e.pointerId);
+            moved = true;
+            lastPinch = 0;
+          });
+          canvas.addEventListener(
+            'wheel',
+            (e) => {
+              e.preventDefault();
+              manual = true;
+              introUntil = 0;
+              goalDistance = T.MathUtils.clamp(
+                goalDistance * Math.exp(e.deltaY * 0.001),
+                1,
+                80
+              );
+            },
+            { passive: false }
+          );
+          function resize() {
+            let w = root.clientWidth,
+              h = root.clientHeight;
+            renderer.setSize(w, h, false);
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            if (mode === 'full' && !manual)
+              goalDistance = 17.7 * Math.max(1, 0.85 / (w / h));
+          }
+          new ResizeObserver(resize).observe(root);
+          resize();
+          distance = goalDistance;
+          // Cinematic opening: sweep low and far around the trunk into the full view.
+          let introUntil = 0;
+          if (!prefersReduce) {
+            theta = 0.68 - 2.6;
+            phi = 1.52;
+            distance = 30;
+            target.set(0, 2.3, 0);
+            introUntil = 3.6;
+          }
+          let clock = new T.Clock(),
+            running = true;
+          const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+          let inView = true;
+          new IntersectionObserver(([entry]) => {
+            inView = entry.isIntersecting;
+          }).observe(root);
+          let lastT = 0;
+          function render() {
+            if (!root.isConnected) {
+              renderer.dispose();
+              return;
+            }
+            requestAnimationFrame(render);
+            let time = clock.getElapsedTime();
+            if (document.hidden || !inView) return;
+            const dt = Math.min(0.05, time - lastT);
+            lastT = time;
+            if (tour && time >= tour.nextAt) {
+              if (!bunches[tour.index]) {
+                stopTour();
+                fullView();
+              } else {
+                focusStage(tour.index);
+                tour.index += 1;
+                tour.nextAt = time + 3.8;
+              }
+            }
+            if (rotating) goalTheta += 0.0018;
+            const easeK = time < introUntil ? 0.022 : 0.075,
+              easeD = time < introUntil ? 0.02 : 0.07;
+            theta += (goalTheta - theta) * easeK;
+            phi += (goalPhi - phi) * easeK;
+            distance += (goalDistance - distance) * easeD;
+            target.lerp(goalTarget, easeD);
+            camera.position.set(
+              target.x + distance * Math.sin(phi) * Math.sin(theta),
+              target.y + distance * Math.cos(phi),
+              target.z + distance * Math.sin(phi) * Math.cos(theta)
+            );
+            camera.lookAt(target);
+            if (shake > 0.001) {
+              camera.position.x += Math.sin(time * 71) * shake;
+              camera.position.y += Math.sin(time * 83) * shake * 0.6;
+              shake = Math.max(0, shake - dt * 0.22);
+            }
+            if (!reduce && !economy) {
+              const gust =
+                0.5 + 0.5 * Math.sin(time * 0.31 + Math.sin(time * 0.17) * 2.1);
+              const amp = 0.007 + gust * 0.02;
+              for (let { group, phase } of leafGroups) {
+                group.rotation.z =
+                  Math.sin(time * 0.66 + phase) * amp +
+                  Math.sin(time * 1.24 + phase) * 0.002 +
+                  gust * 0.02 * Math.sin(time * 0.53 + phase);
+              }
+              dust.rotation.y = time * 0.012;
+            }
+            for (let i = anims.length - 1; i >= 0; i--) {
+              const a = anims[i],
+                t = (time - a.start) / a.dur;
+              if (a.type === 'burst') {
+                a.group.children.forEach((m) => {
+                  m.position.addScaledVector(m.userData.v, dt);
+                  m.userData.v.y -= 5.5 * dt;
+                  m.rotation.x += 4 * dt;
+                  m.rotation.y += 5 * dt;
+                });
+                a.group.children[0].material.opacity = 0.85 * (1 - t);
+                if (t >= 1) {
+                  scene.remove(a.group);
+                  a.group.children[0].material.dispose();
+                  anims.splice(i, 1);
+                }
+                continue;
+              }
+              if (t >= 1) {
+                if (a.type === 'fall') {
+                  a.bunch.position.copy(a.toPos);
+                  a.bunch.quaternion.copy(a.toQuat);
+                } else a.bunch.scale.setScalar(1);
+                anims.splice(i, 1);
+                continue;
+              }
+              if (a.type === 'fall') {
+                const ez = 1 - Math.pow(1 - t, 2),
+                  by = bounceOut(t);
+                a.bunch.position.set(
+                  a.fromPos.x + (a.toPos.x - a.fromPos.x) * ez,
+                  a.fromPos.y + (a.toPos.y - a.fromPos.y) * by,
+                  a.fromPos.z + (a.toPos.z - a.fromPos.z) * ez
+                );
+                a.bunch.quaternion.slerpQuaternions(
+                  a.fromQuat,
+                  a.toQuat,
+                  Math.min(1, t * 1.5)
+                );
+              } else if (a.type === 'grow') {
+                const c1 = 1.70158,
+                  c3 = c1 + 1,
+                  u = t - 1;
+                a.bunch.scale.setScalar(
+                  Math.max(0.001, 1 + c3 * u * u * u + c1 * u * u)
+                );
+              }
+            }
+            if (fireflies.visible) {
+              for (let i = 0; i < FIREFLIES; i++) {
+                const ph = ffPhase[i];
+                ffPos[i * 3] = ffBase[i * 3] + Math.sin(time * 0.5 + ph) * 0.55;
+                ffPos[i * 3 + 1] =
+                  ffBase[i * 3 + 1] + Math.sin(time * 0.83 + ph * 1.7) * 0.45;
+                ffPos[i * 3 + 2] =
+                  ffBase[i * 3 + 2] + Math.cos(time * 0.47 + ph) * 0.55;
+              }
+              ffGeo.attributes.position.needsUpdate = true;
+              fireflyMat.opacity = 0.3 + 0.28 * Math.sin(time * 2.3);
+            }
+            if (butterflies.visible) {
+              for (const b of butterflyData) {
+                const a = time * b.speed + b.phase;
+                b.obj.position.set(
+                  Math.cos(a) * b.radius,
+                  b.height + Math.sin(time * 0.9 + b.phase) * 0.45,
+                  Math.sin(a) * b.radius
+                );
+                b.obj.rotation.y = b.speed > 0 ? -a : Math.PI - a;
+                const flap = 0.75 * Math.sin(time * b.flap + b.phase);
+                b.obj.userData.wings[0].pivot.rotation.z = flap;
+                b.obj.userData.wings[1].pivot.rotation.z = -flap;
+              }
+            }
+            if (leaflets.visible) {
+              for (let i = 0; i < LEAFLETS; i++) {
+                const L = leafletData[i];
+                if (L.state === 0) {
+                  L.p.y -= L.v * dt;
+                  L.p.x += Math.sin(time * 1.6 + L.phase) * 0.4 * dt;
+                  L.p.z += Math.cos(time * 1.3 + L.phase) * 0.4 * dt;
+                  L.rot.x += L.spin.x * dt;
+                  L.rot.y += L.spin.y * dt;
+                  L.rot.z += L.spin.z * dt;
+                  if (L.p.y <= 0.02) {
+                    L.p.y = 0.02;
+                    L.state = 1;
+                    L.t = 0;
+                    L.rot.x = -Math.PI / 2 + range(-0.3, 0.3);
+                    L.rot.z = 0;
+                  }
+                } else if (L.state === 1) {
+                  L.t += dt;
+                  if (L.t > 3.5 + L.phase) {
+                    L.state = 2;
+                    L.t = 0;
+                  }
+                } else {
+                  L.t += dt;
+                  L.s = Math.max(0.001, 1 - L.t / 0.5);
+                  if (L.t >= 0.5) {
+                    L.p.set(
+                      cx + range(-0.6, 0.6),
+                      5.6 + range(0, 0.8),
+                      cz + range(-0.6, 0.6)
+                    );
+                    L.v = range(0.35, 0.62);
+                    L.state = 0;
+                    L.s = 1;
+                  }
+                }
+                ld.position.copy(L.p);
+                ld.rotation.set(L.rot.x, L.rot.y, L.rot.z);
+                ld.scale.setScalar(L.s);
+                ld.updateMatrix();
+                leaflets.setMatrixAt(i, ld.matrix);
+              }
+              leaflets.instanceMatrix.needsUpdate = true;
+            }
+            scene.updateMatrixWorld(true);
+            camera.updateMatrixWorld();
+            if (
+              mode === 'stage' &&
+              active >= 0 &&
+              bunches[active] &&
+              !anims.some((a) => a.type === 'fall')
+            ) {
+              glowSprite.visible = true;
+              glowSprite.position.copy(
+                bunches[active].localToWorld(
+                  anchors[active + (harvest.needsGrowth ? 1 : 0)].clone()
+                )
+              );
+              const pulse = Math.sin(time * 3.1);
+              glowSprite.material.opacity = 0.26 + 0.14 * pulse;
+              glowSprite.scale.setScalar(1.5 + 0.22 * Math.sin(time * 3.1 + 1));
+            } else glowSprite.visible = false;
+            for (let i = 0; i < 9; i++) {
+              if (!bunches[i] || mode === 'harvest') {
+                pins[i].style.display = 'none';
+                continue;
+              }
+              let p = bunches[i].localToWorld(
+                  anchors[i + (harvest.needsGrowth ? 1 : 0)].clone()
+                ),
+                dir = p.clone().sub(camera.position),
+                front = dir.dot(camera.getWorldDirection(V())) > 0;
+              p.project(camera);
+              let px = (p.x * 0.5 + 0.5) * root.clientWidth,
+                py = (-p.y * 0.5 + 0.5) * root.clientHeight;
+              let on =
+                showLabels &&
+                mode !== 'full' &&
+                front &&
+                p.z < 1 &&
+                px > 15 &&
+                px < root.clientWidth - 15 &&
+                py > 110 &&
+                py < root.clientHeight - (root.clientWidth < 600 ? 240 : 160);
+              pins[i].style.display = on ? 'block' : 'none';
+              if (on) {
+                pins[i].style.left = px + 'px';
+                pins[i].style.top = py + 'px';
+                pins[i].style.opacity =
+                  active >= 0 && active !== i ? '.45' : '1';
+                pins[i].style.zIndex = i === active ? '3' : '1';
+              }
+            }
+            renderer.render(scene, camera);
+            root.dataset.ready = 'true';
+          }
+          render();
+          $('.loading').remove();
+          root.addEventListener(
+            'webglcontextlost',
+            (e) => {
+              e.preventDefault();
+              $('.scene-status').textContent =
+                'กราฟิกหยุดทำงาน กรุณาเปิดไฟล์ใหม่';
+            },
+            true
+          );
+        } catch (e) {
+          $('.loading').innerHTML =
+            'เปิดฉาก 3D ไม่สำเร็จ<small>ลองเปิดไฟล์นี้ด้วย Chrome หรือ Edge ที่รองรับ WebGL</small>';
+          console.error(e);
+        }
+      })();
+    </script>
+  </body>
+</html>

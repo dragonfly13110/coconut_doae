@@ -19,8 +19,19 @@ export async function onRequest({ request, env }) {
 
 function loadEntries(env, user) {
   if (user.role === 'admin') {
-    return env.DB.prepare('SELECT * FROM entries ORDER BY round, province_code, plot, bunch').all();
+    return env.DB.prepare(`
+      SELECT e.*, u.province_label AS recorded_by_label
+      FROM entries e
+      LEFT JOIN users u ON e.recorded_by = u.id
+      ORDER BY e.round, e.province_code, e.plot, e.bunch
+    `).all();
   } else {
-    return env.DB.prepare('SELECT * FROM entries WHERE province_code = ? ORDER BY round, plot, bunch').bind(user.province_code).all();
+    return env.DB.prepare(`
+      SELECT e.*, u.province_label AS recorded_by_label
+      FROM entries e
+      LEFT JOIN users u ON e.recorded_by = u.id
+      WHERE e.province_code = ?
+      ORDER BY e.round, e.plot, e.bunch
+    `).bind(user.province_code).all();
   }
 }
