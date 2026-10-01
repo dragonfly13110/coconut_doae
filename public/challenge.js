@@ -1504,6 +1504,9 @@ function renderBoard2DMatrix(plots) {
   const tbody = cel('chalBoardMatrixTbody');
   if (!tbody) return;
 
+  const wrap = cel('chalBoardMatrixWrap');
+  if (wrap) wrap.scrollLeft = 0;
+
   if (plots.length === 0) {
     tbody.innerHTML = `
       <tr>
@@ -1523,70 +1526,106 @@ function renderBoard2DMatrix(plots) {
 
     let statusPill = '';
     if (p.status === 'complete') {
-      statusPill = '<span class="status-chip chip-complete">🟢 ครบ 35/35</span>';
+      statusPill = '<span class="status-chip chip-complete">✅ ครบ 35/35</span>';
     } else if (p.status === 'incomplete') {
-      statusPill = `<span class="status-chip chip-incomplete">⚠️ ค้างอีก ${35 - p.totalTreesChecked} ต้น</span>`;
+      statusPill = `<span class="status-chip chip-incomplete">⚠️ ${p.totalTreesChecked}/35 ต้น</span>`;
     } else {
-      statusPill = '<span class="status-chip chip-notstarted">⚪ ยังไม่เริ่ม (0/35)</span>';
+      statusPill = '<span class="status-chip chip-notstarted">⏳ 0/35 ต้น</span>';
     }
 
     const progressFillClass = p.status === 'complete' ? 'fill-green' : p.totalTreesChecked > 0 ? 'fill-orange' : 'fill-gray';
 
     const pointCellsHtml = (p.points || []).map((pt) => {
-      let cellClass = 'point-cell-missing';
+      let cellClass = 'pt-missing';
       let badgeLabel = '0/5';
-      let icon = '⚪';
+      let sym = '○';
       let tooltip = `จุดที่ ${pt.no}: ยังไม่ได้ตรวจ (0/5 ต้น)`;
       let subText = '';
 
       if (pt.status === 'done') {
-        cellClass = 'point-cell-done';
+        cellClass = 'pt-done';
         badgeLabel = '5/5';
-        icon = '🟢';
-        tooltip = `จุดที่ ${pt.no}: ครบ 5/5 ต้น (${pt.treesChecked.join(', ')})`;
+        sym = '✓';
+        tooltip = `จุดที่ ${pt.no}: ตรวจครบ 5/5 ต้น (${pt.treesChecked.join(', ')})`;
       } else if (pt.status === 'partial') {
-        cellClass = 'point-cell-partial';
+        cellClass = 'pt-partial';
         badgeLabel = `${pt.activeTrees}/5`;
-        icon = '🟠';
+        sym = '•';
         tooltip = `จุดที่ ${pt.no}: ตรวจแล้ว ${pt.activeTrees}/5 ต้น (ขาด: ${pt.treesMissing.join(', ')})`;
-        subText = `<small class="pt-missing-sub">ขาด ${pt.treesMissing.join(',')}</small>`;
+        subText = `<span class="pt-sub-tag">ขาด ${pt.treesMissing.join(',')}</span>`;
       }
 
       return `
-        <td class="text-center point-cell-td">
+        <td class="text-center col-pt">
           <button type="button" class="board-point-btn ${cellClass}"
                   onclick="window.chalJumpToPoint(${p.id}, '${pt.label}', '${pt.treesMissing[0] || 'C'}')"
                   title="${tooltip} - คลิกเพื่อเปิดตรวจจุดนี้">
-            <span class="pt-icon">${icon}</span>
-            <span class="pt-count">${badgeLabel}</span>
+            <span class="pt-badge-row">
+              <span class="pt-sym">${sym}</span>
+              <span class="pt-val">${badgeLabel}</span>
+            </span>
             ${subText}
           </button>
         </td>
       `;
     }).join('');
 
-    const missingSummaryHtml = p.status === 'complete'
-      ? '<span style="color:#16a34a; font-size:12px; font-weight:600;">✔️ ครบถ้วน 7 จุด (35 ต้น)</span>'
-      : p.status === 'not_started'
-      ? '<span style="color:#64748b; font-size:12px;">⚪ ยังไม่มีข้อมูลสำรวจทั้ง 7 จุด</span>'
-      : `<span style="color:#d97706; font-size:12px; font-weight:600;" title="${escapeHtml(p.missingSummary)}">⚠️ ${escapeHtml(p.missingSummary)}</span>`;
+    let missingSummaryHtml = '';
+    if (p.status === 'complete') {
+      missingSummaryHtml = `
+        <div class="board-summary-box summary-box-complete">
+          <div class="summary-title-complete">
+            <span class="summary-check-icon">✓</span> ครบถ้วน 35/35 ต้น
+          </div>
+          ${p.cutsCount > 0 ? `<div class="summary-cuts-pill">🥥 ตัดผลแล้ว ${p.cutsCount} รอบ (${Number(p.totalCutYield || 0).toLocaleString()} ผล)</div>` : ''}
+        </div>
+      `;
+    } else if (p.status === 'not_started') {
+      missingSummaryHtml = `
+        <div class="board-summary-box summary-box-notstarted">
+          <span class="summary-pending-label">⏳ ยังไม่ได้สำรวจ</span>
+          <span class="summary-sub-gray">ค้างทั้ง 7 จุด (35 ต้น)</span>
+        </div>
+      `;
+    } else {
+      const missingPoints = (p.points || []).filter((pt) => pt.status !== 'done');
+      const missingPills = missingPoints.map((pt) => {
+        if (pt.status === 'missing') {
+          return `<span class="m-pill m-pill-empty" title="จุด ${pt.no}: ยังไม่ได้ตรวจ">จุด ${pt.no} (0/5)</span>`;
+        } else {
+          return `<span class="m-pill m-pill-part" title="จุด ${pt.no}: ตรวจแล้ว ${pt.activeTrees}/5 (ขาด ${pt.treesMissing.join(',')})">จุด ${pt.no} (${pt.activeTrees}/5)</span>`;
+        }
+      }).join('');
+
+      missingSummaryHtml = `
+        <div class="board-summary-box summary-box-incomplete">
+          <div class="summary-warn-header">
+            <span class="badge-pending-count">⚠️ ค้างอีก ${35 - p.totalTreesChecked} ต้น</span>
+            <span class="summary-pts-count">(ขาด ${missingPoints.length} จุด)</span>
+          </div>
+          <div class="missing-pills-wrap">
+            ${missingPills}
+          </div>
+          ${p.cutsCount > 0 ? `<div class="summary-cuts-pill">🥥 ตัดผลแล้ว ${p.cutsCount} รอบ (${Number(p.totalCutYield || 0).toLocaleString()} ผล)</div>` : ''}
+        </div>
+      `;
+    }
 
     const nextPendingPoint = p.points.find((pt) => pt.status !== 'done') || p.points[0];
 
     return `
       <tr class="board2d-row board-row-${p.status}">
-        <td class="text-center text-muted" style="font-size:12px;">${idx + 1}</td>
-        <td>
-          <span class="prov-badge ${provPillClass}">${provName}</span>
+        <td class="text-center text-muted col-sticky-1" style="font-size:12px; font-weight:600;">${idx + 1}</td>
+        <td class="col-sticky-2">
+          <div style="font-weight:700; color:var(--primary-strong); font-size:13px; line-height:1.25;">${escapeHtml(p.plot_label)}</div>
+          <div style="font-size:12px; color:var(--ink); font-weight:600; margin-top:2px;">${escapeHtml(p.full_name)}</div>
+          ${p.address ? `<div style="font-size:11px; color:var(--muted); line-height:1.2; margin-top:1px;">${escapeHtml(p.address)}</div>` : ''}
         </td>
-        <td>
-          <div style="font-weight:700; color:var(--primary-strong); font-size:13px;">${escapeHtml(p.plot_label)}</div>
-          <div style="font-size:12px; color:var(--ink); font-weight:500;">${escapeHtml(p.full_name)}</div>
-          ${p.address ? `<div style="font-size:11px; color:var(--muted);">${escapeHtml(p.address)}</div>` : ''}
+        <td class="text-center">
+          <span class="prov-badge ${provPillClass}">${provName}</span>
         </td>
         <td class="text-right" style="font-size:12px;">
           <strong>${Number(p.productive_area_rai || 0).toFixed(1)}</strong>
-          <span style="font-size:10px; color:var(--muted);"> ไร่</span>
         </td>
         <td>
           <div class="board-progress-container">
@@ -1601,14 +1640,13 @@ function renderBoard2DMatrix(plots) {
           </div>
         </td>
         ${pointCellsHtml}
-        <td style="max-width:240px;">
-          <div class="missing-summary-wrap">${missingSummaryHtml}</div>
-          ${p.cutsCount > 0 ? `<div style="font-size:11px; color:var(--muted); margin-top:2px;">🥥 บันทึกตัดแล้ว ${p.cutsCount} รอบ (${Number(p.totalCutYield || 0).toLocaleString()} ผล)</div>` : ''}
+        <td>
+          ${missingSummaryHtml}
         </td>
         <td class="text-center">
-          <button type="button" class="button primary small" style="padding:4px 8px; font-size:11px; white-space:nowrap;"
-                  onclick="window.chalJumpToPoint(${p.id}, '${nextPendingPoint.label}', 'C')">
-            🔍 เปิดตรวจ
+          <button type="button" class="button primary small board-inspect-btn"
+                  onclick="window.chalJumpToPoint(${p.id}, '${nextPendingPoint.label}', '${nextPendingPoint.treesMissing[0] || 'C'}')">
+            ตรวจ
           </button>
         </td>
       </tr>
@@ -1638,11 +1676,11 @@ function renderBoard2DCards(plots) {
 
     let statusHeaderBadge = '';
     if (p.status === 'complete') {
-      statusHeaderBadge = '<span class="card-status-badge badge-green">🟢 เช็คครบ 35/35 ต้น</span>';
+      statusHeaderBadge = '<span class="card-status-badge badge-green">✅ เช็คครบ 35/35 ต้น</span>';
     } else if (p.status === 'incomplete') {
       statusHeaderBadge = `<span class="card-status-badge badge-amber">⚠️ ยังเช็คไม่ครบ (ค้าง ${35 - p.totalTreesChecked} ต้น)</span>`;
     } else {
-      statusHeaderBadge = '<span class="card-status-badge badge-slate">⚪ ยังไม่เริ่มสำรวจ</span>';
+      statusHeaderBadge = '<span class="card-status-badge badge-slate">⏳ ยังไม่เริ่มสำรวจ</span>';
     }
 
     const pointsClustersHtml = (p.points || []).map((pt) => {

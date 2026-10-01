@@ -1434,7 +1434,7 @@
             </div>
           </div>
           <div class="kpi-card highlight-orange" style="background:#fffbeb; border:1px solid #fde68a;">
-            <div class="kpi-icon">⚠️</div>
+            <div class="kpi-icon">⏳</div>
             <div class="kpi-body">
               <span class="kpi-title" style="color:#b45309;">ยังเช็คไม่ครบ</span>
               <strong class="kpi-val" id="chalBoardKpiIncompletePlots" style="color:#d97706;">0 แปลง</strong>
@@ -1442,7 +1442,7 @@
             </div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-icon">⚪</div>
+            <div class="kpi-icon">📝</div>
             <div class="kpi-body">
               <span class="kpi-title">ยังไม่ได้เริ่มตรวจ</span>
               <strong class="kpi-val" id="chalBoardKpiNotStartedPlots" style="color:#64748b;">0 แปลง</strong>
@@ -1450,7 +1450,7 @@
             </div>
           </div>
           <div class="kpi-card highlight" style="background:#f0fdf4; border:1px solid #bbf7d0;">
-            <div class="kpi-icon">🟢</div>
+            <div class="kpi-icon">✅</div>
             <div class="kpi-body">
               <span class="kpi-title" style="color:#15803d;">เช็คครบสมบูรณ์</span>
               <strong class="kpi-val" id="chalBoardKpiCompletedPlots" style="color:#16a34a;">0 แปลง</strong>
@@ -1468,61 +1468,63 @@
         </div>
 
         <!-- Filter & Control Toolbar -->
-        <div class="board2d-toolbar" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px 18px; margin-bottom:16px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-          <!-- Status Filter Pills -->
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <span style="font-size:13px; font-weight:700; color:var(--ink);">สถานะการตรวจ:</span>
-            <div class="board2d-status-pills" id="chalBoardStatusPills" style="display:flex; gap:6px;">
-              <button type="button" class="filter-pill active" data-board-status="all">ทั้งหมด (<span id="pillCountAll">0</span>)</button>
-              <button type="button" class="filter-pill pill-incomplete" data-board-status="incomplete" style="background:#fef3c7; color:#92400e; border-color:#fde68a; font-weight:700;">⚠️ ยังเช็คไม่ครบ (<span id="pillCountIncomplete">0</span>)</button>
-              <button type="button" class="filter-pill" data-board-status="not_started">⚪ ยังไม่เริ่ม (<span id="pillCountNotStarted">0</span>)</button>
-              <button type="button" class="filter-pill pill-complete" data-board-status="complete" style="background:#dcfce7; color:#166534; border-color:#bbf7d0;">🟢 ครบ 100% (<span id="pillCountComplete">0</span>)</button>
-            </div>
-          </div>
-
-          <!-- Secondary Filters (Province & Search) & View Switcher -->
-          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            <select id="chalBoardProvFilter" style="padding:7px 12px; border-radius:8px; border:1px solid var(--line); font-size:13px; font-weight:600;">
-              <option value="all">ทุกจังหวัดเป้าหมาย</option>
-              <option value="ratchaburi">ราชบุรี</option>
-              <option value="nakhon_pathom">นครปฐม</option>
-              <option value="samut_sakhon">สมุทรสาคร</option>
-              <option value="samut_songkhram">สมุทรสงคราม</option>
-            </select>
-
-            <div style="position:relative;">
-              <input type="text" id="chalBoardSearchInput" placeholder="🔍 ค้นหาแปลง, เกษตรกร, สวน..." style="padding:7px 12px 7px 30px; border-radius:8px; border:1px solid var(--line); font-size:13px; width:220px;" />
-              <span style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:12px; pointer-events:none;">🔍</span>
+        <div class="board2d-toolbar">
+          <div class="board2d-toolbar-main">
+            <div class="board2d-status-filter-wrap">
+              <span class="board2d-filter-label">สถานะการตรวจ:</span>
+              <div class="board2d-status-pills" id="chalBoardStatusPills">
+                <button type="button" class="filter-pill active" data-board-status="all">ทั้งหมด (<span id="pillCountAll">0</span>)</button>
+                <button type="button" class="filter-pill pill-incomplete" data-board-status="incomplete">⚠️ ยังเช็คไม่ครบ (<span id="pillCountIncomplete">0</span>)</button>
+                <button type="button" class="filter-pill pill-notstarted" data-board-status="not_started">⏳ ยังไม่เริ่ม (<span id="pillCountNotStarted">0</span>)</button>
+                <button type="button" class="filter-pill pill-complete" data-board-status="complete">✅ ครบ 100% (<span id="pillCountComplete">0</span>)</button>
+              </div>
             </div>
 
             <!-- View Switcher -->
-            <div class="segmented-control" style="margin:0;">
-              <button type="button" id="btnBoardViewMatrix" class="active" style="padding:6px 12px; font-size:12px;">📊 เมทริกซ์ 2D</button>
-              <button type="button" id="btnBoardViewCards" style="padding:6px 12px; font-size:12px;">🗺️ ผังแปลง 2D</button>
+            <div class="segmented-control board2d-view-toggle">
+              <button type="button" id="btnBoardViewMatrix" class="active">📊 ตารางเมทริกซ์ 2D</button>
+              <button type="button" id="btnBoardViewCards">🗺️ ผังแปลง 2D</button>
+            </div>
+          </div>
+
+          <div class="board2d-toolbar-sub">
+            <div class="board2d-search-box">
+              <input type="text" id="chalBoardSearchInput" placeholder="🔍 ค้นหาชื่อแปลง, เกษตรกร, สวน, ตำบล..." />
+            </div>
+
+            <div class="board2d-province-box">
+              <label for="chalBoardProvFilter" class="prov-label">จังหวัด:</label>
+              <select id="chalBoardProvFilter">
+                <option value="all">ทุกจังหวัดเป้าหมาย</option>
+                <option value="ratchaburi">ราชบุรี</option>
+                <option value="nakhon_pathom">นครปฐม</option>
+                <option value="samut_sakhon">สมุทรสาคร</option>
+                <option value="samut_songkhram">สมุทรสงคราม</option>
+              </select>
             </div>
           </div>
         </div>
 
         <!-- View 1: 2D Matrix Grid Table -->
         <div id="chalBoardMatrixContainer" class="board2d-view-panel">
-          <div class="table-wrap" style="border:1px solid #e2e8f0; border-radius:10px; overflow-x:auto;">
+          <div class="table-wrap board2d-table-wrap" id="chalBoardMatrixWrap">
             <table class="data-table board2d-matrix-table">
               <thead>
                 <tr>
-                  <th style="width:45px;" class="text-center">ลำดับ</th>
-                  <th style="min-width:110px;">จังหวัด</th>
-                  <th style="min-width:180px;">แปลง / สวนเกษตรกร</th>
-                  <th class="text-right" style="width:90px;">พื้นที่ (ไร่)</th>
-                  <th style="min-width:160px;">ความคืบหน้าภาพรวม</th>
-                  <th class="text-center" style="width:95px;">จุดที่ 1</th>
-                  <th class="text-center" style="width:95px;">จุดที่ 2</th>
-                  <th class="text-center" style="width:95px;">จุดที่ 3</th>
-                  <th class="text-center" style="width:95px;">จุดที่ 4</th>
-                  <th class="text-center" style="width:95px;">จุดที่ 5</th>
-                  <th class="text-center" style="width:95px;">จุดที่ 6</th>
-                  <th class="text-center" style="width:95px;">จุดที่ 7</th>
-                  <th style="min-width:210px;">รายละเอียดที่ยังค้างตรวจ</th>
-                  <th class="text-center" style="width:110px;">เปิดตรวจ</th>
+                  <th style="width:40px;" class="text-center col-sticky-1">#</th>
+                  <th style="min-width:180px;" class="col-sticky-2">แปลง / สวนเกษตรกร</th>
+                  <th style="width:90px;" class="text-center">จังหวัด</th>
+                  <th style="width:70px;" class="text-right">ไร่</th>
+                  <th style="width:125px;">ความคืบหน้า</th>
+                  <th class="text-center col-pt">จุด 1</th>
+                  <th class="text-center col-pt">จุด 2</th>
+                  <th class="text-center col-pt">จุด 3</th>
+                  <th class="text-center col-pt">จุด 4</th>
+                  <th class="text-center col-pt">จุด 5</th>
+                  <th class="text-center col-pt">จุด 6</th>
+                  <th class="text-center col-pt">จุด 7</th>
+                  <th style="min-width:170px;">สถานะ / จุดที่ค้างตรวจ</th>
+                  <th class="text-center" style="width:75px;">จัดการ</th>
                 </tr>
               </thead>
               <tbody id="chalBoardMatrixTbody">
@@ -1560,8 +1562,8 @@
               <h4>ใช้งานยังไง?</h4>
               <ol>
                 <li>กดปุ่ม <strong>"⚠️ ยังเช็คไม่ครบ"</strong> เพื่อกรองเฉพาะแปลงที่มีต้นตัวอย่างตกหล่น</li>
-                <li>ดูที่แถบจุดสำรวจ (จุด 1–7) เซลล์สีเขียว 🟢 หมายถึงตรวจครบ 5 ต้น, สีส้ม 🟠 ตรวจบางส่วน, สีเทา ⚪ ยังไม่ได้ตรวจ</li>
-                <li><strong>คลิกที่เซลล์จุดสำรวจใดก็ได้</strong> หรือกดปุ่ม <strong>"🔍 ตรวจจุดนี้"</strong> ระบบจะกระโดดไปยัง Sheet 2 (คาดการณ์ผลผลิต) พร้อมเลือกแปลงและจุดนั้นให้ทันที</li>
+                <li>ดูที่แถบจุดสำรวจ (จุด 1–7): เซลล์สีเขียว <strong>[✓ 5/5]</strong> ตรวจครบ 5 ต้น, สีส้ม <strong>[• X/5]</strong> ตรวจบางส่วน, สีเทา <strong>[○ 0/5]</strong> ยังไม่ได้ตรวจ</li>
+                <li><strong>คลิกที่ปุ่มจุดสำรวจใดก็ได้</strong> หรือกดปุ่ม <strong>"ตรวจ"</strong> ระบบจะกระโดดไปยัง Sheet 2 (คาดการณ์ผลผลิต) พร้อมเลือกแปลงและจุดนั้นให้ทันที</li>
                 <li>สลับมุมมองระหว่าง <strong>"📊 ตารางเมทริกซ์ 2D"</strong> และ <strong>"🗺️ ผังแปลง 2D"</strong> เพื่อดูผังจำลองต้นมะพร้าวในแปลง</li>
               </ol>
             </div>
