@@ -3886,4 +3886,111 @@ th {
   }
 }
 
+/* Challenge Tab Guide Cards (ด้านล่างสุดของแต่ละแท็บ: คืออะไร, บันทึกยังไง, ข้อมูลเอาไว้ทำไร) */
+.tab-guide-box {
+  margin-top: 32px;
+  background: linear-gradient(135deg, #ffffff 0%, #f7fbf8 100%);
+  border: 1px solid #cce5d6;
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: 0 4px 16px rgba(22, 101, 52, 0.04);
+}
+
+.tab-guide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #e1efe6;
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.tab-guide-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #14532d;
+  margin: 0;
+}
+
+.tab-guide-tag {
+  background: #dcfce7;
+  color: #15803d;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.tab-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .tab-guide-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tab-guide-card {
+  background: #ffffff;
+  border: 1px solid #e2ece5;
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.tab-guide-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(22, 101, 52, 0.08);
+  border-color: #86efac;
+}
+
+.tab-guide-card-icon {
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+
+.tab-guide-card h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab-guide-card p,
+.tab-guide-card li {
+  font-size: 12.5px;
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.tab-guide-card ol,
+.tab-guide-card ul {
+  padding-left: 18px;
+  margin: 6px 0 0 0;
+}
+
+.tab-guide-card li {
+  margin-bottom: 5px;
+}
+
+.tab-guide-card strong {
+  color: #111827;
+}
+
 
