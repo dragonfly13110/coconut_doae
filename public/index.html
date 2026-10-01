@@ -959,6 +959,7 @@
         <button class="tab active" data-chal-tab="farmers">📋 ข้อมูลแปลง & เกษตรกร (Sheet 1)</button>
         <button class="tab" data-chal-tab="forecast">🎯 คาดการณ์ผลผลิต 20 ทะลาย (Sheet 2)</button>
         <button class="tab" data-chal-tab="harvest">🥥 ผลผลิตในรอบการตัด (Sheet 3)</button>
+        <button class="tab" data-chal-tab="board2d">🗺️ กระดาน 2D ตรวจสอบแปลง</button>
         <button class="tab" data-chal-tab="macro">🗺️ สถิติพื้นที่ & ผลผลิต 2569 (Sheet 4)</button>
         <button class="tab" data-chal-tab="dashboard">📈 ภาพรวม & วิเคราะห์</button>
         <button class="tab" data-chal-tab="io">📥 นำเข้า / ส่งออก Excel</button>
@@ -972,7 +973,7 @@
             <p class="eyebrow">Sheet 1: ข้อมูลทั่วไป (เก็บ 1 ครั้ง)</p>
             <h2>ทะเบียนแปลงและข้อมูลเกษตรกร</h2>
           </div>
-          <div class="dashboard-actions" style="display:flex; gap:10px;">
+          <div class="dashboard-actions" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <select id="chalProvFilter" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); font-size: 13px;">
               <option value="all">ทุกจังหวัดเป้าหมาย</option>
               <option value="ratchaburi">ราชบุรี</option>
@@ -980,6 +981,7 @@
               <option value="samut_sakhon">สมุทรสาคร</option>
               <option value="samut_songkhram">สมุทรสงคราม</option>
             </select>
+            <button id="chalBtnGoBoard2D" type="button" class="button ghost small" style="white-space:nowrap; border-color:#86efac; color:#166534; background:#f0fdf4; display:flex; align-items:center; gap:6px;">🗺️ ดูกระดาน 2D ตรวจสอบแปลง</button>
             <button id="chalBtnNewPlot" class="button primary">+ เพิ่มแปลงเกษตรกรใหม่</button>
           </div>
         </div>
@@ -1070,6 +1072,9 @@
           </div>
           <button type="button" id="btnChalQuick3DAtlas" class="button ghost small" style="white-space:nowrap; border-color:#86efac; color:#166534; background:#f0fdf4; display:flex; align-items:center; gap:6px;">
             🌴 ดูระยะจั่น 1–9 ในโมเดล 3D
+          </button>
+          <button type="button" id="btnChalForecastGoBoard" class="button ghost small" style="white-space:nowrap; border-color:#86efac; color:#166534; background:#f0fdf4; display:flex; align-items:center; gap:6px;">
+            🗺️ ผังกระดาน 2D เช็คความครบถ้วน
           </button>
         </div>
 
@@ -1396,6 +1401,177 @@
                 <li><strong>สอบเทียบความแม่นยำ (Model Calibration):</strong> เปรียบเทียบผลผลิตจริงใน Sheet 3 กับผลคาดการณ์ใน Sheet 2 เพื่อประเมินความคลาดเคลื่อน</li>
                 <li><strong>ติดตามรายได้เศรษฐกิจจริง:</strong> คำนวณรายได้สะสมของเกษตรกร และติดตามทิศทางราคาขายหน้าสวนในแต่ละช่วงฤดูกาล</li>
                 <li><strong>เฝ้าระวังอัตราผลสูญเสีย:</strong> สัดส่วนผลควบและผลเสียสะสม ช่วยชี้เป้าปัญหาการผสมเกสร สภาพน้ำขัง หรือแมลงเข้าทำลาย</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab: 2D Inspection Overview Board (กระดาน 2D ตรวจสอบแปลง) -->
+      <section id="chalTab_board2d" class="panel" hidden>
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">ระบบติดตามความครบถ้วนรายแปลง (7 จุดสำรวจ × 5 ต้นตัวอย่าง = 35 ต้น/แปลง)</p>
+            <h2>🗺️ กระดาน 2D ภาพรวมความครบถ้วนของแปลง/สวน</h2>
+            <p class="section-sub-desc" style="color:var(--muted); font-size:13px; margin-top:2px;">
+              ตรวจสอบสถานะรายแปลง ชี้เป้าแปลงและสวนที่ยังเช็คไม่ครบ ค้นหาจุดสำรวจและต้นตัวอย่างที่ตกหล่นได้ทันที
+            </p>
+          </div>
+          <div class="dashboard-actions" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <button id="chalBoardRefreshBtn" type="button" class="button ghost small" style="display:flex; align-items:center; gap:6px;">🔄 รีเฟรชกระดาน</button>
+            <button id="chalBoardExportBtn" type="button" class="button ghost small" style="display:flex; align-items:center; gap:6px;">📥 ส่งออกสรุป CSV</button>
+          </div>
+        </div>
+
+        <!-- KPI Summary Cards (5 Cards) -->
+        <div class="chal-kpi-grid" style="margin-bottom:16px;">
+          <div class="kpi-card">
+            <div class="kpi-icon">📋</div>
+            <div class="kpi-body">
+              <span class="kpi-title">แปลงทั้งหมดในระบบ</span>
+              <strong class="kpi-val" id="chalBoardKpiTotalPlots">0 แปลง</strong>
+              <small style="color:var(--muted); font-size:11px;">ฐานข้อมูลแปลงเกษตรกร</small>
+            </div>
+          </div>
+          <div class="kpi-card highlight-orange" style="background:#fffbeb; border:1px solid #fde68a;">
+            <div class="kpi-icon">⚠️</div>
+            <div class="kpi-body">
+              <span class="kpi-title" style="color:#b45309;">ยังเช็คไม่ครบ</span>
+              <strong class="kpi-val" id="chalBoardKpiIncompletePlots" style="color:#d97706;">0 แปลง</strong>
+              <small id="chalBoardKpiIncompleteSub" style="color:#b45309; font-size:11px; font-weight:600;">ค้างตรวจบางจุด/บางต้น</small>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon">⚪</div>
+            <div class="kpi-body">
+              <span class="kpi-title">ยังไม่ได้เริ่มตรวจ</span>
+              <strong class="kpi-val" id="chalBoardKpiNotStartedPlots" style="color:#64748b;">0 แปลง</strong>
+              <small style="color:var(--muted); font-size:11px;">ไม่มีข้อมูลสำรวจ (0/35 ต้น)</small>
+            </div>
+          </div>
+          <div class="kpi-card highlight" style="background:#f0fdf4; border:1px solid #bbf7d0;">
+            <div class="kpi-icon">🟢</div>
+            <div class="kpi-body">
+              <span class="kpi-title" style="color:#15803d;">เช็คครบสมบูรณ์</span>
+              <strong class="kpi-val" id="chalBoardKpiCompletedPlots" style="color:#16a34a;">0 แปลง</strong>
+              <small style="color:#15803d; font-size:11px; font-weight:600;">ครบ 35/35 ต้น (7 จุด)</small>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon">🌴</div>
+            <div class="kpi-body">
+              <span class="kpi-title">ความคืบหน้าต้นตัวอย่างรวม</span>
+              <strong class="kpi-val" id="chalBoardKpiTotalTrees">0 / 0 ต้น</strong>
+              <small id="chalBoardKpiPercent" style="color:var(--primary); font-size:11px; font-weight:700;">ความสมบูรณ์ 0%</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter & Control Toolbar -->
+        <div class="board2d-toolbar" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px 18px; margin-bottom:16px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+          <!-- Status Filter Pills -->
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:13px; font-weight:700; color:var(--ink);">สถานะการตรวจ:</span>
+            <div class="board2d-status-pills" id="chalBoardStatusPills" style="display:flex; gap:6px;">
+              <button type="button" class="filter-pill active" data-board-status="all">ทั้งหมด (<span id="pillCountAll">0</span>)</button>
+              <button type="button" class="filter-pill pill-incomplete" data-board-status="incomplete" style="background:#fef3c7; color:#92400e; border-color:#fde68a; font-weight:700;">⚠️ ยังเช็คไม่ครบ (<span id="pillCountIncomplete">0</span>)</button>
+              <button type="button" class="filter-pill" data-board-status="not_started">⚪ ยังไม่เริ่ม (<span id="pillCountNotStarted">0</span>)</button>
+              <button type="button" class="filter-pill pill-complete" data-board-status="complete" style="background:#dcfce7; color:#166534; border-color:#bbf7d0;">🟢 ครบ 100% (<span id="pillCountComplete">0</span>)</button>
+            </div>
+          </div>
+
+          <!-- Secondary Filters (Province & Search) & View Switcher -->
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <select id="chalBoardProvFilter" style="padding:7px 12px; border-radius:8px; border:1px solid var(--line); font-size:13px; font-weight:600;">
+              <option value="all">ทุกจังหวัดเป้าหมาย</option>
+              <option value="ratchaburi">ราชบุรี</option>
+              <option value="nakhon_pathom">นครปฐม</option>
+              <option value="samut_sakhon">สมุทรสาคร</option>
+              <option value="samut_songkhram">สมุทรสงคราม</option>
+            </select>
+
+            <div style="position:relative;">
+              <input type="text" id="chalBoardSearchInput" placeholder="🔍 ค้นหาแปลง, เกษตรกร, สวน..." style="padding:7px 12px 7px 30px; border-radius:8px; border:1px solid var(--line); font-size:13px; width:220px;" />
+              <span style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:12px; pointer-events:none;">🔍</span>
+            </div>
+
+            <!-- View Switcher -->
+            <div class="segmented-control" style="margin:0;">
+              <button type="button" id="btnBoardViewMatrix" class="active" style="padding:6px 12px; font-size:12px;">📊 เมทริกซ์ 2D</button>
+              <button type="button" id="btnBoardViewCards" style="padding:6px 12px; font-size:12px;">🗺️ ผังแปลง 2D</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- View 1: 2D Matrix Grid Table -->
+        <div id="chalBoardMatrixContainer" class="board2d-view-panel">
+          <div class="table-wrap" style="border:1px solid #e2e8f0; border-radius:10px; overflow-x:auto;">
+            <table class="data-table board2d-matrix-table">
+              <thead>
+                <tr>
+                  <th style="width:45px;" class="text-center">ลำดับ</th>
+                  <th style="min-width:110px;">จังหวัด</th>
+                  <th style="min-width:180px;">แปลง / สวนเกษตรกร</th>
+                  <th class="text-right" style="width:90px;">พื้นที่ (ไร่)</th>
+                  <th style="min-width:160px;">ความคืบหน้าภาพรวม</th>
+                  <th class="text-center" style="width:95px;">จุดที่ 1</th>
+                  <th class="text-center" style="width:95px;">จุดที่ 2</th>
+                  <th class="text-center" style="width:95px;">จุดที่ 3</th>
+                  <th class="text-center" style="width:95px;">จุดที่ 4</th>
+                  <th class="text-center" style="width:95px;">จุดที่ 5</th>
+                  <th class="text-center" style="width:95px;">จุดที่ 6</th>
+                  <th class="text-center" style="width:95px;">จุดที่ 7</th>
+                  <th style="min-width:210px;">รายละเอียดที่ยังค้างตรวจ</th>
+                  <th class="text-center" style="width:110px;">เปิดตรวจ</th>
+                </tr>
+              </thead>
+              <tbody id="chalBoardMatrixTbody">
+                <tr><td colspan="14" class="text-center py-4 text-muted">กำลังโหลดข้อมูลกระดาน 2D...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- View 2: 2D Visual Garden Map / Plot Cards Grid -->
+        <div id="chalBoardCardsContainer" class="board2d-view-panel" hidden>
+          <div id="chalBoardCardsGrid" class="board2d-cards-grid">
+            <!-- Dynamically populated cards -->
+          </div>
+        </div>
+
+        <!-- Bottom Guide & Instructions for Board 2D -->
+        <div class="tab-guide-box" style="margin-top:24px;">
+          <div class="tab-guide-head">
+            <h3 class="tab-guide-title">
+              <span>💡 คำอธิบายและแนวทางปฏิบัติ: กระดาน 2D ภาพรวมความครบถ้วนของแปลง/สวน (2D Inspection Overview Board)</span>
+            </h3>
+            <span class="tab-guide-tag">2D BOARD GUIDE</span>
+          </div>
+          <div class="tab-guide-grid">
+            <div class="tab-guide-card">
+              <div class="tab-guide-card-icon">📘</div>
+              <h4>หน้านี้คืออะไร?</h4>
+              <p>
+                <strong>ศูนย์ควบคุมและตรวจสอบความครบถ้วนของข้อมูลแปลง (Quality Control Hub):</strong> แสดงภาพรวมระดับ 2 มิติ ของทุกแปลงและสวนเกษตรกรในโครงการ จำแนกรายจุดสำรวจ 7 จุด และต้นตัวอย่าง 5 ต้น (C, L, R, F, B) รวม 35 ต้นต่อแปลง เพื่อตรวจสอบว่าแปลงไหนบันทึกครบถ้วนแล้ว และแปลงไหนยังค้างการสำรวจ
+              </p>
+            </div>
+            <div class="tab-guide-card">
+              <div class="tab-guide-card-icon">✍️</div>
+              <h4>ใช้งานยังไง?</h4>
+              <ol>
+                <li>กดปุ่ม <strong>"⚠️ ยังเช็คไม่ครบ"</strong> เพื่อกรองเฉพาะแปลงที่มีต้นตัวอย่างตกหล่น</li>
+                <li>ดูที่แถบจุดสำรวจ (จุด 1–7) เซลล์สีเขียว 🟢 หมายถึงตรวจครบ 5 ต้น, สีส้ม 🟠 ตรวจบางส่วน, สีเทา ⚪ ยังไม่ได้ตรวจ</li>
+                <li><strong>คลิกที่เซลล์จุดสำรวจใดก็ได้</strong> หรือกดปุ่ม <strong>"🔍 ตรวจจุดนี้"</strong> ระบบจะกระโดดไปยัง Sheet 2 (คาดการณ์ผลผลิต) พร้อมเลือกแปลงและจุดนั้นให้ทันที</li>
+                <li>สลับมุมมองระหว่าง <strong>"📊 ตารางเมทริกซ์ 2D"</strong> และ <strong>"🗺️ ผังแปลง 2D"</strong> เพื่อดูผังจำลองต้นมะพร้าวในแปลง</li>
+              </ol>
+            </div>
+            <div class="tab-guide-card">
+              <div class="tab-guide-card-icon">🎯</div>
+              <h4>ข้อมูลเอาไว้ทำไร?</h4>
+              <ul>
+                <li><strong>ป้องกันข้อมูลตกหล่น (Zero Data Gap):</strong> ตรวจเช็คความครบถ้วน 100% ก่อนปิดรอบสำรวจและส่งออกรายงานทางการ</li>
+                <li><strong>วางแผนลงพื้นที่ติดตาม (Field Action Plan):</strong> มอบหมายเจ้าหน้าที่ลงเก็บข้อมูลซ้ำเฉพาะจุดและต้นที่ยังขาด เพื่อประหยัดเวลาและงบประมาณ</li>
+                <li><strong>รายงานสถานะความก้าวหน้า (Executive Progress Tracking):</strong> ผู้บริหารสามารถเห็นเปอร์เซ็นต์ความคืบหน้าของแต่ละจังหวัดและแปลงได้ทันที</li>
               </ul>
             </div>
           </div>

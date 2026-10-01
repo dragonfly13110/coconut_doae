@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateChallengeExcelXml } from '../src/challenge-export.js';
 import macroBaseline from '../src/macro-baseline.json' with { type: 'json' };
-import { CHALLENGE_PROVINCES, SAMPLE_POINTS, SAMPLE_TREES, MONTH_NAMES } from '../src/challenge-db.js';
+import { CHALLENGE_PROVINCES, SAMPLE_POINTS, SAMPLE_TREES, MONTH_NAMES, computePlotBoard2D } from '../src/challenge-db.js';
 
 test('macro baseline contains 28 records for Western region and 4 provinces', () => {
   assert.equal(macroBaseline.length, 28);
@@ -90,3 +90,155 @@ test('generateChallengeExcelXml creates all 4 worksheets with correct names', ()
   assert.ok(xml.includes('นายสมชาย มะพร้าวทอง'));
   assert.ok(xml.includes('238578'));
 });
+
+test('computePlotBoard2D correctly calculates completion, incomplete missing trees, and summaries', () => {
+  const plots = [
+    { id: 1, plot_label: 'แปลงที่ 1', full_name: 'นายสมชาย มะพร้าวทอง', province_code: 'ratchaburi' },
+    { id: 2, plot_label: 'แปลงที่ 2', full_name: 'นางสมศรี สวนน้ำหอม', province_code: 'nakhon_pathom' },
+    { id: 3, plot_label: 'แปลงที่ 3', full_name: 'นายบุญมา ท่ามะกา', province_code: 'samut_sakhon' },
+  ];
+
+  // Plot 1: Completely filled (7 points x 5 trees = 35 trees)
+  const forecasts = [];
+  for (let pt = 1; pt <= 7; pt++) {
+    for (const pos of ['C', 'L', 'R', 'F', 'B']) {
+      forecasts.push({
+        plot_id: 1,
+        point_label: `จุดที่ ${pt}`,
+        tree_position: pos,
+        fruit_count: 10,
+      });
+    }
+  }
+
+  // Plot 2: Partially filled (only Point 1 with C, L, R => 3 trees)
+  forecasts.push({ plot_id: 2, point_label: 'จุดที่ 1', tree_position: 'C', fruit_count: 12 });
+  forecasts.push({ plot_id: 2, point_label: 'จุดที่ 1', tree_position: 'L', fruit_count: 15 });
+  forecasts.push({ plot_id: 2, point_label: 'จุดที่ 1', tree_position: 'R', fruit_count: 14 });
+
+  // Plot 3: 0 trees (Not started)
+
+  const cuts = [
+    { plot_id: 1, cuts_count: 3, total_cut_yield: 7850, cut_date: '2026-03-02' },
+  ];
+
+  const { plots: resultPlots, summary } = computePlotBoard2D(plots, forecasts, cuts);
+
+  assert.equal(resultPlots.length, 3);
+
+  // Plot 1: Complete
+  const p1 = resultPlots.find((p) => p.id === 1);
+  assert.equal(p1.status, 'complete');
+  assert.equal(p1.totalTreesChecked, 35);
+  assert.equal(p1.percentComplete, 100);
+  assert.equal(p1.completedPoints, 7);
+  assert.equal(p1.partialPoints, 0);
+  assert.equal(p1.missingPoints, 0);
+  assert.equal(p1.cutsCount, 3);
+  assert.equal(p1.totalCutYield, 7850);
+
+  // Plot 2: Incomplete (checked 3 of 35 trees)
+  const p2 = resultPlots.find((p) => p.id === 2);
+  assert.equal(p2.status, 'incomplete');
+  assert.equal(p2.totalTreesChecked, 3);
+  assert.equal(p2.percentComplete, Math.round((3 / 35) * 100)); // 9%
+  assert.equal(p2.completedPoints, 0);
+  assert.equal(p2.partialPoints, 1);
+  assert.equal(p2.missingPoints, 6);
+  assert.ok(p2.missingSummary.includes('ขาด F, B'));
+  assert.ok(p2.missingSummary.includes('จุดที่ 2: ยังไม่ตรวจ'));
+
+  // Plot 3: Not started
+  const p3 = resultPlots.find((p) => p.id === 3);
+  assert.equal(p3.status, 'not_started');
+  assert.equal(p3.totalTreesChecked, 0);
+  assert.equal(p3.percentComplete, 0);
+  assert.equal(p3.completedPoints, 0);
+  assert.equal(p3.partialPoints, 0);
+  assert.equal(p3.missingPoints, 7);
+
+  // Overarching Summary KPIs
+  assert.equal(summary.totalPlots, 3);
+  assert.equal(summary.completedPlots, 1);
+  assert.equal(summary.incompletePlots, 1);
+  assert.equal(summary.notStartedPlots, 1);
+  assert.equal(summary.totalPossibleTrees, 3 * 35);
+  assert.equal(summary.totalTreesChecked, 38);
+});
+
+test('board2d API endpoint returns enriched plot matrix and overarching metrics', async () => {
+  const { onRequest: onBoard2DRequest } = await import('../functions/api/challenge/board2d.js');
+
+  const mockPlots = [
+    { id: 1, plot_label: 'แปลงที่ 1', full_name: 'นายสมชาย', province_code: 'ratchaburi', productive_area_rai: 12 },
+    { id: 2, plot_label: 'แปลงที่ 2', full_name: 'นางสมศรี', province_code: 'ratchaburi', productive_area_rai: 8 },
+  ];
+
+  const mockForecasts = [
+    { plot_id: 1, point_label: 'จุดที่ 1', tree_position: 'C', total_fruits: 12, bunch_count: 1 },
+  ];
+
+  const mockCuts = [
+    { plot_id: 1, cuts_count: 2, total_cut_yield: 5000, cut_date: '2026-02-15' },
+  ];
+
+  const mockDb = {
+    prepare(sql) {
+      return {
+        sql,
+        params: [],
+        bind(...params) {
+          this.params = params;
+          return this;
+        },
+        async run() {
+          return { success: true };
+        },
+        async first() {
+          const s = sql.replace(/\s+/g, ' ');
+          if (s.includes('FROM sessions')) {
+            return { id: 1, province_code: 'ratchaburi', province_label: 'ราชบุรี', role: 'province' };
+          }
+          if (s.includes('FROM users')) {
+            return { id: 1, province_code: 'ratchaburi', province_label: 'ราชบุรี', role: 'province' };
+          }
+          return null;
+        },
+        async all() {
+          const s = sql.replace(/\s+/g, ' ');
+          if (s.includes('FROM farmer_plots')) {
+            return { results: mockPlots };
+          }
+          if (s.includes('FROM yield_forecasts')) {
+            return { results: mockForecasts };
+          }
+          if (s.includes('FROM harvest_cuts')) {
+            return { results: mockCuts };
+          }
+          return { results: [] };
+        },
+      };
+    },
+  };
+
+  const req = new Request('https://coconut-doae.internal/api/challenge/board2d', {
+    method: 'GET',
+    headers: {
+      cookie: 'sid=valid-session-token',
+    },
+  });
+
+  const res = await onBoard2DRequest({ request: req, env: { DB: mockDb } });
+  assert.equal(res.status, 200);
+
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.equal(body.summary.totalPlots, 2);
+  assert.equal(body.summary.incompletePlots, 1);
+  assert.equal(body.summary.notStartedPlots, 1);
+  assert.equal(body.plots[0].cutsCount, 2);
+  assert.equal(body.plots[0].status, 'incomplete');
+  assert.equal(body.plots[1].status, 'not_started');
+});
+
+

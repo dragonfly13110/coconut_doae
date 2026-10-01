@@ -45,14 +45,25 @@ const chalState = {
   cycleStartDate: '2026-01-01',
   cycleInterval: 21,
   cycleAvgFruits: 12,
+  board2dData: null,
+  board2dFilterStatus: 'all',
+  board2dFilterProv: 'all',
+  board2dSearchQuery: '',
+  board2dViewMode: 'matrix',
 };
 
 const cel = (id) => document.getElementById(id);
+
+export function getProvinceLabel(code) {
+  const p = CHAL_PROVINCES.find((x) => x.code === code);
+  return p ? p.label : code;
+}
 
 export function initChallenge(user) {
   chalState.user = user;
   if (user.role !== 'admin') {
     chalState.filterProvince = user.province_code;
+    chalState.board2dFilterProv = user.province_code;
   }
   bindChalEvents();
   loadAllChalData();
@@ -73,6 +84,7 @@ function bindChalEvents() {
     chalState.filterProvince = e.target.value;
     renderFarmersTable();
   });
+  cel('chalBtnGoBoard2D')?.addEventListener('click', () => showChalTab('board2d'));
 
   // Forecast Tab
   cel('chalForecastPlotSelect')?.addEventListener('change', (e) => {
@@ -89,6 +101,45 @@ function bindChalEvents() {
   cel('chalCycleInterval')?.addEventListener('input', (e) => {
     chalState.cycleInterval = Number(e.target.value) || 21;
     if (chalState.forecastData) renderMatrixGrid(chalState.forecastData);
+  });
+  cel('btnChalForecastGoBoard')?.addEventListener('click', () => showChalTab('board2d'));
+
+  // 2D Inspection Board Tab
+  cel('chalBoardRefreshBtn')?.addEventListener('click', loadBoard2D);
+  cel('chalBoardExportBtn')?.addEventListener('click', exportBoard2DCsv);
+  cel('chalBoardProvFilter')?.addEventListener('change', (e) => {
+    chalState.board2dFilterProv = e.target.value;
+    renderBoard2D();
+  });
+  cel('chalBoardSearchInput')?.addEventListener('input', (e) => {
+    chalState.board2dSearchQuery = e.target.value.trim().toLowerCase();
+    renderBoard2D();
+  });
+  document.querySelectorAll('#chalBoardStatusPills .filter-pill').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('#chalBoardStatusPills .filter-pill').forEach((p) => p.classList.remove('active'));
+      pill.classList.add('active');
+      chalState.board2dFilterStatus = pill.dataset.boardStatus || 'all';
+      renderBoard2D();
+    });
+  });
+  cel('btnBoardViewMatrix')?.addEventListener('click', () => {
+    chalState.board2dViewMode = 'matrix';
+    cel('btnBoardViewMatrix')?.classList.add('active');
+    cel('btnBoardViewCards')?.classList.remove('active');
+    const mWrap = cel('chalBoardMatrixContainer');
+    const cWrap = cel('chalBoardCardsContainer');
+    if (mWrap) mWrap.hidden = false;
+    if (cWrap) cWrap.hidden = true;
+  });
+  cel('btnBoardViewCards')?.addEventListener('click', () => {
+    chalState.board2dViewMode = 'cards';
+    cel('btnBoardViewCards')?.classList.add('active');
+    cel('btnBoardViewMatrix')?.classList.remove('active');
+    const mWrap = cel('chalBoardMatrixContainer');
+    const cWrap = cel('chalBoardCardsContainer');
+    if (mWrap) mWrap.hidden = true;
+    if (cWrap) cWrap.hidden = false;
   });
 
   // Harvest Tab
@@ -114,7 +165,7 @@ export function showChalTab(tab) {
     b.classList.toggle('active', b.dataset.chalTab === tab);
   });
 
-  const tabs = ['farmers', 'forecast', 'harvest', 'macro', 'dashboard', 'io', 'knowledge'];
+  const tabs = ['farmers', 'forecast', 'harvest', 'board2d', 'macro', 'dashboard', 'io', 'knowledge'];
   tabs.forEach((t) => {
     const panel = cel(`chalTab_${t}`);
     if (panel) panel.hidden = t !== tab;
@@ -123,6 +174,7 @@ export function showChalTab(tab) {
   if (tab === 'farmers') renderFarmersTable();
   if (tab === 'forecast') loadForecastMatrix();
   if (tab === 'harvest') loadHarvestCuts();
+  if (tab === 'board2d') loadBoard2D();
   if (tab === 'macro') renderMacroStats(chalState.filterProvince);
   if (tab === 'dashboard') renderChalDashboard();
 }
@@ -1368,3 +1420,409 @@ function escapeHtml(value) {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
+
+// ==========================================
+// 7. 2D Inspection Overview Board (กระดาน 2D ตรวจสอบแปลง)
+// ==========================================
+
+export async function loadBoard2D() {
+  try {
+    const tbody = cel('chalBoardMatrixTbody');
+    if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="14" class="text-center py-4 text-muted">กำลังโหลดข้อมูลกระดาน 2D รายแปลงและจุดสำรวจ...</td></tr>';
+    }
+    const params = new URLSearchParams();
+    if (chalState.filterProvince !== 'all') {
+      params.set('province_code', chalState.filterProvince);
+    }
+    const data = await chalApi(`/api/challenge/board2d?${params.toString()}`);
+    chalState.board2dData = data;
+    renderBoard2D();
+  } catch (err) {
+    console.error('Failed to load board2d:', err);
+    const tbody = cel('chalBoardMatrixTbody');
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="14" class="text-center py-4 text-danger">เกิดข้อผิดพลาดในการโหลดข้อมูลกระดาน 2D: ${escapeHtml(err.message)}</td></tr>`;
+    }
+  }
+}
+
+export function renderBoard2D() {
+  if (!chalState.board2dData) return;
+  const { plots = [], summary = {} } = chalState.board2dData;
+
+  // Update KPI counters
+  if (cel('chalBoardKpiTotalPlots')) cel('chalBoardKpiTotalPlots').textContent = `${summary.totalPlots || 0} แปลง`;
+  if (cel('chalBoardKpiIncompletePlots')) cel('chalBoardKpiIncompletePlots').textContent = `${summary.incompletePlots || 0} แปลง`;
+  if (cel('chalBoardKpiIncompleteSub')) {
+    cel('chalBoardKpiIncompleteSub').textContent = (summary.incompletePlots || 0) > 0
+      ? `⚠️ มี ${summary.incompletePlots} แปลงที่ยังตรวจไม่ครบ`
+      : '✔️ ตรวจครบถ้วนทุกแปลงแล้ว';
+  }
+  if (cel('chalBoardKpiNotStartedPlots')) cel('chalBoardKpiNotStartedPlots').textContent = `${summary.notStartedPlots || 0} แปลง`;
+  if (cel('chalBoardKpiCompletedPlots')) cel('chalBoardKpiCompletedPlots').textContent = `${summary.completedPlots || 0} แปลง`;
+  if (cel('chalBoardKpiTotalTrees')) {
+    cel('chalBoardKpiTotalTrees').textContent = `${summary.totalTreesChecked || 0} / ${summary.totalPossibleTrees || 0} ต้น`;
+  }
+  if (cel('chalBoardKpiPercent')) {
+    cel('chalBoardKpiPercent').textContent = `ความสมบูรณ์ ${summary.overallPercent || 0}%`;
+  }
+
+  // Update Status Pill counts
+  if (cel('pillCountAll')) cel('pillCountAll').textContent = plots.length;
+  if (cel('pillCountIncomplete')) cel('pillCountIncomplete').textContent = summary.incompletePlots || 0;
+  if (cel('pillCountNotStarted')) cel('pillCountNotStarted').textContent = summary.notStartedPlots || 0;
+  if (cel('pillCountComplete')) cel('pillCountComplete').textContent = summary.completedPlots || 0;
+
+  // Filter plots
+  const statusFilter = chalState.board2dFilterStatus || 'all';
+  const provFilter = chalState.board2dFilterProv || 'all';
+  const search = (chalState.board2dSearchQuery || '').toLowerCase();
+
+  const filteredPlots = plots.filter((p) => {
+    // Status filter
+    if (statusFilter !== 'all' && p.status !== statusFilter) return false;
+    // Province filter
+    if (provFilter !== 'all' && p.province_code !== provFilter) return false;
+    // Search query
+    if (search) {
+      const matchLabel = (p.plot_label || '').toLowerCase().includes(search);
+      const matchName = (p.full_name || '').toLowerCase().includes(search);
+      const matchAddress = (p.address || '').toLowerCase().includes(search);
+      const matchPhone = (p.phone || '').toLowerCase().includes(search);
+      const matchProv = getProvinceLabel(p.province_code).toLowerCase().includes(search);
+      if (!matchLabel && !matchName && !matchAddress && !matchPhone && !matchProv) return false;
+    }
+    return true;
+  });
+
+  renderBoard2DMatrix(filteredPlots);
+  renderBoard2DCards(filteredPlots);
+}
+
+function renderBoard2DMatrix(plots) {
+  const tbody = cel('chalBoardMatrixTbody');
+  if (!tbody) return;
+
+  if (plots.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="14" class="text-center py-5" style="color:var(--muted); padding:30px;">
+          <div style="font-size:28px; margin-bottom:8px;">🔍</div>
+          <strong>ไม่พบแปลงตามเงื่อนไขที่เลือก</strong>
+          <p style="font-size:12px; margin-top:4px;">ลองเปลี่ยนตัวกรองสถานะ หรือล้างคำค้นหา</p>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  const html = plots.map((p, idx) => {
+    const provName = getProvinceLabel(p.province_code);
+    const provPillClass = `prov-pill-${p.province_code}`;
+
+    let statusPill = '';
+    if (p.status === 'complete') {
+      statusPill = '<span class="status-chip chip-complete">🟢 ครบ 35/35</span>';
+    } else if (p.status === 'incomplete') {
+      statusPill = `<span class="status-chip chip-incomplete">⚠️ ค้างอีก ${35 - p.totalTreesChecked} ต้น</span>`;
+    } else {
+      statusPill = '<span class="status-chip chip-notstarted">⚪ ยังไม่เริ่ม (0/35)</span>';
+    }
+
+    const progressFillClass = p.status === 'complete' ? 'fill-green' : p.totalTreesChecked > 0 ? 'fill-orange' : 'fill-gray';
+
+    const pointCellsHtml = (p.points || []).map((pt) => {
+      let cellClass = 'point-cell-missing';
+      let badgeLabel = '0/5';
+      let icon = '⚪';
+      let tooltip = `จุดที่ ${pt.no}: ยังไม่ได้ตรวจ (0/5 ต้น)`;
+      let subText = '';
+
+      if (pt.status === 'done') {
+        cellClass = 'point-cell-done';
+        badgeLabel = '5/5';
+        icon = '🟢';
+        tooltip = `จุดที่ ${pt.no}: ครบ 5/5 ต้น (${pt.treesChecked.join(', ')})`;
+      } else if (pt.status === 'partial') {
+        cellClass = 'point-cell-partial';
+        badgeLabel = `${pt.activeTrees}/5`;
+        icon = '🟠';
+        tooltip = `จุดที่ ${pt.no}: ตรวจแล้ว ${pt.activeTrees}/5 ต้น (ขาด: ${pt.treesMissing.join(', ')})`;
+        subText = `<small class="pt-missing-sub">ขาด ${pt.treesMissing.join(',')}</small>`;
+      }
+
+      return `
+        <td class="text-center point-cell-td">
+          <button type="button" class="board-point-btn ${cellClass}"
+                  onclick="window.chalJumpToPoint(${p.id}, '${pt.label}', '${pt.treesMissing[0] || 'C'}')"
+                  title="${tooltip} - คลิกเพื่อเปิดตรวจจุดนี้">
+            <span class="pt-icon">${icon}</span>
+            <span class="pt-count">${badgeLabel}</span>
+            ${subText}
+          </button>
+        </td>
+      `;
+    }).join('');
+
+    const missingSummaryHtml = p.status === 'complete'
+      ? '<span style="color:#16a34a; font-size:12px; font-weight:600;">✔️ ครบถ้วน 7 จุด (35 ต้น)</span>'
+      : p.status === 'not_started'
+      ? '<span style="color:#64748b; font-size:12px;">⚪ ยังไม่มีข้อมูลสำรวจทั้ง 7 จุด</span>'
+      : `<span style="color:#d97706; font-size:12px; font-weight:600;" title="${escapeHtml(p.missingSummary)}">⚠️ ${escapeHtml(p.missingSummary)}</span>`;
+
+    const nextPendingPoint = p.points.find((pt) => pt.status !== 'done') || p.points[0];
+
+    return `
+      <tr class="board2d-row board-row-${p.status}">
+        <td class="text-center text-muted" style="font-size:12px;">${idx + 1}</td>
+        <td>
+          <span class="prov-badge ${provPillClass}">${provName}</span>
+        </td>
+        <td>
+          <div style="font-weight:700; color:var(--primary-strong); font-size:13px;">${escapeHtml(p.plot_label)}</div>
+          <div style="font-size:12px; color:var(--ink); font-weight:500;">${escapeHtml(p.full_name)}</div>
+          ${p.address ? `<div style="font-size:11px; color:var(--muted);">${escapeHtml(p.address)}</div>` : ''}
+        </td>
+        <td class="text-right" style="font-size:12px;">
+          <strong>${Number(p.productive_area_rai || 0).toFixed(1)}</strong>
+          <span style="font-size:10px; color:var(--muted);"> ไร่</span>
+        </td>
+        <td>
+          <div class="board-progress-container">
+            <div class="board-progress-bar">
+              <div class="board-progress-bar-fill ${progressFillClass}" style="width: ${p.percentComplete}%;"></div>
+            </div>
+            <div class="board-progress-meta">
+              <strong>${p.totalTreesChecked}/35 ต้น</strong>
+              <span>${p.percentComplete}%</span>
+            </div>
+            <div style="margin-top:2px;">${statusPill}</div>
+          </div>
+        </td>
+        ${pointCellsHtml}
+        <td style="max-width:240px;">
+          <div class="missing-summary-wrap">${missingSummaryHtml}</div>
+          ${p.cutsCount > 0 ? `<div style="font-size:11px; color:var(--muted); margin-top:2px;">🥥 บันทึกตัดแล้ว ${p.cutsCount} รอบ (${Number(p.totalCutYield || 0).toLocaleString()} ผล)</div>` : ''}
+        </td>
+        <td class="text-center">
+          <button type="button" class="button primary small" style="padding:4px 8px; font-size:11px; white-space:nowrap;"
+                  onclick="window.chalJumpToPoint(${p.id}, '${nextPendingPoint.label}', 'C')">
+            🔍 เปิดตรวจ
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  tbody.innerHTML = html;
+}
+
+function renderBoard2DCards(plots) {
+  const grid = cel('chalBoardCardsGrid');
+  if (!grid) return;
+
+  if (plots.length === 0) {
+    grid.innerHTML = `
+      <div class="text-center py-5" style="grid-column:1/-1; color:var(--muted); padding:30px;">
+        <div style="font-size:32px; margin-bottom:8px;">🔍</div>
+        <strong>ไม่พบแปลงตามเงื่อนไขที่เลือก</strong>
+      </div>
+    `;
+    return;
+  }
+
+  const html = plots.map((p) => {
+    const provName = getProvinceLabel(p.province_code);
+    const provPillClass = `prov-pill-${p.province_code}`;
+
+    let statusHeaderBadge = '';
+    if (p.status === 'complete') {
+      statusHeaderBadge = '<span class="card-status-badge badge-green">🟢 เช็คครบ 35/35 ต้น</span>';
+    } else if (p.status === 'incomplete') {
+      statusHeaderBadge = `<span class="card-status-badge badge-amber">⚠️ ยังเช็คไม่ครบ (ค้าง ${35 - p.totalTreesChecked} ต้น)</span>`;
+    } else {
+      statusHeaderBadge = '<span class="card-status-badge badge-slate">⚪ ยังไม่เริ่มสำรวจ</span>';
+    }
+
+    const pointsClustersHtml = (p.points || []).map((pt) => {
+      const treeDotsHtml = ['C', 'L', 'R', 'F', 'B'].map((pos) => {
+        const checked = pt.treesChecked.includes(pos);
+        const dotClass = checked ? 'tree-dot-checked' : 'tree-dot-missing';
+        const fruitCount = pt.treeTotals[pos] || 0;
+        return `<span class="tree-mini-dot ${dotClass}" title="${pos}: ${checked ? `${fruitCount} ผล` : 'ยังไม่ได้ตรวจ'}"></span>`;
+      }).join('');
+
+      let clusterStatusClass = 'cluster-missing';
+      if (pt.status === 'done') clusterStatusClass = 'cluster-done';
+      else if (pt.status === 'partial') clusterStatusClass = 'cluster-partial';
+
+      return `
+        <div class="garden-point-cluster ${clusterStatusClass}"
+             onclick="window.chalJumpToPoint(${p.id}, '${pt.label}', '${pt.treesMissing[0] || 'C'}')"
+             title="จุดที่ ${pt.no} (${pt.activeTrees}/5 ต้น) - คลิกเพื่อเปิดตรวจ">
+          <div class="cluster-label">จุด ${pt.no}</div>
+          <div class="cluster-trees-grid">${treeDotsHtml}</div>
+          <div class="cluster-status-text">${pt.activeTrees}/5</div>
+        </div>
+      `;
+    }).join('');
+
+    const nextPendingPoint = p.points.find((pt) => pt.status !== 'done') || p.points[0];
+
+    return `
+      <div class="board2d-plot-card card-status-${p.status}">
+        <div class="plot-card-header">
+          <div>
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; flex-wrap:wrap;">
+              <span class="prov-badge ${provPillClass}">${provName}</span>
+              ${statusHeaderBadge}
+            </div>
+            <h4 class="plot-card-title">${escapeHtml(p.plot_label)}: ${escapeHtml(p.full_name)}</h4>
+            <div class="plot-card-meta">
+              <span>🌾 ${Number(p.productive_area_rai || 0).toFixed(1)} ไร่</span>
+              <span>🌴 ${p.trees_per_rai || 35} ต้น/ไร่</span>
+              <span>🏷️ ${p.production_standard || 'GAP'}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2D Garden Visual Cluster -->
+        <div class="garden-cluster-map">
+          <div class="garden-map-title">📍 ผังจำลอง 7 จุดสำรวจ (จุดละ 5 ต้น):</div>
+          <div class="garden-clusters-grid">
+            ${pointsClustersHtml}
+          </div>
+          <div class="garden-map-legend">
+            <span class="legend-item"><span class="legend-dot green"></span> ตรวจแล้ว</span>
+            <span class="legend-item"><span class="legend-dot amber"></span> ยังไม่ตรวจ/ค้าง</span>
+          </div>
+        </div>
+
+        <!-- Progress and Action Footer -->
+        <div class="plot-card-footer">
+          <div class="card-progress-bar-wrap">
+            <div class="card-progress-bar">
+              <div class="card-progress-fill ${p.status === 'complete' ? 'fill-green' : 'fill-orange'}" style="width:${p.percentComplete}%;"></div>
+            </div>
+            <div class="card-progress-numbers">
+              <strong>ความคืบหน้า ${p.percentComplete}%</strong>
+              <span>${p.totalTreesChecked}/35 ต้น (ครบ ${p.completedPoints}/7 จุด)</span>
+            </div>
+          </div>
+
+          ${p.status === 'incomplete' ? `
+            <div class="card-missing-alert">
+              <strong>⚠️ จุดที่ยังค้าง:</strong> ${escapeHtml(p.missingSummary)}
+            </div>
+          ` : ''}
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; gap:8px;">
+            <button type="button" class="button primary small" style="flex:1; justify-content:center; display:flex; align-items:center; gap:6px;"
+                    onclick="window.chalJumpToPoint(${p.id}, '${nextPendingPoint.label}', 'C')">
+              🌴 ${p.status === 'complete' ? 'ดูข้อมูลคาดการณ์' : `ตรวจต่อที่ "${nextPendingPoint.label}"`}
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  grid.innerHTML = html;
+}
+
+window.chalJumpToPoint = function(plotId, pointLabel, treePos) {
+  chalState.selectedPlotId = Number(plotId);
+  chalState.selectedPointLabel = pointLabel || 'จุดที่ 1';
+  chalState.selectedTreePos = treePos || 'C';
+
+  // Switch to forecast tab
+  showChalTab('forecast');
+
+  const plotSelect = cel('chalForecastPlotSelect');
+  if (plotSelect) {
+    plotSelect.value = plotId;
+  }
+
+  loadForecastMatrix();
+
+  // Scroll smoothly to forecast controls
+  setTimeout(() => {
+    cel('chalTab_forecast')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+};
+
+export function exportBoard2DCsv() {
+  if (!chalState.board2dData || !chalState.board2dData.plots) {
+    alert('ยังไม่มีข้อมูลกระดาน 2D สำหรับส่งออก');
+    return;
+  }
+
+  const plots = chalState.board2dData.plots;
+  const rows = [];
+  rows.push([
+    'ลำดับ',
+    'จังหวัด',
+    'แปลง',
+    'เกษตรกรเจ้าของสวน',
+    'เบอร์โทร',
+    'ที่อยู่',
+    'พื้นที่ให้ผล (ไร่)',
+    'ต้น/ไร่',
+    'สถานะความครบถ้วน',
+    'ต้นที่ตรวจแล้ว (จาก 35)',
+    'เปอร์เซ็นต์ความคืบหน้า (%)',
+    'จุดที่ 1 (ตรวจ/5)',
+    'จุดที่ 2 (ตรวจ/5)',
+    'จุดที่ 3 (ตรวจ/5)',
+    'จุดที่ 4 (ตรวจ/5)',
+    'จุดที่ 5 (ตรวจ/5)',
+    'จุดที่ 6 (ตรวจ/5)',
+    'จุดที่ 7 (ตรวจ/5)',
+    'รายละเอียดที่ยังค้างตรวจ',
+    'จำนวนรอบตัดที่บันทึก (Sheet 3)',
+    'ผลผลิตรอบตัดรวม (ผล)',
+  ]);
+
+  plots.forEach((p, idx) => {
+    const provName = getProvinceLabel(p.province_code);
+    const statusText = p.status === 'complete' ? 'ครบ 100%' : p.status === 'incomplete' ? 'ยังเช็คไม่ครบ' : 'ยังไม่เริ่มสำรวจ';
+    const ptCounts = (p.points || []).map((pt) => `${pt.activeTrees}/5`);
+
+    rows.push([
+      idx + 1,
+      provName,
+      p.plot_label,
+      p.full_name,
+      p.phone || '',
+      p.address || '',
+      p.productive_area_rai || 0,
+      p.trees_per_rai || 35,
+      statusText,
+      p.totalTreesChecked,
+      p.percentComplete,
+      ptCounts[0] || '0/5',
+      ptCounts[1] || '0/5',
+      ptCounts[2] || '0/5',
+      ptCounts[3] || '0/5',
+      ptCounts[4] || '0/5',
+      ptCounts[5] || '0/5',
+      ptCounts[6] || '0/5',
+      p.missingSummary || '',
+      p.cutsCount || 0,
+      p.totalCutYield || 0,
+    ]);
+  });
+
+  const csvContent = '\uFEFF' + rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `coconut_2d_inspection_board_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+

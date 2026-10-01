@@ -379,3 +379,141 @@ async function seedSampleData(db) {
     ).run();
   }
 }
+
+/**
+ * Compute 2D Board data for all plots across 7 sample points and 35 trees.
+ * Determines completion status (complete, incomplete, not_started) and missing items.
+ */
+export function computePlotBoard2D(plots = [], forecastRows = [], cutsRows = []) {
+  const forecastMap = new Map();
+  for (const row of forecastRows) {
+    const fruits = Number(row.fruit_count) || Number(row.total_fruits) || 0;
+    if (fruits > 0) {
+      const pLabel = String(row.point_label || 'จุดที่ 1').trim();
+      const pos = String(row.tree_position || 'C').trim();
+      const key = `${row.plot_id}_${pLabel}_${pos}`;
+      const prev = forecastMap.get(key) || { fruits: 0, bunches: 0 };
+      prev.fruits += fruits;
+      prev.bunches += (Number(row.bunch_count) || 1);
+      forecastMap.set(key, prev);
+    }
+  }
+
+  const cutsMap = new Map();
+  for (const cut of cutsRows) {
+    const prev = cutsMap.get(cut.plot_id) || { count: 0, totalYield: 0, lastDate: null };
+    prev.count += (Number(cut.cuts_count) || 1);
+    prev.totalYield += (Number(cut.total_cut_yield) || Number(cut.total_yield) || 0);
+    if (cut.cut_date && (!prev.lastDate || cut.cut_date > prev.lastDate)) {
+      prev.lastDate = cut.cut_date;
+    }
+    cutsMap.set(cut.plot_id, prev);
+  }
+
+  let completedPlotsCount = 0;
+  let incompletePlotsCount = 0;
+  let notStartedPlotsCount = 0;
+
+  const enrichedPlots = plots.map((plot) => {
+    let plotTreesChecked = 0;
+    let completedPoints = 0;
+    let partialPoints = 0;
+    let missingPoints = 0;
+    const missingItemsList = [];
+
+    const points = SAMPLE_POINTS.map((pt) => {
+      const treeTotals = {};
+      const treesChecked = [];
+      const treesMissing = [];
+
+      for (const t of SAMPLE_TREES) {
+        const key = `${plot.id}_${pt.label}_${t.pos}`;
+        const record = forecastMap.get(key);
+        const fruits = record ? record.fruits : 0;
+        treeTotals[t.pos] = fruits;
+        if (fruits > 0) {
+          treesChecked.push(t.pos);
+        } else {
+          treesMissing.push(t.pos);
+        }
+      }
+
+      const activeTrees = treesChecked.length;
+      plotTreesChecked += activeTrees;
+
+      let pointStatus = 'missing';
+      if (activeTrees === 5) {
+        pointStatus = 'done';
+        completedPoints++;
+      } else if (activeTrees > 0) {
+        pointStatus = 'partial';
+        partialPoints++;
+        missingItemsList.push(`${pt.label}: ขาด ${treesMissing.join(', ')}`);
+      } else {
+        pointStatus = 'missing';
+        missingPoints++;
+        missingItemsList.push(`${pt.label}: ยังไม่ตรวจ (0/5)`);
+      }
+
+      return {
+        label: pt.label,
+        no: pt.no,
+        activeTrees,
+        treeTotals,
+        treesChecked,
+        treesMissing,
+        status: pointStatus,
+      };
+    });
+
+    const percentComplete = Math.round((plotTreesChecked / 35) * 100);
+    let status = 'not_started';
+    if (plotTreesChecked === 35) {
+      status = 'complete';
+      completedPlotsCount++;
+    } else if (plotTreesChecked > 0) {
+      status = 'incomplete';
+      incompletePlotsCount++;
+    } else {
+      status = 'not_started';
+      notStartedPlotsCount++;
+    }
+
+    const cutInfo = cutsMap.get(plot.id) || { count: 0, totalYield: 0, lastDate: null };
+
+    return {
+      ...plot,
+      points,
+      totalTreesChecked: plotTreesChecked,
+      percentComplete,
+      completedPoints,
+      partialPoints,
+      missingPoints,
+      status,
+      missingSummary: missingItemsList.length > 0 ? missingItemsList.join(' | ') : 'ครบ 35/35 ต้น',
+      cutsCount: cutInfo.count,
+      totalCutYield: cutInfo.totalYield,
+      lastCutDate: cutInfo.lastDate,
+    };
+  });
+
+  const totalPossibleTrees = plots.length * 35;
+  const totalTreesCheckedAll = enrichedPlots.reduce((acc, p) => acc + p.totalTreesChecked, 0);
+  const overallPercent = totalPossibleTrees > 0
+    ? Math.round((totalTreesCheckedAll / totalPossibleTrees) * 100)
+    : 0;
+
+  return {
+    plots: enrichedPlots,
+    summary: {
+      totalPlots: plots.length,
+      completedPlots: completedPlotsCount,
+      incompletePlots: incompletePlotsCount,
+      notStartedPlots: notStartedPlotsCount,
+      totalPossibleTrees,
+      totalTreesChecked: totalTreesCheckedAll,
+      overallPercent,
+    },
+  };
+}
+
