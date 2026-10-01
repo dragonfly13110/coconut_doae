@@ -120,10 +120,10 @@ CREATE TABLE IF NOT EXISTS yield_forecasts (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (plot_id) REFERENCES farmer_plots(id) ON DELETE CASCADE,
-  UNIQUE (plot_id, tree_position, bunch_no, harvest_month)
+  UNIQUE (plot_id, point_label, tree_position, bunch_no, harvest_month)
 );
 
-CREATE INDEX IF NOT EXISTS idx_yield_forecasts_lookup ON yield_forecasts(plot_id, tree_position, bunch_no);
+CREATE INDEX IF NOT EXISTS idx_yield_forecasts_lookup ON yield_forecasts(plot_id, point_label, tree_position, bunch_no);
 
 -- 3. Harvest cuts (Sheet 3)
 CREATE TABLE IF NOT EXISTS harvest_cuts (

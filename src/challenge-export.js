@@ -1,4 +1,4 @@
-import { MONTH_NAMES, SAMPLE_TREES } from './challenge-db.js';
+import { MONTH_NAMES, SAMPLE_POINTS, SAMPLE_TREES } from './challenge-db.js';
 
 function escapeXml(value) {
   if (value === null || value === undefined) return '';
@@ -80,59 +80,62 @@ export function generateChallengeExcelXml({ plots = [], forecasts = [], harvestC
     ]));
   });
 
-  // 2. Sheet 2: คาดการณ์ผลผลิต
+  // 2. Sheet 2: คาดการณ์ผลผลิต (7 จุด x 5 ต้น = 35 ต้นต่อแปลง)
   const sheet2Rows = [];
   const forecastMap = {};
   for (const f of forecasts) {
-    const key = `${f.plot_id}_${f.tree_position}_${f.bunch_no}_${f.harvest_month}`;
+    const pLabel = f.point_label || 'จุดที่ 1';
+    const key = `${f.plot_id}_${pLabel}_${f.tree_position}_${f.bunch_no}_${f.harvest_month}`;
     forecastMap[key] = f.fruit_count;
   }
 
   // Iterate over plots (or default plot 1)
   const activePlots = plots.length > 0 ? plots : [{ id: 1, plot_label: 'แปลงที่ 1' }];
   for (const p of activePlots) {
-    for (const tree of SAMPLE_TREES) {
-      sheet2Rows.push(rowXml([cellXml(p.plot_label || 'แปลงที่ 1')]));
+    for (const point of SAMPLE_POINTS) {
+      for (const tree of SAMPLE_TREES) {
+        sheet2Rows.push(rowXml([cellXml(p.plot_label || 'แปลงที่ 1')]));
 
-      // Header row with 20 bunches
-      const bunchHeaders = [cellXml(tree.label), cellXml('ทะลายที่')];
-      for (let b = 1; b <= 20; b++) {
-        bunchHeaders.push(cellXml(b, 'Number'));
-      }
-      sheet2Rows.push(rowXml(bunchHeaders));
-
-      // 12 months
-      const monthlySum = new Array(12).fill(0);
-      for (let m = 1; m <= 12; m++) {
-        const rowCells = [];
-        if (m === 1) {
-          rowCells.push(cellXml(tree.pos));
-        } else if (m === 2) {
-          rowCells.push(cellXml('จุดที่ 1'));
-        } else {
-          rowCells.push(cellXml(''));
-        }
-        rowCells.push(cellXml(MONTH_NAMES[m - 1]));
-
+        // Header row with 20 bunches
+        const bunchHeaders = [cellXml(`${tree.label} (${point.label})`), cellXml('ทะลายที่')];
         for (let b = 1; b <= 20; b++) {
-          const count = forecastMap[`${p.id}_${tree.pos}_${b}_${m}`] || '';
-          if (count !== '') monthlySum[m - 1] += Number(count);
-          rowCells.push(cellXml(count, count !== '' ? 'Number' : 'String'));
+          bunchHeaders.push(cellXml(b, 'Number'));
         }
-        sheet2Rows.push(rowXml(rowCells));
-      }
+        sheet2Rows.push(rowXml(bunchHeaders));
 
-      // Summary row
-      const summaryCells = [cellXml(''), cellXml('จำนวนผลที่เก็บเกี่ยว')];
-      for (let b = 1; b <= 20; b++) {
-        let bunchTotal = 0;
+        // 12 months
+        const monthlySum = new Array(12).fill(0);
         for (let m = 1; m <= 12; m++) {
-          bunchTotal += (forecastMap[`${p.id}_${tree.pos}_${b}_${m}`] || 0);
+          const rowCells = [];
+          if (m === 1) {
+            rowCells.push(cellXml(tree.pos));
+          } else if (m === 2) {
+            rowCells.push(cellXml(point.label));
+          } else {
+            rowCells.push(cellXml(''));
+          }
+          rowCells.push(cellXml(MONTH_NAMES[m - 1]));
+
+          for (let b = 1; b <= 20; b++) {
+            const count = forecastMap[`${p.id}_${point.label}_${tree.pos}_${b}_${m}`] || '';
+            if (count !== '') monthlySum[m - 1] += Number(count);
+            rowCells.push(cellXml(count, count !== '' ? 'Number' : 'String'));
+          }
+          sheet2Rows.push(rowXml(rowCells));
         }
-        summaryCells.push(cellXml(bunchTotal > 0 ? bunchTotal : '', bunchTotal > 0 ? 'Number' : 'String'));
+
+        // Summary row
+        const summaryCells = [cellXml(''), cellXml('จำนวนผลที่เก็บเกี่ยว')];
+        for (let b = 1; b <= 20; b++) {
+          let bunchTotal = 0;
+          for (let m = 1; m <= 12; m++) {
+            bunchTotal += (forecastMap[`${p.id}_${point.label}_${tree.pos}_${b}_${m}`] || 0);
+          }
+          summaryCells.push(cellXml(bunchTotal > 0 ? bunchTotal : '', bunchTotal > 0 ? 'Number' : 'String'));
+        }
+        sheet2Rows.push(rowXml(summaryCells));
+        sheet2Rows.push(rowXml([cellXml('')])); // empty spacer row
       }
-      sheet2Rows.push(rowXml(summaryCells));
-      sheet2Rows.push(rowXml([cellXml('')])); // empty spacer row
     }
   }
 

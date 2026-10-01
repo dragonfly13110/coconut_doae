@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateChallengeExcelXml } from '../src/challenge-export.js';
 import macroBaseline from '../src/macro-baseline.json' with { type: 'json' };
-import { CHALLENGE_PROVINCES, SAMPLE_TREES, MONTH_NAMES } from '../src/challenge-db.js';
+import { CHALLENGE_PROVINCES, SAMPLE_POINTS, SAMPLE_TREES, MONTH_NAMES } from '../src/challenge-db.js';
 
 test('macro baseline contains 28 records for Western region and 4 provinces', () => {
   assert.equal(macroBaseline.length, 28);
@@ -19,10 +19,16 @@ test('macro baseline contains 28 records for Western region and 4 provinces', ()
   assert.equal(rb.standing_area_rai, 121121);
 });
 
-test('challenge provinces, sample trees, and months are properly configured', () => {
+test('challenge provinces, sample points (7), sample trees (5), and months are properly configured', () => {
   assert.equal(CHALLENGE_PROVINCES.length, 4);
+  assert.equal(SAMPLE_POINTS.length, 7);
+  assert.deepEqual(SAMPLE_POINTS.map((p) => p.label), [
+    'จุดที่ 1', 'จุดที่ 2', 'จุดที่ 3', 'จุดที่ 4', 'จุดที่ 5', 'จุดที่ 6', 'จุดที่ 7',
+  ]);
   assert.equal(SAMPLE_TREES.length, 5);
   assert.deepEqual(SAMPLE_TREES.map((t) => t.pos), ['C', 'L', 'R', 'F', 'B']);
+  // Total sample trees per plot = 7 points x 5 trees = 35 trees
+  assert.equal(SAMPLE_POINTS.length * SAMPLE_TREES.length, 35);
   assert.equal(MONTH_NAMES.length, 12);
   assert.equal(MONTH_NAMES[0], 'ม.ค.');
   assert.equal(MONTH_NAMES[11], 'ธ.ค.');

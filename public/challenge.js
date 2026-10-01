@@ -7,12 +7,22 @@ const CHAL_PROVINCES = [
   { code: 'samut_songkhram', label: 'สมุทรสงคราม' },
 ];
 
+const SAMPLE_POINTS = [
+  { no: 1, label: 'จุดที่ 1' },
+  { no: 2, label: 'จุดที่ 2' },
+  { no: 3, label: 'จุดที่ 3' },
+  { no: 4, label: 'จุดที่ 4' },
+  { no: 5, label: 'จุดที่ 5' },
+  { no: 6, label: 'จุดที่ 6' },
+  { no: 7, label: 'จุดที่ 7' },
+];
+
 const SAMPLE_TREES = [
-  { no: 1, pos: 'C', label: 'ต้นที่ 1 (จุด C - กึ่งกลางแปลง)', short: 'จุด C (กลาง)' },
-  { no: 2, pos: 'L', label: 'ต้นที่ 2 (จุด L - ด้านซ้ายแปลง)', short: 'จุด L (ซ้าย)' },
-  { no: 3, pos: 'R', label: 'ต้นที่ 3 (จุด R - ด้านขวาแปลง)', short: 'จุด R (ขวา)' },
-  { no: 4, pos: 'F', label: 'ต้นที่ 4 (จุด F - ด้านหน้าแปลง)', short: 'จุด F (หน้า)' },
-  { no: 5, pos: 'B', label: 'ต้นที่ 5 (จุด B - ด้านหลังแปลง)', short: 'จุด B (หลัง)' },
+  { no: 1, pos: 'C', label: 'ต้นที่ 1 (จุด C - กึ่งกลาง)', short: 'ต้น 1 (C กลาง)' },
+  { no: 2, pos: 'L', label: 'ต้นที่ 2 (จุด L - ด้านซ้าย)', short: 'ต้น 2 (L ซ้าย)' },
+  { no: 3, pos: 'R', label: 'ต้นที่ 3 (จุด R - ด้านขวา)', short: 'ต้น 3 (R ขวา)' },
+  { no: 4, pos: 'F', label: 'ต้นที่ 4 (จุด F - ด้านหน้า)', short: 'ต้น 4 (F หน้า)' },
+  { no: 5, pos: 'B', label: 'ต้นที่ 5 (จุด B - ด้านหลัง)', short: 'ต้น 5 (B หลัง)' },
 ];
 
 const MONTH_NAMES = [
@@ -25,6 +35,7 @@ const chalState = {
   activeTab: 'farmers',
   plots: [],
   selectedPlotId: null,
+  selectedPointLabel: 'จุดที่ 1',
   selectedTreePos: 'C',
   forecastData: null,
   harvestData: null,
@@ -387,11 +398,15 @@ async function loadForecastMatrix() {
   const plotId = cel('chalForecastPlotSelect')?.value || chalState.selectedPlotId;
   if (!plotId) return;
 
-  renderTreeTabs();
+  renderPointTabs(chalState.forecastData);
+  renderTreeTabs(chalState.forecastData);
 
   try {
-    const data = await chalApi(`/api/challenge/forecast?plot_id=${plotId}&pos=${chalState.selectedTreePos}`);
+    const pointParam = encodeURIComponent(chalState.selectedPointLabel || 'จุดที่ 1');
+    const data = await chalApi(`/api/challenge/forecast?plot_id=${plotId}&point_label=${pointParam}&pos=${chalState.selectedTreePos}`);
     chalState.forecastData = data;
+    renderPointTabs(data);
+    renderTreeTabs(data);
     renderMatrixGrid(data);
     renderForecastKPIs(data);
   } catch (err) {
@@ -399,16 +414,62 @@ async function loadForecastMatrix() {
   }
 }
 
-function renderTreeTabs() {
+function renderPointTabs(data) {
+  const container = cel('chalPointTabs');
+  if (!container) return;
+
+  const pointsSummary = data?.pointsSummary || {};
+  const points = data?.samplePoints || SAMPLE_POINTS;
+
+  container.innerHTML = points.map((p) => {
+    const isActive = p.label === chalState.selectedPointLabel;
+    const ptInfo = pointsSummary[p.label];
+    const activeTrees = ptInfo ? ptInfo.activeTrees : 0;
+    const isComplete = activeTrees === 5;
+    const badgeClass = isComplete ? 'complete' : '';
+    const badgeText = `${activeTrees}/5`;
+
+    return `
+      <button type="button" class="point-tab-btn ${isActive ? 'active' : ''}" onclick="window.chalSelectPoint('${escapeHtml(p.label)}')">
+        <span>📍 ${escapeHtml(p.label)}</span>
+        <span class="point-badge ${badgeClass}">${badgeText}</span>
+      </button>
+    `;
+  }).join('');
+
+  const progressBadge = cel('chalPointProgressBadge');
+  if (progressBadge && data?.plotSummary) {
+    const s = data.plotSummary;
+    progressBadge.innerHTML = `ความคืบหน้าภาพรวม: <strong>${s.activeTreesCount || 0}/${s.totalTrees || 35} ต้น</strong> (${s.activePointsCompleted || 0}/7 จุดครบ 100%)`;
+  }
+}
+
+window.chalSelectPoint = (pointLabel) => {
+  chalState.selectedPointLabel = pointLabel;
+  loadForecastMatrix();
+};
+
+function renderTreeTabs(data) {
   const container = cel('chalTreeTabs');
   if (!container) return;
 
+  const pointLabel = chalState.selectedPointLabel || 'จุดที่ 1';
+  const treeTotals = data?.pointsSummary?.[pointLabel]?.treeTotals || {};
+
+  const treeBarLabel = cel('chalTreeBarLabel');
+  if (treeBarLabel) {
+    treeBarLabel.textContent = `🌴 เลือกต้นตัวอย่างใน "${pointLabel}" (5 ต้น: C กลาง, L ซ้าย, R ขวา, F หน้า, B หลัง):`;
+  }
+
   container.innerHTML = SAMPLE_TREES.map((tree) => {
     const isActive = tree.pos === chalState.selectedTreePos;
+    const fruitSum = treeTotals[tree.pos] || 0;
+    const indicator = fruitSum > 0 ? `🟢 ${fruitSum} ผล` : `⚪ ยังไม่มีข้อมูล`;
     return `
       <button type="button" class="tree-tab-btn ${isActive ? 'active' : ''}" onclick="window.chalSelectTree('${tree.pos}')">
         <span class="tree-badge">${tree.pos}</span>
         <span>${tree.label}</span>
+        <small style="opacity:0.85; font-size:11px; margin-left:4px;">(${indicator})</small>
       </button>
     `;
   }).join('');
@@ -935,7 +996,12 @@ function renderForecastKPIs(data) {
   cel('chalTreeTotalVal').textContent = `${(data.treeTotal || 0).toLocaleString()} ผล/ปี`;
   cel('chalTreeAvgBunchVal').textContent = data.treeTotal > 0 ? `${(data.treeTotal / 20).toFixed(1)} ผล/ทะลาย` : '-';
   cel('chalPlotEstimatedYield').textContent = `${(summary.estimatedPlotYieldPerYear || 0).toLocaleString()} ผล/แปลง/ปี`;
-  cel('chalActiveTreesVal').textContent = `${summary.activeTreesCount || 0} จาก 5 จุด`;
+  cel('chalActiveTreesVal').textContent = `${summary.activeTreesCount || 0} จาก ${summary.totalTrees || 35} ต้น`;
+
+  const activePointsSub = cel('chalActivePointsSub');
+  if (activePointsSub) {
+    activePointsSub.textContent = `(${summary.activePointsWithData || 0} จาก 7 จุดมีข้อมูล, สมบูรณ์ครบ 5 ต้นแล้ว ${summary.activePointsCompleted || 0} จุด)`;
+  }
 
   updateLiveMonthlyChart();
 }
@@ -956,6 +1022,7 @@ async function onSaveForecastMatrix() {
   });
 
   const currentTree = SAMPLE_TREES.find((t) => t.pos === chalState.selectedTreePos) || SAMPLE_TREES[0];
+  const pointLabel = chalState.selectedPointLabel || 'จุดที่ 1';
 
   try {
     await chalApi('/api/challenge/forecast', {
@@ -964,11 +1031,11 @@ async function onSaveForecastMatrix() {
         plot_id: Number(plotId),
         tree_no: currentTree.no,
         tree_position: currentTree.pos,
-        point_label: 'จุดที่ 1',
+        point_label: pointLabel,
         entries,
       }),
     });
-    alert(`บันทึกคาดการณ์ผลผลิตสำหรับ "${currentTree.label}" สำเร็จ`);
+    alert(`บันทึกคาดการณ์ผลผลิตสำหรับ "${pointLabel} - ${currentTree.label}" สำเร็จ`);
     loadForecastMatrix();
   } catch (err) {
     alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message);

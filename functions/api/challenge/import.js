@@ -56,7 +56,7 @@ export async function onRequest({ request, env }) {
         INSERT INTO yield_forecasts
         (plot_id, province_code, tree_no, tree_position, point_label, bunch_no, harvest_month, fruit_count, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(plot_id, tree_position, bunch_no, harvest_month)
+        ON CONFLICT(plot_id, point_label, tree_position, bunch_no, harvest_month)
         DO UPDATE SET fruit_count = excluded.fruit_count, updated_at = CURRENT_TIMESTAMP
       `).bind(
         Number(f.plot_id),

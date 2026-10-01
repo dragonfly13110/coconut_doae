@@ -7,12 +7,22 @@ export const CHALLENGE_PROVINCES = [
   { code: 'samut_songkhram', label: 'สมุทรสงคราม' },
 ];
 
+export const SAMPLE_POINTS = [
+  { no: 1, label: 'จุดที่ 1' },
+  { no: 2, label: 'จุดที่ 2' },
+  { no: 3, label: 'จุดที่ 3' },
+  { no: 4, label: 'จุดที่ 4' },
+  { no: 5, label: 'จุดที่ 5' },
+  { no: 6, label: 'จุดที่ 6' },
+  { no: 7, label: 'จุดที่ 7' },
+];
+
 export const SAMPLE_TREES = [
-  { no: 1, pos: 'C', label: 'ต้นที่ 1 (จุด C - กึ่งกลางแปลง)', shortLabel: 'จุด C (กลาง)' },
-  { no: 2, pos: 'L', label: 'ต้นที่ 2 (จุด L - ด้านซ้ายแปลง)', shortLabel: 'จุด L (ซ้าย)' },
-  { no: 3, pos: 'R', label: 'ต้นที่ 3 (จุด R - ด้านขวาแปลง)', shortLabel: 'จุด R (ขวา)' },
-  { no: 4, pos: 'F', label: 'ต้นที่ 4 (จุด F - ด้านหน้าแปลง)', shortLabel: 'จุด F (หน้า)' },
-  { no: 5, pos: 'B', label: 'ต้นที่ 5 (จุด B - ด้านหลังแปลง)', shortLabel: 'จุด B (หลัง)' },
+  { no: 1, pos: 'C', label: 'ต้นที่ 1 (จุด C - กึ่งกลาง)', shortLabel: 'ต้นที่ 1 (C กลาง)' },
+  { no: 2, pos: 'L', label: 'ต้นที่ 2 (จุด L - ด้านซ้าย)', shortLabel: 'ต้นที่ 2 (L ซ้าย)' },
+  { no: 3, pos: 'R', label: 'ต้นที่ 3 (จุด R - ด้านขวา)', shortLabel: 'ต้นที่ 3 (R ขวา)' },
+  { no: 4, pos: 'F', label: 'ต้นที่ 4 (จุด F - ด้านหน้า)', shortLabel: 'ต้นที่ 4 (F หน้า)' },
+  { no: 5, pos: 'B', label: 'ต้นที่ 5 (จุด B - ด้านหลัง)', shortLabel: 'ต้นที่ 5 (B หลัง)' },
 ];
 
 export const MONTH_NAMES = [
@@ -52,7 +62,7 @@ export async function ensureChallengeDb(db) {
     CREATE INDEX IF NOT EXISTS idx_farmer_plots_province ON farmer_plots(province_code);
   `).run();
 
-  // 2. Yield forecasts (Sheet 2)
+  // 2. Yield forecasts (Sheet 2) - 7 Points x 5 Trees = 35 Trees per Plot
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS yield_forecasts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,12 +77,41 @@ export async function ensureChallengeDb(db) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (plot_id) REFERENCES farmer_plots(id) ON DELETE CASCADE,
-      UNIQUE (plot_id, tree_position, bunch_no, harvest_month)
+      UNIQUE (plot_id, point_label, tree_position, bunch_no, harvest_month)
     );
   `).run();
 
+  // Ensure migration if existing table lacks point_label in UNIQUE constraint
+  try {
+    const tableInfo = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='yield_forecasts'").first();
+    if (tableInfo && tableInfo.sql && !tableInfo.sql.includes('point_label, tree_position')) {
+      await db.prepare(`
+        CREATE TABLE yield_forecasts_v2 (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          plot_id INTEGER NOT NULL,
+          province_code TEXT NOT NULL,
+          tree_no INTEGER NOT NULL,
+          tree_position TEXT NOT NULL,
+          point_label TEXT NOT NULL DEFAULT 'จุดที่ 1',
+          bunch_no INTEGER NOT NULL,
+          harvest_month INTEGER NOT NULL,
+          fruit_count INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (plot_id) REFERENCES farmer_plots(id) ON DELETE CASCADE,
+          UNIQUE (plot_id, point_label, tree_position, bunch_no, harvest_month)
+        );
+      `).run();
+      await db.prepare(`INSERT OR IGNORE INTO yield_forecasts_v2 SELECT * FROM yield_forecasts;`).run();
+      await db.prepare(`DROP TABLE yield_forecasts;`).run();
+      await db.prepare(`ALTER TABLE yield_forecasts_v2 RENAME TO yield_forecasts;`).run();
+    }
+  } catch (err) {
+    // Silently continue if already migrated or sqlite_master unavailable in mock
+  }
+
   await db.prepare(`
-    CREATE INDEX IF NOT EXISTS idx_yield_forecasts_lookup ON yield_forecasts(plot_id, tree_position, bunch_no);
+    CREATE INDEX IF NOT EXISTS idx_yield_forecasts_lookup ON yield_forecasts(plot_id, point_label, tree_position, bunch_no);
   `).run();
 
   // 3. Harvest cuts (Sheet 3)
