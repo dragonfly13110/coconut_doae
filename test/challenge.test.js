@@ -241,4 +241,184 @@ test('board2d API endpoint returns enriched plot matrix and overarching metrics'
   assert.equal(body.plots[1].status, 'not_started');
 });
 
+test('Form 1 (farmers.js): saves full basic plot data including 4 corners, cost and income', async () => {
+  const { onRequest: onFarmersRequest } = await import('../functions/api/challenge/farmers.js');
+
+  let insertedRow = null;
+  const mockDb = {
+    prepare(sql) {
+      return {
+        sql,
+        params: [],
+        bind(...params) {
+          this.params = params;
+          return this;
+        },
+        async run() {
+          if (sql.includes('INSERT INTO farmer_plots')) {
+            insertedRow = this.params;
+            return { meta: { last_row_id: 10 } };
+          }
+          return { success: true };
+        },
+        async first() {
+          const s = sql.replace(/\s+/g, ' ');
+          if (s.includes('FROM sessions')) {
+            return { id: 1, province_code: 'ratchaburi', province_label: 'ราชบุรี', role: 'province' };
+          }
+          if (s.includes('FROM users')) {
+            return { id: 1, province_code: 'ratchaburi', province_label: 'ราชบุรี', role: 'province' };
+          }
+          return null;
+        },
+        async all() {
+          return { results: [] };
+        },
+      };
+    },
+  };
+
+  const payload = {
+    province_code: 'ratchaburi',
+    farmer_no: 1,
+    plot_label: 'แปลงที่ 1',
+    title: 'นาย',
+    first_name: 'สมชาย',
+    last_name: 'มะพร้าวทอง',
+    address_no: '124',
+    street: 'ดำเนินสะดวก',
+    moo: '3',
+    subdistrict: 'ดำเนินสะดวก',
+    district: 'ดำเนินสะดวก',
+    province_name: 'ราชบุรี',
+    age: 48,
+    phone: '081-234-5678',
+    total_area_rai: 15.0,
+    productive_area_rai: 12.0,
+    plant_age_years: 7.5,
+    trees_per_rai: 35,
+    coord_zone: '47',
+    coord_x1: 605420,
+    coord_y1: 1492310,
+    coord_x2: 605480,
+    coord_y2: 1492310,
+    coord_x3: 605480,
+    coord_y3: 1492250,
+    coord_x4: 605420,
+    coord_y4: 1492250,
+    production_standard: 'GAP',
+    soil_series: 'ชุดดินดำเนินสะดวก (Ds)',
+    production_cost_per_rai: 12500,
+    avg_income_per_rai: 38000,
+  };
+
+  const req = new Request('https://coconut-doae.internal/api/challenge/farmers', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      cookie: 'sid=valid-session-token',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const res = await onFarmersRequest({ request: req, env: { DB: mockDb } });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.success, true);
+  assert.equal(data.id, 10);
+  assert.ok(insertedRow);
+  // Check full_name synthesized
+  assert.equal(insertedRow[6], 'นาย สมชาย มะพร้าวทอง');
+  // Check cost and income
+  assert.equal(insertedRow[33], 12500);
+  assert.equal(insertedRow[34], 38000);
+});
+
+test('Sheet 3 (harvest.js): saves harvest cut with trees_per_rai and auto-calculates yield_per_tree and yield_per_rai', async () => {
+  const { onRequest: onHarvestRequest } = await import('../functions/api/challenge/harvest.js');
+
+  let insertedCut = null;
+  const mockDb = {
+    prepare(sql) {
+      return {
+        sql,
+        params: [],
+        bind(...params) {
+          this.params = params;
+          return this;
+        },
+        async run() {
+          if (sql.includes('INSERT INTO harvest_cuts')) {
+            insertedCut = this.params;
+            return { meta: { last_row_id: 88 } };
+          }
+          return { success: true };
+        },
+        async first() {
+          const s = sql.replace(/\s+/g, ' ');
+          if (s.includes('FROM sessions')) {
+            return { id: 1, province_code: 'ratchaburi', province_label: 'ราชบุรี', role: 'province' };
+          }
+          if (s.includes('FROM users')) {
+            return { id: 1, province_code: 'ratchaburi', province_label: 'ราชบุรี', role: 'province' };
+          }
+          if (s.includes('FROM farmer_plots')) {
+            return {
+              id: 1,
+              province_code: 'ratchaburi',
+              full_name: 'นาย สมชาย มะพร้าวทอง',
+              productive_area_rai: 10,
+              trees_per_rai: 40,
+            };
+          }
+          return null;
+        },
+        async all() {
+          return { results: [] };
+        },
+      };
+    },
+  };
+
+  const payload = {
+    plot_id: 1,
+    cut_round: 2,
+    cut_date: '2026-05-15',
+    total_yield: 2800,
+    trees_per_rai: 40, // 40 trees/rai * 10 rai = 400 trees
+    price_per_fruit: 18.5,
+    twin_fruits: 25,
+    damaged_fruits: 15,
+    notes: 'คุณภาพดีมาก',
+  };
+
+  const req = new Request('https://coconut-doae.internal/api/challenge/harvest', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      cookie: 'sid=valid-session-token',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const res = await onHarvestRequest({ request: req, env: { DB: mockDb } });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.success, true);
+  assert.equal(data.id, 88);
+
+  assert.ok(insertedCut);
+  // (plot_id, province_code, farmer_name, cut_round, cut_date, total_yield, yield_per_rai, trees_per_rai, yield_per_tree, price_per_fruit, twin_fruits, damaged_fruits, notes)
+  assert.equal(insertedCut[0], 1); // plot_id
+  assert.equal(insertedCut[1], 'ratchaburi');
+  assert.equal(insertedCut[2], 'นาย สมชาย มะพร้าวทอง');
+  assert.equal(insertedCut[3], 2); // cut_round
+  assert.equal(insertedCut[5], 2800); // total_yield
+  assert.equal(insertedCut[6], 280); // yield_per_rai = 2800 / 10 = 280
+  assert.equal(insertedCut[7], 40); // trees_per_rai
+  assert.equal(insertedCut[8], 7); // yield_per_tree = 280 / 40 = 7
+  assert.equal(insertedCut[9], 18.5); // price_per_fruit
+});
+
+
 

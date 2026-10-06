@@ -1253,10 +1253,11 @@
         </div>
 
         <!-- Add Harvest Cut Form -->
-        <form id="chalHarvestForm" class="panel" style="background:#f4faf6; border:1px solid #cce8d9; margin-bottom:24px; padding:18px;">
-          <h3 style="font-size:15px; margin-bottom:14px; color:var(--primary-strong); display:flex; align-items:center; gap:8px;">
+        <form id="chalHarvestForm" class="panel" style="background:#f4faf6; border:1px solid #cce8d9; margin-bottom:24px; padding:20px; border-radius:10px;">
+          <h3 style="font-size:15px; margin-bottom:12px; color:var(--primary-strong); display:flex; align-items:center; gap:8px;">
             📝 บันทึกข้อมูลรอบตัดใหม่
           </h3>
+
           <div class="form-grid-3">
             <label>
               แปลงเกษตรกร:
@@ -1271,20 +1272,100 @@
               <input id="chalCutDate" type="date" required style="padding:8px;" />
             </label>
           </div>
-          <div class="form-grid-3" style="margin-top:12px;">
+
+          <!-- Selected Plot Quick Info Badge -->
+          <div id="chalHarvestPlotInfoBadge" style="margin-top:10px; background:#e8f5e9; border:1px solid #b7e1cd; border-radius:8px; padding:10px 14px; font-size:13px; color:#1e4620; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <span>🌱 <strong>ข้อมูลแปลง:</strong></span>
+              <span id="chalHarvestPlotAreaText">พื้นที่ให้ผล: <strong>- ไร่</strong></span>
+              <span>•</span>
+              <span id="chalHarvestSampleCountText" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700;">🔬 สุ่มวัดตัวอย่างวิจัย: 35 ต้น (7 จุด × 5 ต้น)</span>
+              <span>•</span>
+              <span id="chalHarvestPlotDensityText">ความหนาแน่นแปลง: <strong>- ต้น/ไร่</strong></span>
+              <span>•</span>
+              <span id="chalHarvestPlotTotalTreesText">ประมาณการทั้งแปลง: <strong>~- ต้น</strong></span>
+            </div>
+            <button type="button" id="chalBtnToggleDensityCalc" class="button ghost small" style="background:#ffffff; border:1px solid #86efac; color:#166534; padding:4px 10px; font-size:12px; font-weight:600; border-radius:6px; cursor:pointer;">
+              🧮 ช่วยคำนวณ ต้น/ไร่
+            </button>
+          </div>
+
+          <!-- Density Calculator Helper Box (พับ/กางได้) -->
+          <div id="chalDensityCalcBox" style="display:none; margin-top:10px; background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:14px; font-size:13px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <strong style="color:#166534; font-size:13px;">🧮 ตัวช่วยคำนวณจำนวนต้นต่อไร่ (ต้น/ไร่) ของแปลงจริง</strong>
+              <button type="button" id="chalBtnCloseDensityCalc" style="background:none; border:none; color:#4b5563; cursor:pointer; font-size:16px; padding:0 4px;">✕</button>
+            </div>
+            
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
+              <!-- แบบที่ 1: คำนวณจากจำนวนต้นทั้งหมดในสวน -->
+              <div style="background:#ffffff; border:1px solid #d1fae5; border-radius:6px; padding:12px;">
+                <div style="font-weight:600; color:#065f46; margin-bottom:4px;">วิธีที่ 1: คำนวณจากจำนวนต้นทั้งหมดในสวน</div>
+                <div style="font-size:11px; color:#6b7280; margin-bottom:8px;">สูตร: จำนวนต้นทั้งหมด ÷ พื้นที่ให้ผล (ไร่)</div>
+                <div style="display:flex; align-items:flex-end; gap:8px;">
+                  <label style="flex:1; margin:0; font-size:12px;">
+                    จำนวนต้นทั้งสวน (ต้น):
+                    <input id="chalCalcTotalTreesInPlot" type="number" min="1" step="1" placeholder="เช่น 320, 400, 480" style="padding:6px; width:100%; margin-top:3px;" />
+                  </label>
+                  <button type="button" id="chalBtnApplyTotalTreesCalc" class="button small primary" style="padding:6px 12px; white-space:nowrap;">คำนวณ & ใช้ค่านี้</button>
+                </div>
+                <div id="chalCalcTotalTreesResult" style="margin-top:6px; font-size:12px; color:#047857; font-weight:600; min-height:16px;"></div>
+              </div>
+
+              <!-- แบบที่ 2: คำนวณจากระยะปลูก (Spacing) -->
+              <div style="background:#ffffff; border:1px solid #d1fae5; border-radius:6px; padding:12px;">
+                <div style="font-weight:600; color:#065f46; margin-bottom:4px;">วิธีที่ 2: คำนวณจากระยะปลูก (Spacing)</div>
+                <div style="font-size:11px; color:#6b7280; margin-bottom:8px;">สูตร: 1,600 ตร.ม. ÷ (กว้าง × ยาว ม.)</div>
+                <div style="display:flex; align-items:flex-end; gap:8px;">
+                  <label style="flex:1; margin:0; font-size:12px;">
+                    เลือกระยะปลูก:
+                    <select id="chalCalcSpacingPreset" style="padding:6px; width:100%; margin-top:3px; font-size:12px;">
+                      <option value="">-- เลือกระยะปลูก --</option>
+                      <option value="44.4">6 × 6 เมตร (ยกร่องมาตรฐาน ~44.4 ต้น/ไร่)</option>
+                      <option value="41.0">6 × 6.5 เมตร (~41.0 ต้น/ไร่)</option>
+                      <option value="38.1">6 × 7 เมตร (~38.1 ต้น/ไร่)</option>
+                      <option value="37.9">6.5 × 6.5 เมตร (~37.9 ต้น/ไร่)</option>
+                      <option value="32.7">7 × 7 เมตร (~32.7 ต้น/ไร่)</option>
+                      <option value="48.5">5.5 × 6 เมตร (ยกร่องถี่ ~48.5 ต้น/ไร่)</option>
+                    </select>
+                  </label>
+                  <button type="button" id="chalBtnApplySpacingCalc" class="button small primary" style="padding:6px 12px; white-space:nowrap;">ใช้ค่านี้</button>
+                </div>
+                <div id="chalCalcSpacingResult" style="margin-top:6px; font-size:12px; color:#047857; font-weight:600; min-height:16px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-grid-3" style="margin-top:14px;">
             <label>
               ผลผลิตรวม (ผล):
-              <input id="chalCutTotalYield" type="number" min="0" step="1" placeholder="เช่น 2400" required style="padding:8px; font-weight:bold;" />
+              <input id="chalCutTotalYield" type="number" min="0" step="1" placeholder="เช่น 2400" required style="padding:8px; font-weight:bold; border-color:#48bb78;" />
             </label>
             <label>
-              ผลผลิตเฉลี่ยต่อไร่ (ผล/ไร่):
-              <input id="chalCutYieldPerRai" type="number" min="0" step="0.1" placeholder="คำนวณอัตโนมัติหรือกรอกเอง" style="padding:8px;" />
+              จำนวนต้น/ไร่ (ต้น/ไร่):
+              <input id="chalCutTreesPerRai" type="number" min="0" step="0.1" placeholder="ระบุเอง หรือกด 🧮 ช่วยคำนวณ" style="padding:8px; font-weight:600;" />
             </label>
             <label>
               ราคาผลผลิต (บาท/ผล):
               <input id="chalCutPrice" type="number" min="0" step="0.1" placeholder="เช่น 16.5" style="padding:8px;" />
             </label>
           </div>
+
+          <div class="form-grid-3" style="margin-top:12px;">
+            <label>
+              ผลผลิตเฉลี่ยต่อไร่ (ผล/ไร่):
+              <input id="chalCutYieldPerRai" type="number" min="0" step="0.1" placeholder="คำนวณอัตโนมัติ (ผลรวม ÷ ไร่)" style="padding:8px; background:#f9fdfa; font-weight:600; color:var(--primary-strong);" />
+            </label>
+            <label>
+              ผลผลิตเฉลี่ยต่อต้น (ผล/ต้น):
+              <input id="chalCutYieldPerTree" type="number" min="0" step="0.01" placeholder="คำนวณอัตโนมัติ (ผล/ไร่ ÷ ต้น/ไร่)" style="padding:8px; background:#f9fdfa; font-weight:600; color:var(--primary-strong);" />
+            </label>
+            <label>
+              ประมาณการรายได้รอบนี้ (บาท):
+              <input id="chalCutEstRevenue" type="text" readonly placeholder="คำนวณอัตโนมัติ (ผลรวม × ราคา)" style="padding:8px; background:#fdfbf7; color:#b45309; font-weight:bold;" />
+            </label>
+          </div>
+
           <div class="form-grid-3" style="margin-top:12px;">
             <label>
               ปริมาณผลควบ (ผล) (ประมาณการณ์):
@@ -1299,6 +1380,20 @@
               <input id="chalCutNotes" type="text" placeholder="เช่น สภาพผลผลิต ความสมบูรณ์" style="padding:8px;" />
             </label>
           </div>
+
+          <!-- Live calculation summary card -->
+          <div id="chalCutCalcBanner" style="margin-top:14px; background:#ffffff; border:1px dashed #38a169; border-radius:8px; padding:10px 16px; font-size:13px; color:#22543d; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:16px;">📊</span>
+              <span id="chalCutCalcBannerText">กรอกผลผลิตรวมเพื่อคำนวณ <strong>ผลผลิต/ไร่</strong> และ <strong>ผลผลิต/ต้น</strong> แบบ Real-time</span>
+            </div>
+            <div id="chalCutCalcBannerMetrics" style="display:flex; gap:14px; font-weight:bold;">
+              <span id="chalCutBannerYieldRai" class="text-success" style="display:inline-flex; align-items:center; gap:4px;">🌾 - ผล/ไร่</span>
+              <span id="chalCutBannerYieldTree" class="text-primary" style="display:inline-flex; align-items:center; gap:4px;">🥥 - ผล/ต้น</span>
+              <span id="chalCutBannerRev" style="color:#b45309; display:inline-flex; align-items:center; gap:4px;">💰 - บาท</span>
+            </div>
+          </div>
+
           <div style="display:flex; justify-content:flex-end; margin-top:16px;">
             <button type="submit" class="button primary" style="padding:10px 24px;">➕ บันทึกข้อมูลรอบตัด</button>
           </div>
@@ -1353,7 +1448,9 @@
                 <th>เกษตรกร</th>
                 <th>วันที่ตัด</th>
                 <th class="text-right">ผลผลิตรวม (ผล)</th>
+                <th class="text-right">ต้น/ไร่</th>
                 <th class="text-right">ผลผลิต/ไร่</th>
+                <th class="text-right">ผลผลิต/ต้น</th>
                 <th class="text-right">ราคา (บาท/ผล)</th>
                 <th class="text-right">ผลควบ (ผล)</th>
                 <th class="text-right">ผลเสีย (ผล)</th>
@@ -1362,7 +1459,7 @@
               </tr>
             </thead>
             <tbody id="chalHarvestTableBody">
-              <tr><td colspan="11" class="text-center py-4 text-muted">กำลังโหลดข้อมูลรอบการตัด...</td></tr>
+              <tr><td colspan="13" class="text-center py-4 text-muted">กำลังโหลดข้อมูลรอบการตัด...</td></tr>
             </tbody>
           </table>
         </div>

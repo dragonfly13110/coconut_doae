@@ -76,8 +76,8 @@ export async function onRequest({ request, env }) {
       if (!c.plot_id) continue;
       await env.DB.prepare(`
         INSERT INTO harvest_cuts
-        (plot_id, province_code, farmer_name, cut_round, cut_date, total_yield, yield_per_rai, price_per_fruit, twin_fruits, damaged_fruits, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (plot_id, province_code, farmer_name, cut_round, cut_date, total_yield, yield_per_rai, trees_per_rai, yield_per_tree, price_per_fruit, twin_fruits, damaged_fruits, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         Number(c.plot_id),
         c.province_code || 'ratchaburi',
@@ -86,6 +86,8 @@ export async function onRequest({ request, env }) {
         c.cut_date || new Date().toISOString().slice(0, 10),
         Number(c.total_yield || 0),
         c.yield_per_rai ? Number(c.yield_per_rai) : null,
+        c.trees_per_rai ? Number(c.trees_per_rai) : null,
+        c.yield_per_tree ? Number(c.yield_per_tree) : null,
         c.price_per_fruit ? Number(c.price_per_fruit) : null,
         Number(c.twin_fruits || 0),
         Number(c.damaged_fruits || 0),

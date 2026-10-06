@@ -4832,5 +4832,278 @@ th {
   }
 }
 
+/* ==========================================================================
+   Form 1: Basic Plot & Farmer Information Styles (แบบฟอร์มที่ 1)
+   ========================================================================== */
+
+.form1-modal-box {
+  width: min(880px, 96vw) !important;
+  max-height: 92vh !important;
+  border-radius: 18px !important;
+  padding: 24px 28px !important;
+}
+
+.form1-modal-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #166534;
+  background: #dcfce7;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  letter-spacing: 0.3px;
+  border: 1px solid #bbf7d0;
+}
+
+.form1-section {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-top: 14px;
+}
+
+.form1-section.system-section {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.form1-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 12px;
+}
+
+.section-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary, #15803d);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.form1-grid-farmer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.form-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 768px) {
+  .form-grid-4 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.field-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 5px;
+}
+
+.field-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-family: inherit;
+  background: #ffffff;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-input:focus {
+  border-color: var(--primary, #15803d);
+  box-shadow: 0 0 0 3px rgba(22, 101, 52, 0.15);
+  outline: none;
+}
+
+.coord-points-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .coord-points-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.coord-point-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.coord-point-head {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.coord-input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.coord-input-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0;
+}
+
+.form1-summary-bar {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: #065f46;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ==========================================================================
+   Official Form 1 Printable A4 Sheet Styles
+   ========================================================================== */
+
+.official-form-modal-box {
+  width: min(860px, 96vw) !important;
+  max-height: 94vh !important;
+  background: #f1f5f9;
+  padding: 20px !important;
+}
+
+.official-paper-sheet {
+  background: #ffffff;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 44px 50px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  color: #0f172a;
+  font-size: 15px;
+  line-height: 2.1;
+  font-family: 'Sarabun', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.official-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.official-header h2 {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px;
+}
+
+.official-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #334155;
+  margin: 0;
+}
+
+.official-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.official-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 8px;
+  row-gap: 6px;
+}
+
+.official-line .item-num {
+  font-weight: 700;
+  width: 20px;
+}
+
+.dotted-fill {
+  border-bottom: 1.5px dotted #64748b;
+  padding: 0 8px;
+  font-weight: 600;
+  color: #0f172a;
+  display: inline-block;
+  min-height: 22px;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #chalPlotOfficialFormModal,
+  #chalPlotOfficialFormModal * {
+    visibility: visible;
+  }
+  #chalPlotOfficialFormModal {
+    position: absolute;
+    inset: 0;
+    background: transparent !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+  .official-form-modal-box {
+    box-shadow: none !important;
+    background: transparent !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .official-paper-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 20mm 20mm !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+
+
 
 

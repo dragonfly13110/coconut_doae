@@ -40,7 +40,16 @@ export async function ensureChallengeDb(db) {
       province_code TEXT NOT NULL,
       farmer_no INTEGER,
       plot_label TEXT NOT NULL,
+      title TEXT,
+      first_name TEXT,
+      last_name TEXT,
       full_name TEXT NOT NULL,
+      address_no TEXT,
+      street TEXT,
+      moo TEXT,
+      subdistrict TEXT,
+      district TEXT,
+      province_name TEXT,
       address TEXT,
       age INTEGER,
       phone TEXT,
@@ -48,15 +57,55 @@ export async function ensureChallengeDb(db) {
       productive_area_rai REAL DEFAULT 0,
       plant_age_years REAL DEFAULT 0,
       trees_per_rai REAL DEFAULT 0,
-      coord_zone TEXT DEFAULT '47P',
+      coord_zone TEXT DEFAULT '47',
       coord_x REAL,
       coord_y REAL,
+      coord_x1 REAL,
+      coord_y1 REAL,
+      coord_x2 REAL,
+      coord_y2 REAL,
+      coord_x3 REAL,
+      coord_y3 REAL,
+      coord_x4 REAL,
+      coord_y4 REAL,
       production_standard TEXT DEFAULT 'GAP',
       soil_series TEXT,
+      production_cost_per_rai REAL DEFAULT 0,
+      avg_income_per_rai REAL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
   `).run();
+
+  // Safely ensure new columns exist in pre-existing farmer_plots tables
+  const newCols = [
+    'title TEXT',
+    'first_name TEXT',
+    'last_name TEXT',
+    'address_no TEXT',
+    'street TEXT',
+    'moo TEXT',
+    'subdistrict TEXT',
+    'district TEXT',
+    'province_name TEXT',
+    'coord_x1 REAL',
+    'coord_y1 REAL',
+    'coord_x2 REAL',
+    'coord_y2 REAL',
+    'coord_x3 REAL',
+    'coord_y3 REAL',
+    'coord_x4 REAL',
+    'coord_y4 REAL',
+    'production_cost_per_rai REAL DEFAULT 0',
+    'avg_income_per_rai REAL DEFAULT 0'
+  ];
+  for (const col of newCols) {
+    try {
+      await db.prepare(`ALTER TABLE farmer_plots ADD COLUMN ${col}`).run();
+    } catch (e) {
+      // Column already exists or alter not supported
+    }
+  }
 
   await db.prepare(`
     CREATE INDEX IF NOT EXISTS idx_farmer_plots_province ON farmer_plots(province_code);
@@ -125,6 +174,8 @@ export async function ensureChallengeDb(db) {
       cut_date TEXT,
       total_yield INTEGER NOT NULL DEFAULT 0,
       yield_per_rai REAL,
+      trees_per_rai REAL,
+      yield_per_tree REAL,
       price_per_fruit REAL,
       twin_fruits INTEGER DEFAULT 0,
       damaged_fruits INTEGER DEFAULT 0,
@@ -134,6 +185,19 @@ export async function ensureChallengeDb(db) {
       FOREIGN KEY (plot_id) REFERENCES farmer_plots(id) ON DELETE CASCADE
     );
   `).run();
+
+  const harvestCols = ['trees_per_rai REAL', 'yield_per_tree REAL'];
+  for (const col of harvestCols) {
+    try {
+      await db.prepare(`ALTER TABLE harvest_cuts ADD COLUMN ${col}`).run();
+    } catch (e) {
+      // Column already exists
+    }
+  }
+
+  try {
+    await db.prepare('UPDATE farmer_plots SET trees_per_rai = 40.0 WHERE id = 1 AND trees_per_rai = 35.0').run();
+  } catch (e) {}
 
   await db.prepare(`
     CREATE INDEX IF NOT EXISTS idx_harvest_cuts_plot ON harvest_cuts(plot_id, cut_round);
@@ -204,25 +268,44 @@ async function seedSampleData(db) {
   // Insert sample plot 1 (Ratchaburi - Damnoen Saduak)
   const result1 = await db.prepare(`
     INSERT INTO farmer_plots 
-    (province_code, farmer_no, plot_label, full_name, address, age, phone, total_area_rai, productive_area_rai, plant_age_years, trees_per_rai, coord_zone, coord_x, coord_y, production_standard, soil_series)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (province_code, farmer_no, plot_label, title, first_name, last_name, full_name, address_no, street, moo, subdistrict, district, province_name, address, age, phone, total_area_rai, productive_area_rai, plant_age_years, trees_per_rai, coord_zone, coord_x, coord_y, coord_x1, coord_y1, coord_x2, coord_y2, coord_x3, coord_y3, coord_x4, coord_y4, production_standard, soil_series, production_cost_per_rai, avg_income_per_rai)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     'ratchaburi',
     1,
     'แปลงที่ 1',
+    'นาย',
+    'สมชาย',
+    'มะพร้าวทอง',
     'นายสมชาย มะพร้าวทอง',
-    '124 ม.3 ต.ดำเนินสะดวก อ.ดำเนินสะดวก จ.ราชบุรี',
+    '124',
+    'ดำเนินสะดวก',
+    '3',
+    'ดำเนินสะดวก',
+    'ดำเนินสะดวก',
+    'ราชบุรี',
+    'เลขที่ 124 หมู่ 3 ถนน ดำเนินสะดวก ต.ดำเนินสะดวก อ.ดำเนินสะดวก จ.ราชบุรี',
     48,
     '081-234-5678',
     15.0,
     12.0,
     7.5,
-    35.0,
-    '47P',
+    40.0,
+    '47',
     605420.0,
     1492310.0,
+    605420.0,
+    1492310.0,
+    605480.0,
+    1492310.0,
+    605480.0,
+    1492250.0,
+    605420.0,
+    1492250.0,
     'GAP',
-    'ชุดดินดำเนินสะดวก (Ds)'
+    'ชุดดินดำเนินสะดวก (Ds)',
+    12500.0,
+    38000.0
   ).run();
 
   const plotId1 = result1.meta?.last_row_id || 1;
@@ -230,25 +313,44 @@ async function seedSampleData(db) {
   // Insert sample plot 2 (Nakhon Pathom - Sam Phran)
   const result2 = await db.prepare(`
     INSERT INTO farmer_plots 
-    (province_code, farmer_no, plot_label, full_name, address, age, phone, total_area_rai, productive_area_rai, plant_age_years, trees_per_rai, coord_zone, coord_x, coord_y, production_standard, soil_series)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (province_code, farmer_no, plot_label, title, first_name, last_name, full_name, address_no, street, moo, subdistrict, district, province_name, address, age, phone, total_area_rai, productive_area_rai, plant_age_years, trees_per_rai, coord_zone, coord_x, coord_y, coord_x1, coord_y1, coord_x2, coord_y2, coord_x3, coord_y3, coord_x4, coord_y4, production_standard, soil_series, production_cost_per_rai, avg_income_per_rai)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     'nakhon_pathom',
     2,
     'แปลงที่ 2',
+    'นาง',
+    'สมศรี',
+    'สวนน้ำหอม',
     'นางสมศรี สวนน้ำหอม',
-    '55 ม.5 ต.ยายชา อ.สามพราน จ.นครปฐม',
+    '55',
+    '-',
+    '5',
+    'ยายชา',
+    'สามพราน',
+    'นครปฐม',
+    'เลขที่ 55 หมู่ 5 ถนน - ต.ยายชา อ.สามพราน จ.นครปฐม',
     52,
     '089-876-5432',
     10.0,
     8.5,
     6.0,
     40.0,
-    '47P',
+    '47',
     632150.0,
     1518420.0,
+    632150.0,
+    1518420.0,
+    632200.0,
+    1518420.0,
+    632200.0,
+    1518360.0,
+    632150.0,
+    1518360.0,
     'GAP + GI',
-    'ชุดดินกำแพงแสน (Ks)'
+    'ชุดดินกำแพงแสน (Ks)',
+    14000.0,
+    42000.0
   ).run();
 
   const plotId2 = result2.meta?.last_row_id || 2;

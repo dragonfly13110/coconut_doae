@@ -71,23 +71,60 @@ async function saveFarmer(request, env, user) {
 
   const farmerNo = body.farmer_no ? Number(body.farmer_no) : null;
   const plotLabel = String(body.plot_label || 'แปลงใหม่').trim();
-  const fullName = String(body.full_name || '').trim();
-  if (!fullName) {
+
+  const title = String(body.title || '').trim();
+  const firstName = String(body.first_name || '').trim();
+  const lastName = String(body.last_name || '').trim();
+  let fullName = String(body.full_name || '').trim();
+  if (firstName) {
+    fullName = `${title ? title + ' ' : ''}${firstName} ${lastName}`.trim();
+  }
+  if (!fullName && !firstName) {
     return json({ error: 'กรุณาระบุชื่อ - สกุล เกษตรกร' }, { status: 400 });
   }
 
-  const address = String(body.address || '').trim();
+  const addressNo = String(body.address_no || '').trim();
+  const street = String(body.street || '').trim();
+  const moo = String(body.moo || '').trim();
+  const subdistrict = String(body.subdistrict || '').trim();
+  const district = String(body.district || '').trim();
+  const provinceName = String(body.province_name || '').trim();
+
+  let address = String(body.address || '').trim();
+  if (addressNo || moo || street || subdistrict || district) {
+    const parts = [];
+    if (addressNo) parts.push(`เลขที่ ${addressNo}`);
+    if (street) parts.push(`ถนน ${street}`);
+    if (moo) parts.push(`หมู่ ${moo}`);
+    if (subdistrict) parts.push(`ตำบล ${subdistrict}`);
+    if (district) parts.push(`อำเภอ ${district}`);
+    if (provinceName) parts.push(`จังหวัด ${provinceName}`);
+    address = parts.join(' ');
+  }
+
   const age = body.age ? Number(body.age) : null;
   const phone = String(body.phone || '').trim();
   const totalArea = Number(body.total_area_rai || 0);
   const productiveArea = Number(body.productive_area_rai || 0);
   const plantAge = Number(body.plant_age_years || 0);
   const treesPerRai = Number(body.trees_per_rai || 0);
-  const coordZone = String(body.coord_zone || '47P').trim();
-  const coordX = body.coord_x ? Number(body.coord_x) : null;
-  const coordY = body.coord_y ? Number(body.coord_y) : null;
+  const coordZone = String(body.coord_zone || '47').trim();
+
+  const coordX1 = body.coord_x1 !== undefined && body.coord_x1 !== '' ? Number(body.coord_x1) : (body.coord_x ? Number(body.coord_x) : null);
+  const coordY1 = body.coord_y1 !== undefined && body.coord_y1 !== '' ? Number(body.coord_y1) : (body.coord_y ? Number(body.coord_y) : null);
+  const coordX2 = body.coord_x2 !== undefined && body.coord_x2 !== '' ? Number(body.coord_x2) : null;
+  const coordY2 = body.coord_y2 !== undefined && body.coord_y2 !== '' ? Number(body.coord_y2) : null;
+  const coordX3 = body.coord_x3 !== undefined && body.coord_x3 !== '' ? Number(body.coord_x3) : null;
+  const coordY3 = body.coord_y3 !== undefined && body.coord_y3 !== '' ? Number(body.coord_y3) : null;
+  const coordX4 = body.coord_x4 !== undefined && body.coord_x4 !== '' ? Number(body.coord_x4) : null;
+  const coordY4 = body.coord_y4 !== undefined && body.coord_y4 !== '' ? Number(body.coord_y4) : null;
+  const coordX = coordX1;
+  const coordY = coordY1;
+
   const standard = String(body.production_standard || 'GAP').trim();
   const soilSeries = String(body.soil_series || '').trim();
+  const productionCost = body.production_cost_per_rai !== undefined && body.production_cost_per_rai !== '' ? Number(body.production_cost_per_rai) : 0;
+  const avgIncome = body.avg_income_per_rai !== undefined && body.avg_income_per_rai !== '' ? Number(body.avg_income_per_rai) : 0;
 
   if (id) {
     // Check permission
@@ -104,7 +141,16 @@ async function saveFarmer(request, env, user) {
       SET 
         farmer_no = ?,
         plot_label = ?,
+        title = ?,
+        first_name = ?,
+        last_name = ?,
         full_name = ?,
+        address_no = ?,
+        street = ?,
+        moo = ?,
+        subdistrict = ?,
+        district = ?,
+        province_name = ?,
         address = ?,
         age = ?,
         phone = ?,
@@ -115,14 +161,27 @@ async function saveFarmer(request, env, user) {
         coord_zone = ?,
         coord_x = ?,
         coord_y = ?,
+        coord_x1 = ?,
+        coord_y1 = ?,
+        coord_x2 = ?,
+        coord_y2 = ?,
+        coord_x3 = ?,
+        coord_y3 = ?,
+        coord_x4 = ?,
+        coord_y4 = ?,
         production_standard = ?,
         soil_series = ?,
+        production_cost_per_rai = ?,
+        avg_income_per_rai = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(
-      farmerNo, plotLabel, fullName, address, age, phone,
-      totalArea, productiveArea, plantAge, treesPerRai,
-      coordZone, coordX, coordY, standard, soilSeries,
+      farmerNo, plotLabel, title, firstName, lastName, fullName,
+      addressNo, street, moo, subdistrict, district, provinceName, address,
+      age, phone, totalArea, productiveArea, plantAge, treesPerRai,
+      coordZone, coordX, coordY,
+      coordX1, coordY1, coordX2, coordY2, coordX3, coordY3, coordX4, coordY4,
+      standard, soilSeries, productionCost, avgIncome,
       id
     ).run();
 
@@ -132,12 +191,21 @@ async function saveFarmer(request, env, user) {
   // Insert new
   const result = await env.DB.prepare(`
     INSERT INTO farmer_plots 
-    (province_code, farmer_no, plot_label, full_name, address, age, phone, total_area_rai, productive_area_rai, plant_age_years, trees_per_rai, coord_zone, coord_x, coord_y, production_standard, soil_series)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (
+      province_code, farmer_no, plot_label, title, first_name, last_name, full_name,
+      address_no, street, moo, subdistrict, district, province_name, address,
+      age, phone, total_area_rai, productive_area_rai, plant_age_years, trees_per_rai,
+      coord_zone, coord_x, coord_y, coord_x1, coord_y1, coord_x2, coord_y2, coord_x3, coord_y3, coord_x4, coord_y4,
+      production_standard, soil_series, production_cost_per_rai, avg_income_per_rai
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    provinceCode, farmerNo, plotLabel, fullName, address, age, phone,
-    totalArea, productiveArea, plantAge, treesPerRai,
-    coordZone, coordX, coordY, standard, soilSeries
+    provinceCode, farmerNo, plotLabel, title, firstName, lastName, fullName,
+    addressNo, street, moo, subdistrict, district, provinceName, address,
+    age, phone, totalArea, productiveArea, plantAge, treesPerRai,
+    coordZone, coordX, coordY,
+    coordX1, coordY1, coordX2, coordY2, coordX3, coordY3, coordX4, coordY4,
+    standard, soilSeries, productionCost, avgIncome
   ).run();
 
   const newId = result.meta?.last_row_id;

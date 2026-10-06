@@ -42,6 +42,8 @@ export function generateChallengeExcelXml({ plots = [], forecasts = [], harvestC
     cellXml(''),
     cellXml('มาตรฐานการผลิต'),
     cellXml('ชุดดิน'),
+    cellXml('ต้นทุนการผลิต (บาท/ไร่)'),
+    cellXml('รายได้เฉลี่ย (บาท/ไร่)'),
   ]));
   // Row 2 subheader
   sheet1Rows.push(rowXml([
@@ -59,6 +61,8 @@ export function generateChallengeExcelXml({ plots = [], forecasts = [], harvestC
     cellXml('y'),
     cellXml(''),
     cellXml(''),
+    cellXml(''),
+    cellXml(''),
   ]));
   // Data rows
   plots.forEach((p, idx) => {
@@ -72,11 +76,13 @@ export function generateChallengeExcelXml({ plots = [], forecasts = [], harvestC
       cellXml(p.productive_area_rai || 0, 'Number'),
       cellXml(p.plant_age_years || 0, 'Number'),
       cellXml(p.trees_per_rai || 0, 'Number'),
-      cellXml(p.coord_zone || '47P'),
+      cellXml(p.coord_zone || '47'),
       cellXml(p.coord_x || '', 'Number'),
       cellXml(p.coord_y || '', 'Number'),
       cellXml(p.production_standard || 'GAP'),
       cellXml(p.soil_series || ''),
+      cellXml(p.production_cost_per_rai || 0, 'Number'),
+      cellXml(p.avg_income_per_rai || 0, 'Number'),
     ]));
   });
 
@@ -146,7 +152,9 @@ export function generateChallengeExcelXml({ plots = [], forecasts = [], harvestC
     cellXml('ชื่อ สกุล'),
     cellXml('จังหวัด'),
     cellXml('ผลผลิตรวม (ผล)'),
+    cellXml('จำนวนต้นต่อไร่ (ต้น/ไร่)'),
     cellXml('ผลผลิตเฉลี่ยต่อไร่(ผล/ไร่)'),
+    cellXml('ผลผลิตเฉลี่ยต่อต้น(ผล/ต้น)'),
     cellXml('ราคาผลผลิต (บาท/ผล)'),
     cellXml('ปริมาณผลควบ (ผล)(ประมาณการณ์)'),
     cellXml('ผลเสีย(ผล)(ประมาณการณ์)'),
@@ -159,7 +167,9 @@ export function generateChallengeExcelXml({ plots = [], forecasts = [], harvestC
       cellXml(c.farmer_name || c.farmer_profile_name || ''),
       cellXml(c.province_code || ''),
       cellXml(c.total_yield || 0, 'Number'),
+      cellXml(c.trees_per_rai ?? '', c.trees_per_rai !== null && c.trees_per_rai !== undefined ? 'Number' : 'String'),
       cellXml(c.yield_per_rai || '', 'Number'),
+      cellXml(c.yield_per_tree ?? '', c.yield_per_tree !== null && c.yield_per_tree !== undefined ? 'Number' : 'String'),
       cellXml(c.price_per_fruit || '', 'Number'),
       cellXml(c.twin_fruits || 0, 'Number'),
       cellXml(c.damaged_fruits || 0, 'Number'),

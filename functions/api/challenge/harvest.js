@@ -25,7 +25,8 @@ async function listHarvestCuts(request, env, user) {
       hc.*,
       fp.plot_label,
       fp.full_name as farmer_profile_name,
-      fp.productive_area_rai
+      fp.productive_area_rai,
+      fp.trees_per_rai as plot_trees_per_rai
     FROM harvest_cuts hc
     JOIN farmer_plots fp ON hc.plot_id = fp.id
   `;
@@ -47,7 +48,20 @@ async function listHarvestCuts(request, env, user) {
   query += ' ORDER BY hc.cut_round ASC, hc.cut_date DESC';
 
   const stmt = env.DB.prepare(query);
-  const { results: cuts } = bindings.length > 0 ? await stmt.bind(...bindings).all() : await stmt.all();
+  const { results: rawCuts } = bindings.length > 0 ? await stmt.bind(...bindings).all() : await stmt.all();
+
+  const cuts = (rawCuts || []).map((c) => {
+    const treesPerRai = c.trees_per_rai ?? c.plot_trees_per_rai ?? null;
+    let yieldPerTree = c.yield_per_tree;
+    if (yieldPerTree == null && treesPerRai && treesPerRai > 0 && c.yield_per_rai) {
+      yieldPerTree = Math.round((c.yield_per_rai / treesPerRai) * 10) / 10;
+    }
+    return {
+      ...c,
+      trees_per_rai: treesPerRai,
+      yield_per_tree: yieldPerTree,
+    };
+  });
 
   // Calculate overall metrics
   let totalYield = 0;
@@ -55,7 +69,7 @@ async function listHarvestCuts(request, env, user) {
   let totalTwin = 0;
   let totalDamaged = 0;
 
-  for (const c of (cuts || [])) {
+  for (const c of cuts) {
     totalYield += (c.total_yield || 0);
     totalRevenue += (c.total_yield || 0) * (c.price_per_fruit || 0);
     totalTwin += (c.twin_fruits || 0);
@@ -68,7 +82,7 @@ async function listHarvestCuts(request, env, user) {
   return json({
     cuts: cuts || [],
     summary: {
-      totalCuts: (cuts || []).length,
+      totalCuts: cuts.length,
       totalYield,
       totalRevenue: Math.round(totalRevenue),
       totalTwin,
@@ -88,7 +102,7 @@ async function saveHarvestCut(request, env, user) {
     return json({ error: 'กรุณาเลือกแปลงเกษตรกร' }, { status: 400 });
   }
 
-  const plot = await env.DB.prepare('SELECT id, province_code, full_name, productive_area_rai FROM farmer_plots WHERE id = ?').bind(plotId).first();
+  const plot = await env.DB.prepare('SELECT id, province_code, full_name, productive_area_rai, trees_per_rai FROM farmer_plots WHERE id = ?').bind(plotId).first();
   if (!plot) {
     return json({ error: 'ไม่พบข้อมูลแปลง' }, { status: 404 });
   }
@@ -105,10 +119,25 @@ async function saveHarvestCut(request, env, user) {
   const damaged = Math.max(0, Number(body.damaged_fruits || 0));
   const notes = String(body.notes || '').trim();
 
+  // Density: trees per rai
+  let treesPerRai = body.trees_per_rai !== undefined && body.trees_per_rai !== '' && !isNaN(Number(body.trees_per_rai))
+    ? Number(body.trees_per_rai)
+    : (plot.trees_per_rai ? Number(plot.trees_per_rai) : null);
+
   // Calculate yield per rai
-  let yieldPerRai = body.yield_per_rai !== undefined && body.yield_per_rai !== '' ? Number(body.yield_per_rai) : null;
+  let yieldPerRai = body.yield_per_rai !== undefined && body.yield_per_rai !== '' && !isNaN(Number(body.yield_per_rai))
+    ? Number(body.yield_per_rai)
+    : null;
   if (yieldPerRai === null && plot.productive_area_rai > 0) {
     yieldPerRai = Math.round((totalYield / plot.productive_area_rai) * 10) / 10;
+  }
+
+  // Calculate yield per tree (yieldPerRai / treesPerRai)
+  let yieldPerTree = body.yield_per_tree !== undefined && body.yield_per_tree !== '' && !isNaN(Number(body.yield_per_tree))
+    ? Number(body.yield_per_tree)
+    : null;
+  if (yieldPerTree === null && yieldPerRai !== null && treesPerRai && treesPerRai > 0) {
+    yieldPerTree = Math.round((yieldPerRai / treesPerRai) * 10) / 10;
   }
 
   if (id) {
@@ -119,21 +148,23 @@ async function saveHarvestCut(request, env, user) {
         cut_date = ?,
         total_yield = ?,
         yield_per_rai = ?,
+        trees_per_rai = ?,
+        yield_per_tree = ?,
         price_per_fruit = ?,
         twin_fruits = ?,
         damaged_fruits = ?,
         notes = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).bind(cutRound, cutDate, totalYield, yieldPerRai, price, twin, damaged, notes, id).run();
+    `).bind(cutRound, cutDate, totalYield, yieldPerRai, treesPerRai, yieldPerTree, price, twin, damaged, notes, id).run();
 
     return json({ success: true, id, message: 'บันทึกการแก้ไขรอบการตัดสำเร็จ' });
   }
 
   const result = await env.DB.prepare(`
     INSERT INTO harvest_cuts
-    (plot_id, province_code, farmer_name, cut_round, cut_date, total_yield, yield_per_rai, price_per_fruit, twin_fruits, damaged_fruits, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (plot_id, province_code, farmer_name, cut_round, cut_date, total_yield, yield_per_rai, trees_per_rai, yield_per_tree, price_per_fruit, twin_fruits, damaged_fruits, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     plotId,
     plot.province_code,
@@ -142,6 +173,8 @@ async function saveHarvestCut(request, env, user) {
     cutDate,
     totalYield,
     yieldPerRai,
+    treesPerRai,
+    yieldPerTree,
     price,
     twin,
     damaged,

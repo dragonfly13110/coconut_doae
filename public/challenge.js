@@ -76,10 +76,20 @@ function bindChalEvents() {
     });
   });
 
-  // Farmers Tab
+  // Farmers Tab (แบบฟอร์มที่ 1)
   cel('chalPlotForm')?.addEventListener('submit', onSaveFarmerPlot);
   cel('chalBtnNewPlot')?.addEventListener('click', onOpenNewPlotModal);
   cel('chalBtnCancelPlot')?.addEventListener('click', onClosePlotModal);
+  cel('btnAutoCopyPoint1')?.addEventListener('click', onAutoCopyPoint1);
+  ['chalPlotProductiveArea', 'chalPlotTreesPerRai', 'chalPlotCostPerRai', 'chalPlotIncomePerRai'].forEach((id) => {
+    cel(id)?.addEventListener('input', updatePlotCalcSummary);
+  });
+  cel('chalPlotProvince')?.addEventListener('change', (e) => {
+    const prov = CHAL_PROVINCES.find((p) => p.code === e.target.value);
+    if (prov && cel('chalPlotProvinceName') && (!cel('chalPlotProvinceName').value || CHAL_PROVINCES.some((x) => x.label === cel('chalPlotProvinceName').value))) {
+      cel('chalPlotProvinceName').value = prov.label;
+    }
+  });
   cel('chalProvFilter')?.addEventListener('change', (e) => {
     chalState.filterProvince = e.target.value;
     renderFarmersTable();
@@ -145,8 +155,42 @@ function bindChalEvents() {
   // Harvest Tab
   cel('chalHarvestForm')?.addEventListener('submit', onSaveHarvestCut);
   cel('chalHarvestPlotSelect')?.addEventListener('change', (e) => {
+    updateHarvestPlotInfo();
     loadHarvestCuts(e.target.value);
   });
+  cel('chalCutTotalYield')?.addEventListener('input', recalcHarvestYields);
+  cel('chalCutTreesPerRai')?.addEventListener('input', (e) => {
+    e.target.dataset.autoFilled = 'false';
+    recalcHarvestYields();
+  });
+  cel('chalCutPrice')?.addEventListener('input', recalcHarvestYields);
+  cel('chalCutYieldPerRai')?.addEventListener('input', (e) => {
+    e.target.dataset.manual = 'true';
+    const yRai = parseFloat(e.target.value);
+    const density = parseFloat(cel('chalCutTreesPerRai')?.value);
+    if (!isNaN(yRai) && !isNaN(density) && density > 0) {
+      const yTree = Math.round((yRai / density) * 100) / 100;
+      const yTreeInput = cel('chalCutYieldPerTree');
+      if (yTreeInput && yTreeInput.dataset.manual !== 'true') {
+        yTreeInput.value = yTree;
+      }
+    }
+  });
+  cel('chalCutYieldPerTree')?.addEventListener('input', (e) => {
+    e.target.dataset.manual = 'true';
+  });
+
+  // Sheet 3 Density Calculator Helper
+  cel('chalBtnToggleDensityCalc')?.addEventListener('click', () => {
+    const box = cel('chalDensityCalcBox');
+    if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  });
+  cel('chalBtnCloseDensityCalc')?.addEventListener('click', () => {
+    const box = cel('chalDensityCalcBox');
+    if (box) box.style.display = 'none';
+  });
+  cel('chalBtnApplyTotalTreesCalc')?.addEventListener('click', onApplyTotalTreesCalc);
+  cel('chalBtnApplySpacingCalc')?.addEventListener('click', onApplySpacingCalc);
 
   // Macro Tab
   cel('chalMacroProvSelect')?.addEventListener('change', (e) => {
@@ -228,15 +272,17 @@ function renderFarmerKpis() {
   const avgTrees = totalPlots > 0 ? Math.round(plots.reduce((acc, p) => acc + (p.trees_per_rai || 0), 0) / totalPlots) : 0;
   const gapCount = plots.filter((p) => (p.production_standard || '').toUpperCase().includes('GAP')).length;
   const gapPercent = totalPlots > 0 ? Math.round((gapCount / totalPlots) * 100) : 0;
+  const avgCost = totalPlots > 0 ? Math.round(plots.reduce((acc, p) => acc + (p.production_cost_per_rai || 0), 0) / totalPlots) : 0;
+  const avgIncome = totalPlots > 0 ? Math.round(plots.reduce((acc, p) => acc + (p.avg_income_per_rai || 0), 0) / totalPlots) : 0;
 
   const kpiEl = cel('chalFarmerKpis');
   if (!kpiEl) return;
 
   kpiEl.innerHTML = `
     <div class="kpi-card">
-      <div class="kpi-icon">🏡</div>
+      <div class="kpi-icon">📋</div>
       <div class="kpi-body">
-        <span class="kpi-title">จำนวนแปลงในระบบ</span>
+        <span class="kpi-title">แปลงพยากรณ์ในระบบ</span>
         <strong class="kpi-val">${totalPlots} แปลง</strong>
       </div>
     </div>
@@ -254,11 +300,25 @@ function renderFarmerKpis() {
         <strong class="kpi-val">${avgTrees} <small>ต้น/ไร่</small></strong>
       </div>
     </div>
-    <div class="kpi-card highlight">
+    <div class="kpi-card">
       <div class="kpi-icon">🏅</div>
       <div class="kpi-body">
         <span class="kpi-title">มาตรฐาน GAP / GI</span>
         <strong class="kpi-val">${gapPercent}% <small>(${gapCount}/${totalPlots})</small></strong>
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-body">
+        <span class="kpi-title">ต้นทุนเฉลี่ย (ข้อ 7)</span>
+        <strong class="kpi-val" style="color:#c2410c;">${avgCost.toLocaleString()} <small>บ./ไร่</small></strong>
+      </div>
+    </div>
+    <div class="kpi-card highlight">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-body">
+        <span class="kpi-title">รายได้เฉลี่ย (ข้อ 8)</span>
+        <strong class="kpi-val" style="color:#15803d;">${avgIncome.toLocaleString()} <small>บ./ไร่</small></strong>
       </div>
     </div>
   `;
@@ -276,37 +336,73 @@ function renderFarmersTable() {
   });
 
   if (filtered.length === 0) {
-    tableBody.innerHTML = `<tr><td colspan="11" class="text-center py-4 text-muted">ยังไม่มีข้อมูลแปลงเกษตรกร กด "เพิ่มแปลงใหม่" ด้านบนเพื่อเริ่มบันทึก</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted">ยังไม่มีข้อมูลแปลงเกษตรกร กด "บันทึกข้อมูลแปลงใหม่ (แบบฟอร์มที่ 1)" ด้านบนเพื่อเริ่มบันทึก</td></tr>`;
     return;
   }
 
   tableBody.innerHTML = filtered.map((p, idx) => {
     const provObj = CHAL_PROVINCES.find((pr) => pr.code === p.province_code);
-    const provName = provObj ? provObj.label : p.province_code;
+    const provName = provObj ? provObj.label : (p.province_name || p.province_code);
+
+    const displayName = p.full_name || `${p.title || ''} ${p.first_name || ''} ${p.last_name || ''}`.trim() || 'ไม่ระบุชื่อ';
+    const ageText = p.age ? `${p.age} ปี` : '-';
+    const phoneText = p.phone || '-';
+
+    let locText = p.address;
+    if (!locText) {
+      const parts = [];
+      if (p.address_no) parts.push(`เลขที่ ${p.address_no}`);
+      if (p.moo) parts.push(`หมู่ ${p.moo}`);
+      if (p.subdistrict) parts.push(`ต.${p.subdistrict}`);
+      if (p.district) parts.push(`อ.${p.district}`);
+      locText = parts.length > 0 ? parts.join(' ') : provName;
+    }
+
+    const p1X = p.coord_x1 ?? p.coord_x;
+    const p1Y = p.coord_y1 ?? p.coord_y;
+    const p1Text = p1X ? `x:${Number(p1X).toFixed(0)}, y:${Number(p1Y).toFixed(0)}` : '-';
+    const has4Corners = p.coord_x2 && p.coord_x3 && p.coord_x4;
+
+    const costText = p.production_cost_per_rai ? `${Number(p.production_cost_per_rai).toLocaleString()} บ.` : '-';
+    const incomeText = p.avg_income_per_rai ? `${Number(p.avg_income_per_rai).toLocaleString()} บ.` : '-';
+
     return `
       <tr>
         <td class="text-center font-bold">${p.farmer_no || idx + 1}</td>
         <td><span class="badge-plot">${escapeHtml(p.plot_label || 'แปลง')}</span></td>
         <td>
-          <strong>${escapeHtml(p.full_name)}</strong>
-          <div class="text-muted small">${escapeHtml(p.phone || '-')}</div>
+          <strong style="color:var(--primary-strong);">${escapeHtml(displayName)}</strong>
+          <div class="text-muted small">อายุ ${ageText} | 📞 ${escapeHtml(phoneText)}</div>
         </td>
-        <td><span class="badge-prov">${provName}</span></td>
-        <td class="text-right">${Number(p.total_area_rai || 0).toLocaleString()}</td>
-        <td class="text-right font-bold text-success">${Number(p.productive_area_rai || 0).toLocaleString()}</td>
-        <td class="text-right">${p.plant_age_years ? `${p.plant_age_years} ปี` : '-'}</td>
-        <td class="text-right">${p.trees_per_rai || '-'}</td>
         <td>
-          <small class="coord-tag">${p.coord_zone || '47P'} (${p.coord_x ? p.coord_x.toFixed(0) : '-'}, ${p.coord_y ? p.coord_y.toFixed(0) : '-'})</small>
+          <span class="badge-prov">${escapeHtml(provName)}</span>
+          <div class="text-muted small" style="max-width:180px; white-space:normal;" title="${escapeHtml(locText || '')}">${escapeHtml(locText || '-')}</div>
+        </td>
+        <td class="text-right">
+          <strong>${Number(p.total_area_rai || 0).toLocaleString()}</strong> / <span class="text-success font-bold">${Number(p.productive_area_rai || 0).toLocaleString()}</span>
+        </td>
+        <td class="text-right">
+          <div><strong>${p.trees_per_rai ? `${p.trees_per_rai} ต้น` : '-'}</strong></div>
+          <div class="text-muted small">${p.plant_age_years ? `อายุ ${p.plant_age_years} ปี` : '-'}</div>
+        </td>
+        <td>
+          <span class="coord-tag">Zone ${p.coord_zone || '47'}</span>
+          <div class="text-muted small">จุด 1: ${p1Text}</div>
+          ${has4Corners ? `<span style="font-size:10px; color:#15803d; background:#dcfce7; padding:1px 5px; border-radius:4px; display:inline-block; margin-top:2px;">✓ ครบ 4 มุม</span>` : ''}
         </td>
         <td>
           <span class="badge-standard">${escapeHtml(p.production_standard || 'GAP')}</span>
           <div class="text-muted small">${escapeHtml(p.soil_series || '-')}</div>
         </td>
+        <td class="text-right">
+          <div style="color:#c2410c; font-size:12px;">ทุน: ${costText}</div>
+          <div style="color:#15803d; font-size:12px; font-weight:600;">ได้: ${incomeText}</div>
+        </td>
         <td class="text-center actions-cell">
-          <button class="btn-icon" title="แก้ไขแปลง" onclick="window.chalEditPlot(${p.id})">✏️</button>
-          <button class="btn-icon text-primary" title="ไปหน้าคาดการณ์ผลผลิต" onclick="window.chalGoForecast(${p.id})">🎯</button>
-          <button class="btn-icon text-success" title="ไปหน้าบันทึกรอบตัด" onclick="window.chalGoHarvest(${p.id})">🥥</button>
+          <button class="btn-icon" title="แก้ไขข้อมูลแปลง (แบบฟอร์มที่ 1)" onclick="window.chalEditPlot(${p.id})">✏️</button>
+          <button class="btn-icon" title="ดู/พิมพ์แบบฟอร์มที่ 1 (Official Form)" onclick="window.chalViewOfficialForm(${p.id})">📄</button>
+          <button class="btn-icon text-primary" title="ไปหน้าคาดการณ์ผลผลิต (Sheet 2)" onclick="window.chalGoForecast(${p.id})">🎯</button>
+          <button class="btn-icon text-success" title="ไปหน้าบันทึกรอบตัด (Sheet 3)" onclick="window.chalGoHarvest(${p.id})">🥥</button>
           <button class="btn-icon text-danger" title="ลบแปลงนี้" onclick="window.chalDeletePlot(${p.id})">🗑️</button>
         </td>
       </tr>
@@ -317,18 +413,62 @@ function renderFarmersTable() {
 function onOpenNewPlotModal() {
   cel('chalPlotForm')?.reset();
   cel('chalPlotId').value = '';
-  cel('chalPlotModalTitle').textContent = '➕ เพิ่มข้อมูลแปลงและเกษตรกรใหม่ (Sheet 1)';
+  cel('chalPlotFullName').value = '';
+  cel('chalPlotAddress').value = '';
+  cel('chalPlotTitle').value = 'นาย';
+  cel('chalPlotCoordZone').value = '47';
+  cel('chalPlotStandard').value = 'GAP';
+  cel('chalPlotModalTitle').textContent = '📋 บันทึกข้อมูลพื้นฐานแปลงใหม่ (แบบฟอร์มที่ 1)';
+
+  const activeProvCode = chalState.user.role !== 'admin' ? chalState.user.province_code : cel('chalPlotProvince').value;
+  const provObj = CHAL_PROVINCES.find((pr) => pr.code === activeProvCode);
+  if (provObj && cel('chalPlotProvinceName')) {
+    cel('chalPlotProvinceName').value = provObj.label;
+  }
+
   if (chalState.user.role !== 'admin') {
     cel('chalPlotProvince').value = chalState.user.province_code;
     cel('chalPlotProvince').disabled = true;
   } else {
     cel('chalPlotProvince').disabled = false;
   }
+  updatePlotCalcSummary();
   cel('chalPlotModal').hidden = false;
 }
 
 function onClosePlotModal() {
   cel('chalPlotModal').hidden = true;
+}
+
+function onAutoCopyPoint1() {
+  const x1 = cel('chalPlotCoordX1')?.value;
+  const y1 = cel('chalPlotCoordY1')?.value;
+  if (!x1 && !y1) {
+    alert('กรุณากรอกพิกัด x และ y ในจุดที่ 1 ก่อนคัดลอก');
+    return;
+  }
+  if (cel('chalPlotCoordX2') && !cel('chalPlotCoordX2').value) cel('chalPlotCoordX2').value = x1;
+  if (cel('chalPlotCoordY2') && !cel('chalPlotCoordY2').value) cel('chalPlotCoordY2').value = y1;
+  if (cel('chalPlotCoordX3') && !cel('chalPlotCoordX3').value) cel('chalPlotCoordX3').value = x1;
+  if (cel('chalPlotCoordY3') && !cel('chalPlotCoordY3').value) cel('chalPlotCoordY3').value = y1;
+  if (cel('chalPlotCoordX4') && !cel('chalPlotCoordX4').value) cel('chalPlotCoordX4').value = x1;
+  if (cel('chalPlotCoordY4') && !cel('chalPlotCoordY4').value) cel('chalPlotCoordY4').value = y1;
+}
+
+function updatePlotCalcSummary() {
+  const productiveArea = Number(cel('chalPlotProductiveArea')?.value || 0);
+  const treesPerRai = Number(cel('chalPlotTreesPerRai')?.value || 0);
+  const cost = Number(cel('chalPlotCostPerRai')?.value || 0);
+  const income = Number(cel('chalPlotIncomePerRai')?.value || 0);
+
+  const totalTrees = Math.round(productiveArea * treesPerRai);
+  const profit = income - cost;
+
+  if (cel('lblEstTotalTrees')) cel('lblEstTotalTrees').textContent = totalTrees.toLocaleString();
+  if (cel('lblEstProfitRai')) {
+    cel('lblEstProfitRai').textContent = (profit >= 0 ? '+' : '') + profit.toLocaleString();
+    cel('lblEstProfitRai').style.color = profit >= 0 ? '#15803d' : '#b91c1c';
+  }
 }
 
 window.chalEditPlot = (id) => {
@@ -340,22 +480,152 @@ window.chalEditPlot = (id) => {
   if (chalState.user.role !== 'admin') cel('chalPlotProvince').disabled = true;
   cel('chalPlotFarmerNo').value = plot.farmer_no || '';
   cel('chalPlotLabel').value = plot.plot_label || '';
-  cel('chalPlotFullName').value = plot.full_name || '';
-  cel('chalPlotAddress').value = plot.address || '';
+
+  let title = plot.title || 'นาย';
+  let firstName = plot.first_name || '';
+  let lastName = plot.last_name || '';
+
+  if (!firstName && plot.full_name) {
+    const rawName = plot.full_name.trim();
+    if (rawName.startsWith('นางสาว')) {
+      title = 'นางสาว';
+      const rem = rawName.slice(6).trim().split(/\s+/);
+      firstName = rem[0] || '';
+      lastName = rem.slice(1).join(' ') || '';
+    } else if (rawName.startsWith('ว่าที่ ร.ต.')) {
+      title = 'ว่าที่ ร.ต.';
+      const rem = rawName.slice(11).trim().split(/\s+/);
+      firstName = rem[0] || '';
+      lastName = rem.slice(1).join(' ') || '';
+    } else if (rawName.startsWith('นาง')) {
+      title = 'นาง';
+      const rem = rawName.slice(3).trim().split(/\s+/);
+      firstName = rem[0] || '';
+      lastName = rem.slice(1).join(' ') || '';
+    } else if (rawName.startsWith('นาย')) {
+      title = 'นาย';
+      const rem = rawName.slice(3).trim().split(/\s+/);
+      firstName = rem[0] || '';
+      lastName = rem.slice(1).join(' ') || '';
+    } else {
+      const parts = rawName.split(/\s+/);
+      firstName = parts[0] || '';
+      lastName = parts.slice(1).join(' ') || '';
+    }
+  }
+
+  cel('chalPlotTitle').value = title;
+  cel('chalPlotFirstName').value = firstName;
+  cel('chalPlotLastName').value = lastName;
   cel('chalPlotAge').value = plot.age || '';
   cel('chalPlotPhone').value = plot.phone || '';
+
+  cel('chalPlotAddressNo').value = plot.address_no || '';
+  cel('chalPlotStreet').value = plot.street || '';
+  cel('chalPlotMoo').value = plot.moo || '';
+  cel('chalPlotSubdistrict').value = plot.subdistrict || '';
+  cel('chalPlotDistrict').value = plot.district || '';
+
+  const provObj = CHAL_PROVINCES.find((pr) => pr.code === plot.province_code);
+  cel('chalPlotProvinceName').value = plot.province_name || (provObj ? provObj.label : '');
+  cel('chalPlotAddress').value = plot.address || '';
+
+  cel('chalPlotCoordZone').value = plot.coord_zone || '47';
+  cel('chalPlotCoordX1').value = plot.coord_x1 ?? plot.coord_x ?? '';
+  cel('chalPlotCoordY1').value = plot.coord_y1 ?? plot.coord_y ?? '';
+  cel('chalPlotCoordX2').value = plot.coord_x2 ?? '';
+  cel('chalPlotCoordY2').value = plot.coord_y2 ?? '';
+  cel('chalPlotCoordX3').value = plot.coord_x3 ?? '';
+  cel('chalPlotCoordY3').value = plot.coord_y3 ?? '';
+  cel('chalPlotCoordX4').value = plot.coord_x4 ?? '';
+  cel('chalPlotCoordY4').value = plot.coord_y4 ?? '';
+
   cel('chalPlotTotalArea').value = plot.total_area_rai || '';
   cel('chalPlotProductiveArea').value = plot.productive_area_rai || '';
   cel('chalPlotPlantAge').value = plot.plant_age_years || '';
   cel('chalPlotTreesPerRai').value = plot.trees_per_rai || '';
-  cel('chalPlotCoordZone').value = plot.coord_zone || '47P';
-  cel('chalPlotCoordX').value = plot.coord_x || '';
-  cel('chalPlotCoordY').value = plot.coord_y || '';
+
   cel('chalPlotStandard').value = plot.production_standard || 'GAP';
   cel('chalPlotSoilSeries').value = plot.soil_series || '';
+  cel('chalPlotCostPerRai').value = plot.production_cost_per_rai || '';
+  cel('chalPlotIncomePerRai').value = plot.avg_income_per_rai || '';
 
-  cel('chalPlotModalTitle').textContent = `✏️ แก้ไขข้อมูลแปลง: ${plot.plot_label} (${plot.full_name})`;
+  updatePlotCalcSummary();
+  const displayName = plot.full_name || `${title} ${firstName} ${lastName}`.trim();
+  cel('chalPlotModalTitle').textContent = `✏️ แก้ไขข้อมูลพื้นฐานแปลง: ${plot.plot_label} (${displayName})`;
   cel('chalPlotModal').hidden = false;
+};
+
+window.chalViewOfficialForm = (id) => {
+  const plot = chalState.plots.find((p) => p.id === id);
+  if (!plot) return;
+
+  const provObj = CHAL_PROVINCES.find((pr) => pr.code === plot.province_code);
+  const provName = plot.province_name || (provObj ? provObj.label : plot.province_code);
+
+  let title = plot.title || '';
+  let firstName = plot.first_name || '';
+  let lastName = plot.last_name || '';
+  if (!firstName && plot.full_name) {
+    const raw = plot.full_name.trim();
+    if (raw.startsWith('นางสาว')) {
+      title = 'นางสาว';
+      const parts = raw.slice(6).trim().split(/\s+/);
+      firstName = parts[0] || '';
+      lastName = parts.slice(1).join(' ') || '';
+    } else if (raw.startsWith('นาย')) {
+      title = 'นาย';
+      const parts = raw.slice(3).trim().split(/\s+/);
+      firstName = parts[0] || '';
+      lastName = parts.slice(1).join(' ') || '';
+    } else if (raw.startsWith('นาง')) {
+      title = 'นาง';
+      const parts = raw.slice(3).trim().split(/\s+/);
+      firstName = parts[0] || '';
+      lastName = parts.slice(1).join(' ') || '';
+    } else {
+      const parts = raw.split(/\s+/);
+      firstName = parts[0] || '';
+      lastName = parts.slice(1).join(' ') || '';
+    }
+  }
+
+  cel('ofTitle').textContent = title || '-';
+  cel('ofFirstName').textContent = firstName || '-';
+  cel('ofLastName').textContent = lastName || '-';
+  cel('ofAge').textContent = plot.age ? String(plot.age) : '-';
+  cel('ofPhone').textContent = plot.phone || '-';
+
+  cel('ofAddressNo').textContent = plot.address_no || '-';
+  cel('ofStreet').textContent = plot.street || '-';
+  cel('ofMoo').textContent = plot.moo ? String(plot.moo) : '-';
+  cel('ofSubdistrict').textContent = plot.subdistrict || '-';
+  cel('ofDistrict').textContent = plot.district || '-';
+  cel('ofProvince').textContent = provName || '-';
+
+  cel('ofCoordZone').textContent = plot.coord_zone || '47';
+  const x1 = plot.coord_x1 ?? plot.coord_x;
+  const y1 = plot.coord_y1 ?? plot.coord_y;
+  cel('ofX1').textContent = x1 !== null && x1 !== undefined && x1 !== '' ? Number(x1).toFixed(2) : '-';
+  cel('ofY1').textContent = y1 !== null && y1 !== undefined && y1 !== '' ? Number(y1).toFixed(2) : '-';
+  cel('ofX2').textContent = plot.coord_x2 ? Number(plot.coord_x2).toFixed(2) : '-';
+  cel('ofY2').textContent = plot.coord_y2 ? Number(plot.coord_y2).toFixed(2) : '-';
+  cel('ofX3').textContent = plot.coord_x3 ? Number(plot.coord_x3).toFixed(2) : '-';
+  cel('ofY3').textContent = plot.coord_y3 ? Number(plot.coord_y3).toFixed(2) : '-';
+  cel('ofX4').textContent = plot.coord_x4 ? Number(plot.coord_x4).toFixed(2) : '-';
+  cel('ofY4').textContent = plot.coord_y4 ? Number(plot.coord_y4).toFixed(2) : '-';
+
+  cel('ofTotalArea').textContent = plot.total_area_rai ? Number(plot.total_area_rai).toLocaleString() : '-';
+  cel('ofProductiveArea').textContent = plot.productive_area_rai ? Number(plot.productive_area_rai).toLocaleString() : '-';
+  cel('ofTreesPerRai').textContent = plot.trees_per_rai ? Number(plot.trees_per_rai).toLocaleString() : '-';
+  cel('ofPlantAge').textContent = plot.plant_age_years ? String(plot.plant_age_years) : '-';
+
+  cel('ofStandard').textContent = plot.production_standard || '-';
+  cel('ofSoilSeries').textContent = plot.soil_series || '-';
+  cel('ofCost').textContent = plot.production_cost_per_rai ? Number(plot.production_cost_per_rai).toLocaleString() : '-';
+  cel('ofIncome').textContent = plot.avg_income_per_rai ? Number(plot.avg_income_per_rai).toLocaleString() : '-';
+
+  cel('chalPlotOfficialFormModal').hidden = false;
 };
 
 window.chalDeletePlot = async (id) => {
@@ -386,30 +656,58 @@ window.chalGoHarvest = (id) => {
   chalState.selectedPlotId = id;
   const selectEl = cel('chalHarvestPlotSelect');
   if (selectEl) selectEl.value = id;
+  updateHarvestPlotInfo();
   showChalTab('harvest');
 };
 
 async function onSaveFarmerPlot(e) {
   e.preventDefault();
   const id = cel('chalPlotId').value;
+  const title = cel('chalPlotTitle')?.value || '';
+  const firstName = cel('chalPlotFirstName')?.value || '';
+  const lastName = cel('chalPlotLastName')?.value || '';
+  const fullName = `${title ? title + ' ' : ''}${firstName} ${lastName}`.trim();
+
+  const x1 = cel('chalPlotCoordX1')?.value;
+  const y1 = cel('chalPlotCoordY1')?.value;
+
   const payload = {
     id: id ? Number(id) : null,
     province_code: cel('chalPlotProvince').value,
     farmer_no: cel('chalPlotFarmerNo').value,
     plot_label: cel('chalPlotLabel').value,
-    full_name: cel('chalPlotFullName').value,
-    address: cel('chalPlotAddress').value,
+    title,
+    first_name: firstName,
+    last_name: lastName,
+    full_name: fullName,
+    address_no: cel('chalPlotAddressNo')?.value || '',
+    street: cel('chalPlotStreet')?.value || '',
+    moo: cel('chalPlotMoo')?.value || '',
+    subdistrict: cel('chalPlotSubdistrict')?.value || '',
+    district: cel('chalPlotDistrict')?.value || '',
+    province_name: cel('chalPlotProvinceName')?.value || '',
+    address: cel('chalPlotAddress')?.value || '',
     age: cel('chalPlotAge').value,
     phone: cel('chalPlotPhone').value,
     total_area_rai: cel('chalPlotTotalArea').value,
     productive_area_rai: cel('chalPlotProductiveArea').value,
     plant_age_years: cel('chalPlotPlantAge').value,
     trees_per_rai: cel('chalPlotTreesPerRai').value,
-    coord_zone: cel('chalPlotCoordZone').value,
-    coord_x: cel('chalPlotCoordX').value,
-    coord_y: cel('chalPlotCoordY').value,
+    coord_zone: cel('chalPlotCoordZone').value || '47',
+    coord_x: x1,
+    coord_y: y1,
+    coord_x1: x1,
+    coord_y1: y1,
+    coord_x2: cel('chalPlotCoordX2')?.value || null,
+    coord_y2: cel('chalPlotCoordY2')?.value || null,
+    coord_x3: cel('chalPlotCoordX3')?.value || null,
+    coord_y3: cel('chalPlotCoordY3')?.value || null,
+    coord_x4: cel('chalPlotCoordX4')?.value || null,
+    coord_y4: cel('chalPlotCoordY4')?.value || null,
     production_standard: cel('chalPlotStandard').value,
     soil_series: cel('chalPlotSoilSeries').value,
+    production_cost_per_rai: cel('chalPlotCostPerRai')?.value || 0,
+    avg_income_per_rai: cel('chalPlotIncomePerRai')?.value || 0,
   };
 
   try {
@@ -421,7 +719,7 @@ async function onSaveFarmerPlot(e) {
     await loadPlots();
     populatePlotDropdowns();
     renderFarmersTable();
-    alert(id ? 'บันทึกการแก้ไขเรียบร้อยแล้ว' : 'เพิ่มแปลงเกษตรกรใหม่สำเร็จ');
+    alert(id ? 'บันทึกการแก้ไขข้อมูลพื้นฐานแปลงเรียบร้อยแล้ว' : 'บันทึกข้อมูลแปลงใหม่สำเร็จ (แบบฟอร์มที่ 1)');
   } catch (err) {
     alert('เกิดข้อผิดพลาด: ' + err.message);
   }
@@ -440,6 +738,7 @@ function populatePlotDropdowns() {
       if (chalState.selectedPlotId) el.value = chalState.selectedPlotId;
     }
   });
+  updateHarvestPlotInfo();
 }
 
 // ==========================================
@@ -1118,6 +1417,199 @@ function onClearForecastMatrix() {
 // 3. Sheet 3: Harvest Cuts (ผลผลิตในรอบการตัด)
 // ==========================================
 
+function onApplyTotalTreesCalc() {
+  const plotId = cel('chalHarvestPlotSelect')?.value || chalState.selectedPlotId;
+  const plot = (chalState.plots || []).find((p) => String(p.id) === String(plotId));
+  const prodArea = plot ? Number(plot.productive_area_rai || plot.total_area_rai || 0) : 0;
+  const totalTrees = parseFloat(cel('chalCalcTotalTreesInPlot')?.value);
+
+  const resEl = cel('chalCalcTotalTreesResult');
+  if (isNaN(totalTrees) || totalTrees <= 0) {
+    if (resEl) resEl.innerHTML = '<span style="color:#dc2626;">กรุณาระบุจำนวนต้นในสวนเป็นตัวเลขมากกว่า 0</span>';
+    return;
+  }
+  if (!prodArea || prodArea <= 0) {
+    if (resEl) resEl.innerHTML = '<span style="color:#dc2626;">ไม่พบข้อมูลพื้นที่แปลง กรุณาเลือกแปลงก่อน</span>';
+    return;
+  }
+
+  const density = Math.round((totalTrees / prodArea) * 10) / 10;
+  if (resEl) resEl.innerHTML = `✅ คำนวณได้: <strong>${density} ต้น/ไร่</strong> (${totalTrees} ต้น ÷ ${prodArea} ไร่)`;
+
+  const treesInput = cel('chalCutTreesPerRai');
+  if (treesInput) {
+    treesInput.value = density;
+    treesInput.dataset.autoFilled = 'false';
+  }
+
+  const densityBadge = cel('chalHarvestPlotDensityText');
+  if (densityBadge) densityBadge.innerHTML = `ความหนาแน่นแปลง: <strong>${density} ต้น/ไร่</strong>`;
+  const totalTreesBadge = cel('chalHarvestPlotTotalTreesText');
+  if (totalTreesBadge) totalTreesBadge.innerHTML = `ประมาณการทั้งแปลง: <strong>~${totalTrees.toLocaleString()} ต้น</strong>`;
+
+  recalcHarvestYields();
+}
+
+function onApplySpacingCalc() {
+  const presetVal = parseFloat(cel('chalCalcSpacingPreset')?.value);
+  const resEl = cel('chalCalcSpacingResult');
+  if (isNaN(presetVal) || presetVal <= 0) {
+    if (resEl) resEl.innerHTML = '<span style="color:#dc2626;">กรุณาเลือกระยะปลูกในรายการ</span>';
+    return;
+  }
+
+  if (resEl) resEl.innerHTML = `✅ ใช้ค่าความหนาแน่น: <strong>${presetVal} ต้น/ไร่</strong>`;
+
+  const treesInput = cel('chalCutTreesPerRai');
+  if (treesInput) {
+    treesInput.value = presetVal;
+    treesInput.dataset.autoFilled = 'false';
+  }
+
+  const plotId = cel('chalHarvestPlotSelect')?.value || chalState.selectedPlotId;
+  const plot = (chalState.plots || []).find((p) => String(p.id) === String(plotId));
+  const prodArea = plot ? Number(plot.productive_area_rai || plot.total_area_rai || 0) : 0;
+  const totalTrees = prodArea > 0 ? Math.round(prodArea * presetVal) : null;
+
+  const densityBadge = cel('chalHarvestPlotDensityText');
+  if (densityBadge) densityBadge.innerHTML = `ความหนาแน่นแปลง: <strong>${presetVal} ต้น/ไร่</strong>`;
+  const totalTreesBadge = cel('chalHarvestPlotTotalTreesText');
+  if (totalTreesBadge) totalTreesBadge.innerHTML = `ประมาณการทั้งแปลง: <strong>~${totalTrees ? totalTrees.toLocaleString() + ' ต้น' : '-'}</strong>`;
+
+  recalcHarvestYields();
+}
+
+function updateHarvestPlotInfo() {
+  const plotId = cel('chalHarvestPlotSelect')?.value || chalState.selectedPlotId;
+  const plot = (chalState.plots || []).find((p) => String(p.id) === String(plotId));
+
+  const areaText = cel('chalHarvestPlotAreaText');
+  const sampleText = cel('chalHarvestSampleCountText');
+  const densityText = cel('chalHarvestPlotDensityText');
+  const totalTreesText = cel('chalHarvestPlotTotalTreesText');
+  const treesPerRaiInput = cel('chalCutTreesPerRai');
+
+  if (!plot) {
+    if (areaText) areaText.innerHTML = 'พื้นที่ให้ผล: <strong>- ไร่</strong>';
+    if (densityText) densityText.innerHTML = 'ความหนาแน่นแปลง: <strong>- ต้น/ไร่</strong>';
+    if (totalTreesText) totalTreesText.innerHTML = 'ประมาณการทั้งแปลง: <strong>~- ต้น</strong>';
+    return;
+  }
+
+  const prodArea = Number(plot.productive_area_rai || plot.total_area_rai || 0);
+  const density = Number(plot.trees_per_rai || 0);
+  const totalTrees = prodArea > 0 && density > 0 ? Math.round(prodArea * density) : null;
+
+  if (areaText) areaText.innerHTML = `พื้นที่ให้ผล: <strong>${prodArea ? prodArea.toLocaleString() : '-'} ไร่</strong>`;
+  if (sampleText) sampleText.innerHTML = '🔬 สุ่มวัดตัวอย่างวิจัย: 35 ต้น (7 จุด × 5 ต้น)';
+  if (densityText) densityText.innerHTML = `ความหนาแน่นแปลง: <strong>${density > 0 ? `${density.toLocaleString()} ต้น/ไร่` : 'ยังไม่ระบุ (กดช่วยคำนวณ)'}</strong>`;
+  if (totalTreesText) totalTreesText.innerHTML = `ประมาณการทั้งแปลง: <strong>~${totalTrees ? totalTrees.toLocaleString() + ' ต้น' : '-'}</strong>`;
+
+  // Auto-populate trees_per_rai input if not touched or empty
+  if (treesPerRaiInput && (!treesPerRaiInput.value || treesPerRaiInput.dataset.autoFilled === 'true' || treesPerRaiInput.value === '0')) {
+    if (density > 0) {
+      treesPerRaiInput.value = density;
+      treesPerRaiInput.dataset.autoFilled = 'true';
+    } else {
+      treesPerRaiInput.value = '';
+    }
+  }
+
+  // Pre-fill total trees calculator if plot total trees can be inferred
+  if (cel('chalCalcTotalTreesInPlot')) {
+    cel('chalCalcTotalTreesInPlot').value = totalTrees || '';
+    if (cel('chalCalcTotalTreesResult')) cel('chalCalcTotalTreesResult').textContent = '';
+  }
+
+  recalcHarvestYields();
+}
+
+function recalcHarvestYields() {
+  const plotId = cel('chalHarvestPlotSelect')?.value || chalState.selectedPlotId;
+  const plot = (chalState.plots || []).find((p) => String(p.id) === String(plotId));
+  const prodArea = plot ? Number(plot.productive_area_rai || plot.total_area_rai || 0) : 0;
+
+  const totalYieldVal = parseFloat(cel('chalCutTotalYield')?.value);
+  const treesPerRaiVal = parseFloat(cel('chalCutTreesPerRai')?.value);
+  const priceVal = parseFloat(cel('chalCutPrice')?.value);
+
+  const yieldRaiInput = cel('chalCutYieldPerRai');
+  const yieldTreeInput = cel('chalCutYieldPerTree');
+  const estRevInput = cel('chalCutEstRevenue');
+
+  const bannerYieldRai = cel('chalCutBannerYieldRai');
+  const bannerYieldTree = cel('chalCutBannerYieldTree');
+  const bannerRev = cel('chalCutBannerRev');
+  const bannerText = cel('chalCutCalcBannerText');
+
+  if (isNaN(totalYieldVal) || totalYieldVal <= 0) {
+    if (yieldRaiInput && yieldRaiInput.dataset.manual !== 'true') yieldRaiInput.value = '';
+    if (yieldTreeInput && yieldTreeInput.dataset.manual !== 'true') yieldTreeInput.value = '';
+    if (estRevInput) estRevInput.value = '';
+    if (bannerYieldRai) bannerYieldRai.textContent = '🌾 - ผล/ไร่';
+    if (bannerYieldTree) bannerYieldTree.textContent = '🥥 - ผล/ต้น';
+    if (bannerRev) bannerRev.textContent = '💰 - บาท';
+    if (bannerText) bannerText.innerHTML = 'กรอกผลผลิตรวมเพื่อคำนวณ <strong>ผลผลิต/ไร่</strong> และ <strong>ผลผลิต/ต้น</strong> แบบ Real-time';
+    return;
+  }
+
+  // 1. Calculate yield per rai: totalYield / prodArea
+  let yieldPerRai = null;
+  if (prodArea > 0) {
+    yieldPerRai = Math.round((totalYieldVal / prodArea) * 10) / 10;
+    if (yieldRaiInput && yieldRaiInput.dataset.manual !== 'true') {
+      yieldRaiInput.value = yieldPerRai;
+    }
+  } else if (yieldRaiInput && yieldRaiInput.value) {
+    yieldPerRai = parseFloat(yieldRaiInput.value);
+  }
+
+  // 2. Calculate yield per tree: yieldPerRai / treesPerRai
+  let yieldPerTree = null;
+  const effectiveDensity = !isNaN(treesPerRaiVal) && treesPerRaiVal > 0 
+    ? treesPerRaiVal 
+    : (plot && plot.trees_per_rai ? Number(plot.trees_per_rai) : null);
+
+  if (yieldPerRai !== null && effectiveDensity && effectiveDensity > 0) {
+    yieldPerTree = Math.round((yieldPerRai / effectiveDensity) * 100) / 100;
+  } else if (prodArea > 0 && effectiveDensity && effectiveDensity > 0) {
+    const totalTrees = prodArea * effectiveDensity;
+    if (totalTrees > 0) {
+      yieldPerTree = Math.round((totalYieldVal / totalTrees) * 100) / 100;
+    }
+  }
+
+  if (yieldTreeInput && yieldTreeInput.dataset.manual !== 'true') {
+    yieldTreeInput.value = yieldPerTree !== null ? yieldPerTree : '';
+  }
+
+  // 3. Revenue
+  let estRev = null;
+  if (!isNaN(priceVal) && priceVal > 0) {
+    estRev = Math.round(totalYieldVal * priceVal);
+    if (estRevInput) {
+      estRevInput.value = estRev.toLocaleString() + ' บาท';
+    }
+  } else if (estRevInput) {
+    estRevInput.value = '';
+  }
+
+  // 4. Update banner
+  if (bannerYieldRai) {
+    bannerYieldRai.textContent = yieldPerRai !== null ? `🌾 ${yieldPerRai.toLocaleString()} ผล/ไร่` : '🌾 - ผล/ไร่';
+  }
+  if (bannerYieldTree) {
+    bannerYieldTree.textContent = yieldPerTree !== null ? `🥥 ${yieldPerTree.toLocaleString()} ผล/ต้น` : '🥥 - ผล/ต้น';
+  }
+  if (bannerRev) {
+    bannerRev.textContent = estRev !== null ? `💰 ${estRev.toLocaleString()} บาท` : '💰 - บาท';
+  }
+  if (bannerText) {
+    const treeCountStr = prodArea > 0 && effectiveDensity > 0 ? `(~${Math.round(prodArea * effectiveDensity).toLocaleString()} ต้น)` : '';
+    bannerText.innerHTML = `✅ ผลผลิต <strong>${totalYieldVal.toLocaleString()} ผล</strong> ในแปลง ${prodArea ? prodArea + ' ไร่' : ''} ${effectiveDensity ? effectiveDensity + ' ต้น/ไร่ ' + treeCountStr : ''}`;
+  }
+}
+
 async function loadHarvestCuts(plotIdOverride) {
   const plotId = plotIdOverride !== undefined ? plotIdOverride : (cel('chalHarvestPlotSelect')?.value || chalState.selectedPlotId);
   const params = new URLSearchParams();
@@ -1147,13 +1639,17 @@ function renderHarvestTable(cuts) {
   if (!tableBody) return;
 
   if (cuts.length === 0) {
-    tableBody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted">ยังไม่มีข้อมูลรอบการตัดในแปลงนี้ บันทึกรอบแรกได้จากฟอร์มด้านบน</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="13" class="text-center py-4 text-muted">ยังไม่มีข้อมูลรอบการตัดในแปลงนี้ บันทึกรอบแรกได้จากฟอร์มด้านบน</td></tr>`;
     return;
   }
 
   tableBody.innerHTML = cuts.map((c, idx) => {
     const goodFruits = (c.total_yield || 0) - (c.damaged_fruits || 0);
     const estRev = c.price_per_fruit ? Math.round((c.total_yield || 0) * c.price_per_fruit).toLocaleString() + ' ฿' : '-';
+    const treesPerRaiText = c.trees_per_rai !== null && c.trees_per_rai !== undefined ? `${Number(c.trees_per_rai).toLocaleString()}` : '-';
+    const yieldPerRaiText = c.yield_per_rai !== null && c.yield_per_rai !== undefined ? `${Number(c.yield_per_rai).toLocaleString()}` : '-';
+    const yieldPerTreeText = c.yield_per_tree !== null && c.yield_per_tree !== undefined ? `${Number(c.yield_per_tree).toLocaleString()}` : '-';
+
     return `
       <tr>
         <td class="text-center font-bold">${c.cut_round}</td>
@@ -1161,7 +1657,9 @@ function renderHarvestTable(cuts) {
         <td>${escapeHtml(c.farmer_profile_name || c.farmer_name)}</td>
         <td><span class="date-tag">📅 ${escapeHtml(c.cut_date || '-')}</span></td>
         <td class="text-right font-bold text-success">${Number(c.total_yield || 0).toLocaleString()}</td>
-        <td class="text-right">${c.yield_per_rai ? Number(c.yield_per_rai).toLocaleString() : '-'}</td>
+        <td class="text-right text-muted">${treesPerRaiText}</td>
+        <td class="text-right font-bold">${yieldPerRaiText}</td>
+        <td class="text-right font-bold text-primary">${yieldPerTreeText}</td>
         <td class="text-right text-primary font-bold">${c.price_per_fruit ? `${c.price_per_fruit.toFixed(1)} ฿` : '-'}</td>
         <td class="text-right text-warning">${c.twin_fruits ? Number(c.twin_fruits).toLocaleString() : '0'}</td>
         <td class="text-right text-danger">${c.damaged_fruits ? Number(c.damaged_fruits).toLocaleString() : '0'}</td>
@@ -1187,8 +1685,10 @@ async function onSaveHarvestCut(e) {
     cut_round: cel('chalCutRound').value,
     cut_date: cel('chalCutDate').value,
     total_yield: cel('chalCutTotalYield').value,
-    yield_per_rai: cel('chalCutYieldPerRai').value,
-    price_per_fruit: cel('chalCutPrice').value,
+    trees_per_rai: cel('chalCutTreesPerRai')?.value || null,
+    yield_per_rai: cel('chalCutYieldPerRai').value || null,
+    yield_per_tree: cel('chalCutYieldPerTree')?.value || null,
+    price_per_fruit: cel('chalCutPrice').value || null,
     twin_fruits: cel('chalCutTwin').value,
     damaged_fruits: cel('chalCutDamaged').value,
     notes: cel('chalCutNotes').value,
@@ -1200,9 +1700,12 @@ async function onSaveHarvestCut(e) {
       body: JSON.stringify(payload),
     });
     cel('chalHarvestForm').reset();
+    if (cel('chalCutYieldPerRai')) cel('chalCutYieldPerRai').dataset.manual = 'false';
+    if (cel('chalCutYieldPerTree')) cel('chalCutYieldPerTree').dataset.manual = 'false';
     // Default round to next round
     cel('chalCutRound').value = Number(payload.cut_round) + 1;
     cel('chalCutDate').value = new Date().toISOString().slice(0, 10);
+    updateHarvestPlotInfo();
     alert('บันทึกข้อมูลรอบการตัดสำเร็จ');
     loadHarvestCuts();
   } catch (err) {
