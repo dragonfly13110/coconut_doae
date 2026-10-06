@@ -1,4 +1,4 @@
-// Challenge Mode Controller - ระบบข้อมูลการผลิตและคาดการณ์ผลผลิต (4 Sheets)
+// Challenge Mode Controller - ระบบข้อมูลการผลิตและคาดการณ์ผลผลิต (4 แบบ)
 
 const CHAL_PROVINCES = [
   { code: 'ratchaburi', label: 'ราชบุรี' },
@@ -180,7 +180,7 @@ function bindChalEvents() {
     e.target.dataset.manual = 'true';
   });
 
-  // Sheet 3 Density Calculator Helper
+  // แบบที่ 3 Density Calculator Helper
   cel('chalBtnToggleDensityCalc')?.addEventListener('click', () => {
     const box = cel('chalDensityCalcBox');
     if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
@@ -247,7 +247,7 @@ async function chalApi(url, options = {}) {
 }
 
 // ==========================================
-// 1. Sheet 1: Farmer Plots (ข้อมูลทั่วไป)
+// 1. แบบที่ 1: Farmer Plots (ข้อมูลทั่วไป)
 // ==========================================
 
 async function loadPlots() {
@@ -401,8 +401,8 @@ function renderFarmersTable() {
         <td class="text-center actions-cell">
           <button class="btn-icon" title="แก้ไขข้อมูลแปลง (แบบฟอร์มที่ 1)" onclick="window.chalEditPlot(${p.id})">✏️</button>
           <button class="btn-icon" title="ดู/พิมพ์แบบฟอร์มที่ 1 (Official Form)" onclick="window.chalViewOfficialForm(${p.id})">📄</button>
-          <button class="btn-icon text-primary" title="ไปหน้าคาดการณ์ผลผลิต (Sheet 2)" onclick="window.chalGoForecast(${p.id})">🎯</button>
-          <button class="btn-icon text-success" title="ไปหน้าบันทึกรอบตัด (Sheet 3)" onclick="window.chalGoHarvest(${p.id})">🥥</button>
+          <button class="btn-icon text-primary" title="ไปหน้าคาดการณ์ผลผลิต (แบบที่ 2)" onclick="window.chalGoForecast(${p.id})">🎯</button>
+          <button class="btn-icon text-success" title="ไปหน้าบันทึกรอบตัด (แบบที่ 3)" onclick="window.chalGoHarvest(${p.id})">🥥</button>
           <button class="btn-icon text-danger" title="ลบแปลงนี้" onclick="window.chalDeletePlot(${p.id})">🗑️</button>
         </td>
       </tr>
@@ -742,7 +742,7 @@ function populatePlotDropdowns() {
 }
 
 // ==========================================
-// 2. Sheet 2: Yield Forecast Matrix (คาดการณ์ผลผลิต)
+// 2. แบบที่ 2: Yield Forecast Matrix (คาดการณ์ผลผลิต)
 // ==========================================
 
 async function loadForecastMatrix() {
@@ -1414,7 +1414,7 @@ function onClearForecastMatrix() {
 }
 
 // ==========================================
-// 3. Sheet 3: Harvest Cuts (ผลผลิตในรอบการตัด)
+// 3. แบบที่ 3: Harvest Cuts (ผลผลิตในรอบการตัด)
 // ==========================================
 
 function onApplyTotalTreesCalc() {
@@ -1725,7 +1725,7 @@ window.chalDeleteHarvest = async (id) => {
 };
 
 // ==========================================
-// 4. Sheet 4: Macro District Stats (สถิติ 2569)
+// 4. แบบที่ 4: Macro District Stats (สถิติ 2569)
 // ==========================================
 
 async function loadMacroData() {
@@ -2321,7 +2321,7 @@ export function exportBoard2DCsv() {
     'จุดที่ 6 (ตรวจ/5)',
     'จุดที่ 7 (ตรวจ/5)',
     'รายละเอียดที่ยังค้างตรวจ',
-    'จำนวนรอบตัดที่บันทึก (Sheet 3)',
+    'จำนวนรอบตัดที่บันทึก (แบบที่ 3)',
     'ผลผลิตรอบตัดรวม (ผล)',
   ]);
 
