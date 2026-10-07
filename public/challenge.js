@@ -2367,3 +2367,6 @@ export function exportBoard2DCsv() {
   URL.revokeObjectURL(url);
 }
 
+window.chalShowKnowledge = function() {
+  showChalTab('knowledge');
+};

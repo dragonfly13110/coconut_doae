@@ -94,9 +94,6 @@
           <span>ตรวจสอบข้อมูล & ติดตาม</span>
           <span id="auditAnomalyBadge" class="badge-anomaly-count" hidden>0</span>
         </button>
-        <button class="tab" data-tab="knowledge">
-          <span>🌴 องค์ความรู้ & ต้นมะพร้าว 3D</span>
-        </button>
       </nav>
 
       <section id="entryTab" class="panel">
@@ -963,7 +960,6 @@
         <button class="tab" data-chal-tab="macro">🗺️ สถิติพื้นที่ & ผลผลิต 2569 (แบบที่ 4)</button>
         <button class="tab" data-chal-tab="dashboard">📈 ภาพรวม & วิเคราะห์</button>
         <button class="tab" data-chal-tab="io">📥 นำเข้า / ส่งออก Excel</button>
-        <button class="tab" data-chal-tab="knowledge">🌴 องค์ความรู้ & ต้นมะพร้าว 3D</button>
       </nav>
 
       <!-- Tab 1: Farmers & Plots (แบบที่ 1) -->
@@ -1979,6 +1975,48 @@
         </div>
       </section>
     </section>
+
+    <!-- DOAE GLOBAL FOOTER & 3D BOTANICAL ATLAS -->
+    <footer id="appFooter" class="app-global-footer" hidden>
+      <div class="app-footer-card">
+        <!-- 3D Botanical Atlas Feature Row -->
+        <div class="footer-3d-row">
+          <div class="footer-3d-main">
+            <div class="footer-3d-badge-icon">🌴</div>
+            <div class="footer-3d-content">
+              <div class="footer-3d-kicker">DOAE BOTANICAL &amp; AGRONOMY 3D ATLAS</div>
+              <h3 class="footer-3d-title">แบบจำลองต้นมะพร้าว 3 มิติ &amp; คลังองค์ความรู้</h3>
+              <p class="footer-3d-desc">
+                เครื่องมือสำรวจและเทียบเคียงระยะจั่นมะพร้าวน้ำหอม 20 ทะลาย หมุนสังเกต 360 องศา วิเคราะห์ 9 ระยะจั่นสู่ทลาย พร้อมบทความวิชาการเพื่อสนับสนุนการลงแปลง
+              </p>
+            </div>
+          </div>
+          <div class="footer-3d-actions">
+            <button type="button" id="btnFooterOpen3D" class="button primary footer-btn-3d" title="เปิดดูต้นมะพร้าว 3D 360 องศา">
+              <span>🌴 เปิดโมเดลต้นมะพร้าว 3D (360°)</span>
+            </button>
+            <button type="button" id="btnFooterOpenKnowledge" class="button ghost footer-btn-sub" title="เปิดคลังความรู้วิชาการและบทความ">
+              <span>📚 คลังความรู้ &amp; บทความวิจัย</span>
+            </button>
+            <a href="/coconut-3d/index.html" target="_blank" rel="noopener" class="button ghost footer-btn-sub" title="เปิดโมเดล 3D ในแท็บใหม่เต็มหน้าจอ">
+              <span>↗️ หน้าต่างแยก 3D</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- System Branding & Meta Row -->
+        <div class="footer-meta-row">
+          <div class="footer-meta-left">
+            <span class="footer-emblem">🥥 กรมส่งเสริมการเกษตร (DOAE)</span>
+            <span class="footer-dot">•</span>
+            <span>ระบบติดตามคุณภาพและคาดการณ์ผลผลิตมะพร้าวน้ำหอม 4 จังหวัด (ราชบุรี นครปฐม สมุทรสงคราม สมุทรสาคร)</span>
+          </div>
+          <div class="footer-meta-right">
+            <span>สำนักส่งเสริมและจัดการสินค้าเกษตร © 2569</span>
+          </div>
+        </div>
+      </div>
+    </footer>
 
     <!-- Modal Form: Add / Edit Farmer Plot (แบบที่ 1) -->
     <div id="chalPlotModal" class="modal-backdrop" hidden>

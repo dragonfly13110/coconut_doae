@@ -5104,6 +5104,186 @@ th {
   }
 }
 
+/* ==========================================================================
+   APP GLOBAL FOOTER & 3D BOTANICAL ATLAS WIDGET
+   ========================================================================== */
 
+.app-global-footer {
+  margin-top: 36px;
+  width: 100%;
+}
 
+.app-footer-card {
+  background: linear-gradient(135deg, #063c2c 0%, #042f22 60%, #021e15 100%);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  border-radius: 20px;
+  padding: 24px 28px 18px;
+  color: #ecfdf5;
+  box-shadow: 0 16px 38px rgba(3, 31, 23, 0.22);
+  position: relative;
+  overflow: hidden;
+}
 
+.app-footer-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+.footer-3d-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.footer-3d-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1 1 500px;
+}
+
+.footer-3d-badge-icon {
+  width: 52px;
+  height: 52px;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(6, 78, 59, 0.3);
+}
+
+.footer-3d-content {
+  flex: 1;
+}
+
+.footer-3d-kicker {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #6ee7b7;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.footer-3d-title {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.footer-3d-desc {
+  margin: 0;
+  font-size: 13px;
+  color: #a7f3d0;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.footer-3d-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.footer-btn-3d {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  font-weight: 600 !important;
+  padding: 10px 18px !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.footer-btn-3d:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45) !important;
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%) !important;
+}
+
+.footer-btn-sub {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ecfdf5 !important;
+  border: 1px solid rgba(167, 243, 208, 0.25) !important;
+  font-weight: 500 !important;
+  padding: 10px 16px !important;
+  border-radius: 10px !important;
+  text-decoration: none !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.footer-btn-sub:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(167, 243, 208, 0.45) !important;
+  color: #ffffff !important;
+}
+
+.footer-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 16px;
+  font-size: 12.5px;
+  color: #93c5ae;
+  flex-wrap: wrap;
+}
+
+.footer-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.footer-emblem {
+  font-weight: 700;
+  color: #d1fae5;
+}
+
+.footer-dot {
+  opacity: 0.6;
+}
+
+.footer-meta-right {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+@media (max-width: 768px) {
+  .footer-3d-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .footer-3d-actions {
+    width: 100%;
+  }
+  .footer-meta-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

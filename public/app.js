@@ -192,6 +192,19 @@ function bindEvents() {
   el('btnQuick3DAtlas')?.addEventListener('click', openQuick3DModal);
   el('btnChalQuick3DAtlas')?.addEventListener('click', openQuick3DModal);
   el('btnCloseQuick3DModal')?.addEventListener('click', closeQuick3DModal);
+
+  // Footer 3D & Knowledge actions
+  el('btnFooterOpen3D')?.addEventListener('click', openQuick3DModal);
+  el('btnFooterOpenKnowledge')?.addEventListener('click', () => {
+    if (state.systemMode === 'challenge') {
+      if (typeof window.chalShowKnowledge === 'function') {
+        window.chalShowKnowledge();
+      }
+    } else {
+      showTab('knowledge');
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 }
 
 async function login(event) {
@@ -1036,6 +1049,7 @@ function renderBunchTable(provinces) {
 function showApp() {
   el('loginView').hidden = true;
   if (el('modeNavBar')) el('modeNavBar').hidden = false;
+  if (el('appFooter')) el('appFooter').hidden = false;
   el('logoutBtn').hidden = false;
   if (el('changePinBtn')) el('changePinBtn').hidden = false;
   el('userLine').textContent = `${state.user.province_label} | ${roleLabel(state.user.role)}`;
@@ -1073,6 +1087,7 @@ function showLogin() {
   el('appView').hidden = true;
   if (el('appViewChallenge')) el('appViewChallenge').hidden = true;
   if (el('modeNavBar')) el('modeNavBar').hidden = true;
+  if (el('appFooter')) el('appFooter').hidden = true;
   el('logoutBtn').hidden = true;
   if (el('changePinBtn')) el('changePinBtn').hidden = true;
   el('userLine').textContent = 'ยังไม่ได้เข้าสู่ระบบ';
