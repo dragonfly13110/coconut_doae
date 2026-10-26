@@ -5284,11 +5284,691 @@ th {
   opacity: 0.85;
 }
 
+/* ============================================================================
+   Form 1 Plot Map (Leaflet) — แผนที่พิกัดแปลงเกษตรกร (แบบที่ 1)
+   Leaflet 1.9.4 + Leaflet.markercluster vendored in /vendor/leaflet/
+   ========================================================================== */
+
+.plot-map-section {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px dashed var(--line);
+}
+
+.plot-map-sub {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+  margin: 4px 0 14px;
+  max-width: 920px;
+}
+
+.plot-map-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(9, 30, 22, 0.08);
+}
+
+.plot-map-container {
+  position: relative;
+  width: 100%;
+  height: 500px;
+  background: #dde9e3;
+  font-family: inherit;
+}
+
+.plot-map-container .leaflet-container {
+  font: inherit;
+  background: #dde9e3;
+}
+
+/* Fullscreen toggle ------------------------------------------------------- */
+.plot-map-container.pm-fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 3000;
+  border-radius: 0;
+}
+
+/* Base Leaflet controls restyle ------------------------------------------- */
+.plot-map-container .leaflet-bar {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(9, 30, 22, 0.12);
+}
+
+.plot-map-container .leaflet-bar a {
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: 0;
+}
+
+.plot-map-container .leaflet-bar a:first-child { border-radius: 9px 9px 0 0; }
+.plot-map-container .leaflet-bar a:last-child { border-radius: 0 0 9px 9px; border-bottom: none; }
+
+.plot-map-container .leaflet-bar a:hover {
+  background: #f1f6f3;
+  color: var(--primary-strong);
+}
+
+.plot-map-container .leaflet-touch .leaflet-bar a {
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+}
+
+.plot-map-container .leaflet-control-layers {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(9, 30, 22, 0.12);
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.plot-map-container .leaflet-control-layers-expanded {
+  padding: 8px 12px;
+  color: var(--ink);
+  max-height: 260px;
+  max-width: 210px;
+  overflow-y: auto;
+}
+
+/* Reset the app-wide `input, select` sizing so Leaflet's native
+   radio/checkbox inputs stay small instead of ballooning to 44px. */
+.plot-map-container .leaflet-control-layers input {
+  width: auto;
+  min-height: 0;
+  height: 15px;
+  margin: 0 6px 0 0;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  box-shadow: none;
+  accent-color: var(--primary);
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.plot-map-container .leaflet-control-layers input:focus {
+  outline: 2px solid rgba(22, 122, 85, 0.35);
+  outline-offset: 1px;
+}
+
+.plot-map-container .leaflet-control-layers-expanded > span {
+  display: flex;
+  align-items: center;
+}
+
+.plot-map-container .leaflet-control-layers-expanded label {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 3px 0;
+  padding: 2px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.plot-map-container .leaflet-control-layers-expanded label:hover {
+  background: var(--primary-soft);
+}
+
+/* Section headings inside the expanded panel (basemap / overlays). */
+.plot-map-container .leaflet-control-layers-divider {
+  border-top: 1px dashed var(--line);
+  margin: 7px 0 5px;
+}
+
+.plot-map-container .leaflet-control-layers-expanded .leaflet-control-layers-separator {
+  border-top: 1px dashed var(--line);
+  margin: 7px 0 5px;
+}
+
+.plot-map-container .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.85);
+  font-size: 10px;
+  color: var(--muted);
+  border-radius: 8px 0 0 0;
+}
+
+.plot-map-container .leaflet-control-attribution a {
+  color: var(--primary-strong);
+}
+
+.plot-map-container .leaflet-control-scale-line {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: var(--line);
+  color: var(--ink);
+  font-size: 10px;
+}
+
+/* Shared custom-control chrome -------------------------------------------- */
+.pm-control {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+}
+
+/* Plot pin markers -------------------------------------------------------- */
+.pm-pin-wrap {
+  background: transparent;
+  border: none;
+}
+
+.pm-pin {
+  position: relative;
+  border-radius: 50%;
+  background: var(--pin, #15803d);
+  border: 2.5px solid #fff;
+  box-shadow: 0 4px 10px rgba(9, 30, 22, 0.38);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+
+.pm-pin::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  background: var(--pin, #15803d);
+  border-right: 2.5px solid #fff;
+  border-bottom: 2.5px solid #fff;
+  transform: translateX(-50%) rotate(45deg);
+  border-radius: 0 0 3px 0;
+}
+
+.pm-pin-emoji {
+  font-size: 15px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+}
+
+.pm-pin-wrap:hover .pm-pin {
+  transform: scale(1.14);
+}
+
+/* Hover tooltips ---------------------------------------------------------- */
+.leaflet-tooltip.pm-tooltip {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.leaflet-tooltip-top.pm-tooltip::before {
+  display: none;
+}
+
+/* Thin, unobtrusive tooltip for the province boundary lines. */
+.leaflet-tooltip.pm-boundary-tooltip {
+  background: rgba(15, 118, 110, 0.92);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  box-shadow: 0 3px 10px rgba(9, 30, 22, 0.25);
+  pointer-events: none;
+}
+
+.leaflet-tooltip-top.pm-boundary-tooltip::before {
+  border-top-color: rgba(15, 118, 110, 0.92);
+}
+
+.pm-tip {
+  min-width: 205px;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--pin, #15803d);
+  border-radius: 12px;
+  padding: 9px 12px;
+  box-shadow: 0 10px 26px rgba(9, 30, 22, 0.18);
+  font-size: 12px;
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.pm-tip-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.pm-tip-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--pin, #15803d);
+  flex: none;
+}
+
+.pm-tip-sub {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 2px 0 6px;
+}
+
+.pm-tip-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+}
+
+.pm-tip-grid span { color: var(--muted); }
+.pm-tip-grid b { text-align: right; font-weight: 600; }
+
+/* Click popups ------------------------------------------------------------ */
+.leaflet-popup.pm-popup {
+  background: transparent;
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(9, 30, 22, 0.22);
+}
+
+.leaflet-popup.pm-popup .leaflet-popup-content-wrapper {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+.leaflet-popup.pm-popup .leaflet-popup-content {
+  margin: 0;
+  width: auto !important;
+  line-height: 1.45;
+  font-family: inherit;
+}
+
+.leaflet-popup.pm-popup .leaflet-popup-tip-container {
+  display: none;
+}
+
+.pm-popup .leaflet-popup-close-button {
+  color: var(--muted);
+  font: 20px/22px Tahoma, sans-serif;
+  padding: 5px 7px 0 0;
+}
+
+.pm-popup .leaflet-popup-close-button:hover {
+  color: var(--ink);
+}
+
+.pm-pop {
+  width: 300px;
+  max-width: calc(100vw - 60px);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--pin, #15803d);
+  border-radius: 14px;
+  padding: 12px 14px;
+  color: var(--ink);
+}
+
+.pm-pop-head {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.pm-pop-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--pin, #15803d);
+  margin-top: 4px;
+  flex: none;
+}
+
+.pm-pop-head strong {
+  font-size: 14px;
+  color: var(--primary-strong);
+}
+
+.pm-pop-sub {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 1px;
+}
+
+.pm-pop-coord {
+  font-size: 11px;
+  background: #f1f6f3;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin: 8px 0;
+  color: #33473e;
+  font-variant-numeric: tabular-nums;
+}
+
+.pm-pop-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 10px;
+  font-size: 12px;
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.pm-pop-grid span { color: var(--muted); }
+.pm-pop-grid b { text-align: right; font-weight: 600; word-break: break-word; }
+
+.pm-pop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.pm-pop-actions button {
+  flex: 1 1 44%;
+  border: 1px solid var(--line);
+  background: #f7fbf8;
+  color: var(--primary-strong);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pm-pop-actions button:hover {
+  background: var(--primary-strong);
+  border-color: var(--primary-strong);
+  color: #fff;
+}
+
+/* Cluster icons ----------------------------------------------------------- */
+.pm-cluster-wrap {
+  background: transparent;
+  border: none;
+}
+
+.pm-cluster {
+  border-radius: 50%;
+  background: var(--pin, #15803d);
+  border: 3px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 4px 14px rgba(9, 30, 22, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
+}
+
+.pm-cluster:hover {
+  transform: scale(1.08);
+}
+
+/* Permanent name labels (off by default, zoom ≥ 13) ----------------------- */
+.pm-label-icon {
+  background: transparent;
+  border: none;
+}
+
+.pm-label-icon span {
+  display: inline-block;
+  transform: translate(-50%, -175%);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--pin, #15803d);
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  box-shadow: 0 2px 6px rgba(9, 30, 22, 0.15);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.pm-label-icon.pm-label-hidden {
+  display: none;
+}
+
+/* Search control (top-left) ----------------------------------------------- */
+.pm-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 5px 10px;
+  box-shadow: 0 4px 14px rgba(9, 30, 22, 0.12);
+}
+
+.pm-search-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.pm-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--ink);
+  width: 190px;
+}
+
+.pm-search input::placeholder {
+  color: var(--muted);
+}
+
+/* Summary control (top-right) --------------------------------------------- */
+.pm-summary {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 12px;
+  box-shadow: 0 4px 14px rgba(9, 30, 22, 0.12);
+  font-size: 12px;
+  color: var(--ink);
+  min-width: 158px;
+}
+
+.pm-summary-title {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--primary-strong);
+  margin-bottom: 3px;
+}
+
+.pm-summary-line b {
+  font-variant-numeric: tabular-nums;
+}
+
+.pm-summary-missing {
+  color: #b45309;
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+/* Legend (bottom-right) --------------------------------------------------- */
+.pm-legend {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 12px;
+  box-shadow: 0 4px 14px rgba(9, 30, 22, 0.12);
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.pm-legend-title {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--primary-strong);
+  margin-bottom: 4px;
+}
+
+.pm-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 1px 0;
+}
+
+.pm-legend-row.is-empty {
+  opacity: 0.45;
+}
+
+.pm-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--pin, #15803d);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--line);
+  flex: none;
+}
+
+.pm-legend-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Live coordinate readout (bottom-left) ----------------------------------- */
+.pm-coords {
+  background: rgba(12, 32, 25, 0.82);
+  color: #eafff5;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+.pm-coords-hint {
+  opacity: 0.75;
+}
+
+/* View tools (bottom-right) ----------------------------------------------- */
+.pm-view-tools {
+  display: flex;
+  gap: 6px;
+}
+
+.pm-tool-btn {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--primary-strong);
+  border-radius: 9px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 4px 14px rgba(9, 30, 22, 0.12);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pm-tool-btn:hover {
+  background: var(--primary-strong);
+  border-color: var(--primary-strong);
+  color: #fff;
+}
+
+/* Empty state overlay ----------------------------------------------------- */
+.pm-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 800;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  background: rgba(238, 244, 241, 0.88);
+  border-radius: 14px;
+  pointer-events: none;
+}
+
+.pm-empty.visible {
+  display: flex;
+}
+
+.pm-empty span {
+  display: block;
+  font-size: 40px;
+  margin-bottom: 6px;
+}
+
+.pm-empty p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pm-empty small {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 12px;
+}
+
+/* Mobile ------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  .plot-map-container {
+    height: 340px;
+  }
+
+  .pm-search input {
+    width: 130px;
+  }
+
+  .pm-summary,
+  .pm-legend {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+
+  .pm-pop {
+    width: 240px;
+  }
+
+  .pm-tip {
+    min-width: 170px;
+  }
+}
+
 /* ==========================================================================
    MOBILE & TOUCH EXPERIENCE OPTIMIZATIONS (max-width: 768px)
    These styles apply ONLY to mobile screens and leave desktop (PC) 100% intact.
    ========================================================================== */
-
 @media (max-width: 768px) {
   /* 1. Base Layout & Shell Main */
   .shell-main {

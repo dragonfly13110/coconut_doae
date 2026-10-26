@@ -1,5 +1,7 @@
 // Challenge Mode Controller - ระบบข้อมูลการผลิตและคาดการณ์ผลผลิต (4 แบบ)
 
+import { initPlotMap, updatePlotMap, refreshPlotMap } from './plot-map.js';
+
 const CHAL_PROVINCES = [
   { code: 'ratchaburi', label: 'ราชบุรี' },
   { code: 'nakhon_pathom', label: 'นครปฐม' },
@@ -30,6 +32,10 @@ const MONTH_NAMES = [
   'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.',
 ];
 
+// วันเริ่มต้นรอบปีการผลิต — 1 ม.ค. 2570 (ค.ศ. 2027) เป็นค่าตั้งต้นของรอบการบันทึกทุกหน้า
+const DEFAULT_CYCLE_START = '2027-01-01';
+const BE_OFFSET = 543; // แปลง ค.ศ. → พ.ศ.
+
 const chalState = {
   user: null,
   activeTab: 'farmers',
@@ -42,7 +48,7 @@ const chalState = {
   macroData: null,
   filterProvince: 'all',
   forecastViewMode: 'matrix',
-  cycleStartDate: '2026-01-01',
+  cycleStartDate: DEFAULT_CYCLE_START,
   cycleInterval: 21,
   cycleAvgFruits: 12,
   board2dData: null,
@@ -66,6 +72,7 @@ export function initChallenge(user) {
     chalState.board2dFilterProv = user.province_code;
   }
   bindChalEvents();
+  initPlotMap(); // pre-warm the Form 1 plot map (vendored Leaflet)
   loadAllChalData();
 }
 
@@ -215,7 +222,12 @@ export function showChalTab(tab) {
     if (panel) panel.hidden = t !== tab;
   });
 
-  if (tab === 'farmers') renderFarmersTable();
+  if (tab === 'farmers') {
+    renderFarmersTable();
+    // The panel was just un-hidden: recompute the map size (Leaflet can't
+    // measure a hidden container) and fit bounds on first display.
+    refreshPlotMap();
+  }
   if (tab === 'forecast') loadForecastMatrix();
   if (tab === 'harvest') loadHarvestCuts();
   if (tab === 'board2d') loadBoard2D();
@@ -334,6 +346,9 @@ function renderFarmersTable() {
     }
     return true;
   });
+
+  // Keep the Form 1 plot map in sync with the table (province filter, CRUD)
+  updatePlotMap(filtered, getProvinceLabel);
 
   if (filtered.length === 0) {
     tableBody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted">ยังไม่มีข้อมูลแปลงเกษตรกร กด "บันทึกข้อมูลแปลงใหม่ (แบบฟอร์มที่ 1)" ด้านบนเพื่อเริ่มบันทึก</td></tr>`;
@@ -832,7 +847,7 @@ window.chalSelectTree = (pos) => {
 };
 
 function get21DaySchedule(startDateStr, interval = 21, bunchCount = 20) {
-  const [y, m, d] = (startDateStr || '2026-01-01').split('-').map(Number);
+  const [y, m, d] = (startDateStr || DEFAULT_CYCLE_START).split('-').map(Number);
   const schedule = [];
   let curr = new Date(y, (m || 1) - 1, d || 1);
 
@@ -878,7 +893,7 @@ function renderMatrixGrid(data) {
   const matrixMap = data.matrixMap || {};
   const monthlyTotals = data.monthlyTotals || new Array(12).fill(0);
 
-  const startDateStr = cel('chalCycleStartDate')?.value || chalState.cycleStartDate || '2026-01-01';
+  const startDateStr = cel('chalCycleStartDate')?.value || chalState.cycleStartDate || DEFAULT_CYCLE_START;
   const interval = Number(cel('chalCycleInterval')?.value) || chalState.cycleInterval || 21;
   const schedule = get21DaySchedule(startDateStr, interval, 20);
 
@@ -964,10 +979,13 @@ function renderTimelineSchedule(data, schedule) {
 
   const matrixMap = data?.matrixMap || {};
   if (!schedule) {
-    const startDateStr = cel('chalCycleStartDate')?.value || chalState.cycleStartDate || '2026-01-01';
+    const startDateStr = cel('chalCycleStartDate')?.value || chalState.cycleStartDate || DEFAULT_CYCLE_START;
     const interval = Number(cel('chalCycleInterval')?.value) || chalState.cycleInterval || 21;
     schedule = get21DaySchedule(startDateStr, interval, 20);
   }
+
+  // ปีเริ่มต้นรอบ (พ.ศ.) ใช้กำหนด badge "ในรอบปี" / "ข้ามปี" ให้ตรงกับปีที่ตั้งไว้เสมอ
+  const startYearBE = (schedule[0]?.year ?? new Date().getFullYear()) + BE_OFFSET;
 
   // Pre-calculate grand total for percentage calculations
   let grandTotal = 0;
@@ -997,7 +1015,7 @@ function renderTimelineSchedule(data, schedule) {
   const rowsHtml = bunchData.map(({ item, val, numVal, actualMonth }) => {
     runningTotal += numVal;
     const isDouble = item.isDoubleMonth;
-    const isCrossYear = item.bunch_no > 18;
+    const isCrossYear = item.year > (schedule[0]?.year ?? item.year);
     const pct = grandTotal > 0 && numVal > 0 ? ((numVal / grandTotal) * 100).toFixed(1) : 0;
 
     let cycleBadge = '';
@@ -1010,8 +1028,8 @@ function renderTimelineSchedule(data, schedule) {
     }
 
     const statusBadge = isCrossYear
-      ? `<span class="badge-status-cross">⏩ ข้ามปี 2570</span>`
-      : `<span class="badge-status-inyear">🌿 ในรอบปี 2569</span>`;
+      ? `<span class="badge-status-cross">⏩ ข้ามปี ${startYearBE + 1}</span>`
+      : `<span class="badge-status-inyear">🌿 ในรอบปี ${startYearBE}</span>`;
 
     return `
       <tr class="${isDouble ? 'is-double-row' : ''} ${isCrossYear ? 'is-cross-year-row' : ''}" data-bunch="${item.bunch_no}" data-month="${actualMonth}">
@@ -1067,6 +1085,14 @@ function renderTimelineSchedule(data, schedule) {
 
   const avgPerBunch = grandTotal > 0 ? (grandTotal / 20).toFixed(1) : '-';
 
+  // นับจำนวนทะลาย "ในรอบปี" / "ข้ามปี" จากปีจริงของแต่ละแถว (ไม่ hardcode)
+  const startYearCE = schedule[0]?.year ?? new Date().getFullYear();
+  const inYearCount = schedule.filter((s) => s.year === startYearCE).length;
+  const crossYearCount = schedule.length - inYearCount;
+  const crossYearLabel = crossYearCount > 0
+    ? ` / ข้ามปี ${startYearBE + 1}: ${crossYearCount} ทะลาย`
+    : '';
+
   container.innerHTML = `
     <table class="data-table timeline-table">
       <thead>
@@ -1088,7 +1114,7 @@ function renderTimelineSchedule(data, schedule) {
       <tfoot>
         <tr class="timeline-footer-row font-bold">
           <td colspan="5" class="text-left" style="padding-left:16px;">
-            <span>รวมทั้งหมด 20 ทะลาย (ในรอบปี 2569: 18 ทะลาย / ข้ามปี 2 ทะลาย)</span>
+            <span>รวมทั้งหมด ${schedule.length} ทะลาย (ในรอบปี ${startYearBE}: ${inYearCount} ทะลาย${crossYearLabel})</span>
           </td>
           <td class="text-center">
             <strong id="chalTimelineGrandTotal" class="text-success" style="font-size:15px;">${grandTotal > 0 ? grandTotal.toLocaleString() : '-'}</strong> <small>ลูก</small>
@@ -1260,7 +1286,7 @@ function recalculateAllForecastSums() {
 }
 
 window.chalAutoProject21Days = () => {
-  const startDateStr = cel('chalCycleStartDate')?.value || '2026-01-01';
+  const startDateStr = cel('chalCycleStartDate')?.value || DEFAULT_CYCLE_START;
   const interval = Number(cel('chalCycleInterval')?.value) || 21;
   const avgFruits = Number(cel('chalCycleAvgFruits')?.value) || 12;
 

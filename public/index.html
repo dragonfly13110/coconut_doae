@@ -4,7 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ระบบติดตามคุณภาพมะพร้าวน้ำหอม DOAE</title>
-  <link rel="stylesheet" href="/styles.css?v=2.4">
+  <link rel="stylesheet" href="/styles.css?v=2.5">
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="/vendor/leaflet/MarkerCluster.css">
+  <link rel="stylesheet" href="/vendor/leaflet/MarkerCluster.Default.css">
 </head>
 <body>
   <header class="shell-header">
@@ -1045,6 +1048,20 @@
             </div>
           </div>
         </div>
+
+        <!-- Interactive Leaflet Map: Plot Coordinates (bottom of Form 1) -->
+        <div class="plot-map-section">
+          <div class="plot-map-head">
+            <p class="eyebrow">แผนที่พิกัดแปลง (GPS · UTM Zone 47N)</p>
+            <h2>🗺️ แผนที่พิกัดแปลงเกษตรกร (แบบที่ 1)</h2>
+            <p class="plot-map-sub">
+              แสดงตำแหน่งแปลงตามพิกัด UTM Zone 47N ที่บันทึกไว้ในแบบฟอร์ม — เลื่อนเมาส์เพื่อดูพิกัดสด (ละติจูด/ลองจิจูด และ UTM X/Y) · คลิกหมุดเพื่อดูรายละเอียดและปุ่มจัดการ · ถ้ามีพิกัดครบทั้ง 4 มุมจะแสดงเป็นรูปขอบเขตแปลง
+            </p>
+          </div>
+          <div class="plot-map-card">
+            <div id="chalPlotMap" class="plot-map-container" aria-label="แผนที่พิกัดแปลงเกษตรกร"></div>
+          </div>
+        </div>
       </section>
 
       <!-- Tab 2: Yield Forecast (แบบที่ 2) -->
@@ -1144,7 +1161,7 @@
           <div class="cycle-helper-controls">
             <div class="cycle-control-group">
               <label for="chalCycleStartDate">วันที่ตัดทะลายที่ 1:</label>
-              <input type="date" id="chalCycleStartDate" value="2026-01-01" class="cycle-date-input" />
+              <input type="date" id="chalCycleStartDate" value="2027-01-01" class="cycle-date-input" />
             </div>
             <div class="cycle-control-group">
               <label for="chalCycleInterval">รอบตัด (วัน):</label>
@@ -1187,7 +1204,7 @@
           <div class="timeline-table-toolbar">
             <div class="timeline-toolbar-left">
               <span class="timeline-toolbar-title">📅 ตารางแจกแจงรอบเก็บเกี่ยว 21 วัน (20 ทะลาย)</span>
-              <span class="badge-plot">รอบละ 21 วัน • ในรอบปี 2569 เก็บได้ 18 ทะลาย</span>
+              <span class="badge-plot">รอบละ 21 วัน • ในรอบปี 2570 เก็บได้ 18 ทะลาย</span>
             </div>
             <div class="timeline-toolbar-legend">
               <span class="legend-item"><span class="legend-dot green"></span>รอบตัด 2 ทะลาย/เดือน (6 เดือน)</span>
@@ -2426,6 +2443,9 @@
 
   </main>
 
+  <!-- Leaflet (vendored locally, offline-first) — global `L` must load BEFORE the app module -->
+  <script src="/vendor/leaflet/leaflet.js"></script>
+  <script src="/vendor/leaflet/leaflet.markercluster.js"></script>
   <script type="module" src="/app.js"></script>
 </body>
 </html>
