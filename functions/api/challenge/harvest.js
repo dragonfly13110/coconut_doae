@@ -140,7 +140,19 @@ async function saveHarvestCut(request, env, user) {
     yieldPerTree = Math.round((yieldPerRai / treesPerRai) * 10) / 10;
   }
 
-  if (id) {
+  // Requirement 2: Last-Write-Wins / UPSERT
+  // If target cut exists (by id OR by plot_id + cut_round), update it with latest submitted values.
+  let targetId = id;
+  if (!targetId) {
+    const existing = await env.DB.prepare(
+      'SELECT id FROM harvest_cuts WHERE plot_id = ? AND cut_round = ?'
+    ).bind(plotId, cutRound).first();
+    if (existing) {
+      targetId = existing.id;
+    }
+  }
+
+  if (targetId) {
     await env.DB.prepare(`
       UPDATE harvest_cuts
       SET 
@@ -156,9 +168,14 @@ async function saveHarvestCut(request, env, user) {
         notes = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).bind(cutRound, cutDate, totalYield, yieldPerRai, treesPerRai, yieldPerTree, price, twin, damaged, notes, id).run();
+    `).bind(cutRound, cutDate, totalYield, yieldPerRai, treesPerRai, yieldPerTree, price, twin, damaged, notes, targetId).run();
 
-    return json({ success: true, id, message: 'บันทึกการแก้ไขรอบการตัดสำเร็จ' });
+    return json({
+      success: true,
+      id: targetId,
+      message: 'บันทึกข้อมูลรอบการตัดสำเร็จ (อัปเดตเป็นตัวเลขล่าสุดเรียบร้อยแล้ว)',
+      isUpdated: true,
+    });
   }
 
   const result = await env.DB.prepare(`
@@ -181,7 +198,12 @@ async function saveHarvestCut(request, env, user) {
     notes
   ).run();
 
-  return json({ success: true, id: result.meta?.last_row_id, message: 'บันทึกข้อมูลรอบการตัดสำเร็จ' });
+  return json({
+    success: true,
+    id: result.meta?.last_row_id,
+    message: 'บันทึกข้อมูลรอบการตัดสำเร็จ',
+    isUpdated: false,
+  });
 }
 
 async function deleteHarvestCut(request, env, user) {

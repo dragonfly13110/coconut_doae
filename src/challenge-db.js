@@ -30,6 +30,85 @@ export const MONTH_NAMES = [
   'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.',
 ];
 
+// Official 2569 monthly production distribution percentages (%) from Western Region Agricultural Committee
+export const PROVINCE_MONTHLY_DISTRIBUTION_2569 = {
+  ratchaburi: [9.58, 9.31, 8.91, 7.14, 6.78, 5.16, 6.95, 7.80, 9.05, 9.29, 9.80, 10.23],
+  nakhon_pathom: [9.84, 9.46, 7.95, 6.74, 6.37, 5.38, 6.27, 9.54, 9.37, 9.28, 9.37, 10.43],
+  samut_sakhon: [9.54, 9.26, 7.99, 6.84, 6.73, 5.69, 6.37, 9.65, 9.73, 9.58, 9.37, 9.25],
+  samut_songkhram: [9.41, 8.61, 8.73, 7.18, 6.89, 5.77, 6.48, 8.99, 9.39, 9.45, 9.25, 9.85],
+  western_region: [9.59, 9.16, 8.40, 6.98, 6.69, 5.50, 6.52, 9.00, 9.39, 9.40, 9.45, 9.92],
+};
+
+/**
+ * Calculates baseline yield projection for a farmer plot using official Year 2569 statistics.
+ * Serves as the starting anchor/baseline before or alongside tree-by-tree sampling.
+ */
+export function calculatePlot2569BaselineForecast(plot, macroStats = macroBaseline) {
+  if (!plot) return null;
+
+  const records = Array.isArray(macroStats) && macroStats.length > 0 ? macroStats : macroBaseline;
+  const rawDistrict = (plot.district || '').replace(/^(อำเภอ|อ\.)\s*/, '').trim().toLowerCase();
+  const provCode = plot.province_code || 'ratchaburi';
+
+  // 1. Match district within the same province
+  let matched = null;
+  if (rawDistrict) {
+    matched = records.find((r) => {
+      if (r.province_code !== provCode || r.is_total === 1) return false;
+      const dName = (r.district_name || '').replace(/^(อำเภอ|อ\.)\s*/, '').trim().toLowerCase();
+      return dName === rawDistrict || dName.includes(rawDistrict) || rawDistrict.includes(dName);
+    });
+  }
+
+  // 2. Fallback to province total
+  if (!matched) {
+    matched = records.find((r) => r.province_code === provCode && r.is_total === 1);
+  }
+
+  // 3. Fallback to Western region overview
+  if (!matched) {
+    matched = records.find((r) => r.province_code === 'western_region') || {
+      province_name: 'ภาคตะวันตก',
+      district_name: 'ภาพรวมภาคตะวันตก',
+      yield_per_productive_rai: 2382,
+      is_total: 1,
+    };
+  }
+
+  const yieldPerRai = Number(matched.yield_per_productive_rai) || 2400;
+  const productiveArea = Number(plot.productive_area_rai || plot.total_area_rai || 0);
+  const treesPerRai = Number(plot.trees_per_rai) || 35;
+  const totalAnnualYield = Math.round(productiveArea * yieldPerRai);
+  const cutsPerYear = 18; // approx 17-18 cuts per year on 20-21 day cycles
+  const perCutCycleYield = Math.round(totalAnnualYield / cutsPerYear);
+  const yieldPerTree = treesPerRai > 0 ? Math.round((yieldPerRai / treesPerRai) * 10) / 10 : 0;
+
+  const dist = PROVINCE_MONTHLY_DISTRIBUTION_2569[provCode] || PROVINCE_MONTHLY_DISTRIBUTION_2569.western_region;
+  const monthlyDistribution = dist.map((pct, idx) => ({
+    month: idx + 1,
+    monthName: MONTH_NAMES[idx],
+    percent: pct,
+    estimatedFruits: Math.round(totalAnnualYield * (pct / 100)),
+  }));
+
+  return {
+    year: 2569,
+    districtName: matched.district_name,
+    provinceName: matched.province_name,
+    provinceCode: provCode,
+    isDistrictLevel: matched.is_total !== 1,
+    yieldPerRai,
+    productiveAreaRai: productiveArea,
+    treesPerRai,
+    totalAnnualYield,
+    cutsPerYear,
+    perCutCycleYield,
+    yieldPerTree,
+    monthlyDistribution,
+    source: 'สถิติคาดการณ์ทางการ ปี 2569 (Sheet 4)',
+  };
+}
+
 export async function ensureChallengeDb(db) {
   if (!db || typeof db.prepare !== 'function') return;
 
@@ -199,9 +278,21 @@ export async function ensureChallengeDb(db) {
     await db.prepare('UPDATE farmer_plots SET trees_per_rai = 40.0 WHERE id = 1 AND trees_per_rai = 35.0').run();
   } catch (e) {}
 
-  await db.prepare(`
-    CREATE INDEX IF NOT EXISTS idx_harvest_cuts_plot ON harvest_cuts(plot_id, cut_round);
-  `).run();
+  try {
+    await db.prepare(`
+      DELETE FROM harvest_cuts 
+      WHERE id NOT IN (
+        SELECT MAX(id) FROM harvest_cuts GROUP BY plot_id, cut_round
+      )
+    `).run();
+    await db.prepare(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_harvest_cuts_plot ON harvest_cuts(plot_id, cut_round);
+    `).run();
+  } catch (e) {
+    await db.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_harvest_cuts_plot ON harvest_cuts(plot_id, cut_round);
+    `).run();
+  }
 
   // 4. Macro district stats (Sheet 4)
   await db.prepare(`

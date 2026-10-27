@@ -71,28 +71,52 @@ export async function onRequest({ request, env }) {
       forecastsImported++;
     }
 
-    // 3. Import harvest cuts
+    // 3. Import harvest cuts (Last-Write-Wins: overwrite existing cut_round with latest values)
     for (const c of harvestCuts) {
       if (!c.plot_id) continue;
-      await env.DB.prepare(`
-        INSERT INTO harvest_cuts
-        (plot_id, province_code, farmer_name, cut_round, cut_date, total_yield, yield_per_rai, trees_per_rai, yield_per_tree, price_per_fruit, twin_fruits, damaged_fruits, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        Number(c.plot_id),
-        c.province_code || 'ratchaburi',
-        c.farmer_name || '',
-        Number(c.cut_round || 1),
-        c.cut_date || new Date().toISOString().slice(0, 10),
-        Number(c.total_yield || 0),
-        c.yield_per_rai ? Number(c.yield_per_rai) : null,
-        c.trees_per_rai ? Number(c.trees_per_rai) : null,
-        c.yield_per_tree ? Number(c.yield_per_tree) : null,
-        c.price_per_fruit ? Number(c.price_per_fruit) : null,
-        Number(c.twin_fruits || 0),
-        Number(c.damaged_fruits || 0),
-        c.notes || ''
-      ).run();
+      const cRound = Number(c.cut_round || 1);
+      const existingCut = await env.DB.prepare(
+        'SELECT id FROM harvest_cuts WHERE plot_id = ? AND cut_round = ?'
+      ).bind(Number(c.plot_id), cRound).first();
+
+      if (existingCut) {
+        await env.DB.prepare(`
+          UPDATE harvest_cuts
+          SET cut_date = ?, total_yield = ?, yield_per_rai = ?, trees_per_rai = ?, yield_per_tree = ?, price_per_fruit = ?, twin_fruits = ?, damaged_fruits = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).bind(
+          c.cut_date || new Date().toISOString().slice(0, 10),
+          Number(c.total_yield || 0),
+          c.yield_per_rai ? Number(c.yield_per_rai) : null,
+          c.trees_per_rai ? Number(c.trees_per_rai) : null,
+          c.yield_per_tree ? Number(c.yield_per_tree) : null,
+          c.price_per_fruit ? Number(c.price_per_fruit) : null,
+          Number(c.twin_fruits || 0),
+          Number(c.damaged_fruits || 0),
+          c.notes || '',
+          existingCut.id
+        ).run();
+      } else {
+        await env.DB.prepare(`
+          INSERT INTO harvest_cuts
+          (plot_id, province_code, farmer_name, cut_round, cut_date, total_yield, yield_per_rai, trees_per_rai, yield_per_tree, price_per_fruit, twin_fruits, damaged_fruits, notes)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          Number(c.plot_id),
+          c.province_code || 'ratchaburi',
+          c.farmer_name || '',
+          cRound,
+          c.cut_date || new Date().toISOString().slice(0, 10),
+          Number(c.total_yield || 0),
+          c.yield_per_rai ? Number(c.yield_per_rai) : null,
+          c.trees_per_rai ? Number(c.trees_per_rai) : null,
+          c.yield_per_tree ? Number(c.yield_per_tree) : null,
+          c.price_per_fruit ? Number(c.price_per_fruit) : null,
+          Number(c.twin_fruits || 0),
+          Number(c.damaged_fruits || 0),
+          c.notes || ''
+        ).run();
+      }
       cutsImported++;
     }
 

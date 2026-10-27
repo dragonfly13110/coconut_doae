@@ -1144,6 +1144,65 @@
           </div>
         </div>
 
+        <!-- Requirement 1: Official Year 2569 Baseline Projection Card -->
+        <div class="chal-baseline-box" id="chalBaselineBox" style="margin-bottom:16px; background:linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border:1px solid #86efac; border-radius:12px; padding:16px 20px; box-shadow:0 2px 6px rgba(16, 185, 129, 0.08);">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:24px;">🎯</span>
+              <div>
+                <h3 style="margin:0; font-size:16px; font-weight:800; color:#14532d; display:flex; align-items:center; gap:8px;">
+                  <span>การคาดการณ์ผลผลิตอิงฐานสถิติปี 2569 (Official 2569 Baseline)</span>
+                  <span class="badge" style="background:#16a34a; color:#ffffff; font-size:11px; padding:2px 8px; border-radius:12px;">ฐานตัวตั้งทางการ</span>
+                </h3>
+                <p style="margin:2px 0 0; font-size:12px; color:#166534;" id="chalBaselinePlotMeta">
+                  อ้างอิงสถิติผลผลิตทางการรายอำเภอ ปี 2569 ของกรมส่งเสริมการเกษตร (Sheet 4)
+                </p>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" id="chalBtnToggleMonthly2569" class="button ghost small" style="background:#ffffff; border-color:#86efac; color:#166534; font-weight:700;">
+                📅 ดูสัดส่วน 12 เดือน (ปี 69)
+              </button>
+              <button type="button" id="chalBtnApplyBaseline2569" class="button primary small" style="background:#16a34a; border-color:#15803d; font-weight:700;">
+                ⚡ นำฐานปี 69 ตั้งต้นตาราง 20 ทะลาย
+              </button>
+            </div>
+          </div>
+
+          <!-- 4 Grid KPI of Baseline 2569 -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:8px;">
+            <div style="background:#ffffff; padding:10px 14px; border-radius:8px; border:1px solid #bbf7d0;">
+              <span style="font-size:11px; color:#15803d; font-weight:600; display:block;">📍 เกณฑ์อำเภอ/จังหวัด ปี 69</span>
+              <strong id="chalBaselineYieldRaiVal" style="font-size:16px; color:#14532d;">- ผล/ไร่/ปี</strong>
+              <small id="chalBaselineDistrictName" style="display:block; font-size:10px; color:#4b5563; margin-top:2px;">-</small>
+            </div>
+            <div style="background:#ffffff; padding:10px 14px; border-radius:8px; border:1px solid #bbf7d0;">
+              <span style="font-size:11px; color:#15803d; font-weight:600; display:block;">🌾 ผลผลิตคาดการณ์ทั้งแปลง (ฐาน 69)</span>
+              <strong id="chalBaselineAnnualYieldVal" style="font-size:16px; color:#15803d;">- ผล/ปี</strong>
+              <small id="chalBaselinePlotArea" style="display:block; font-size:10px; color:#4b5563; margin-top:2px;">(คำนวณจากพื้นที่ให้ผล)</small>
+            </div>
+            <div style="background:#ffffff; padding:10px 14px; border-radius:8px; border:1px solid #bbf7d0;">
+              <span style="font-size:11px; color:#15803d; font-weight:600; display:block;">✂️ เฉลี่ยต่อรอบตัด (~18 รอบ/ปี)</span>
+              <strong id="chalBaselinePerCutVal" style="font-size:16px; color:#0f766e;">- ผล/รอบ</strong>
+              <small style="display:block; font-size:10px; color:#4b5563; margin-top:2px;">รอบละ 20-21 วัน</small>
+            </div>
+            <div style="background:#ffffff; padding:10px 14px; border-radius:8px; border:1px solid #bbf7d0;">
+              <span style="font-size:11px; color:#15803d; font-weight:600; display:block;">📊 เปรียบเทียบผลนับจริง vs ฐาน 69</span>
+              <strong id="chalBaselineComparisonBadge" style="font-size:15px; color:#4b5563;">รอผลการนับจริง</strong>
+              <small id="chalBaselineComparisonDiff" style="display:block; font-size:10px; color:#6b7280; margin-top:2px;">-</small>
+            </div>
+          </div>
+
+          <!-- Expandable 12-Month Baseline Breakdown -->
+          <div id="chalBaselineMonthlyCollapse" style="display:none; margin-top:12px; background:#ffffff; border-radius:10px; border:1px solid #bbf7d0; padding:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <strong style="font-size:13px; color:#166534;">📊 ร้อยละและการกระจายผลผลิตรายเดือน ปี 2569 (ตามสัดส่วนทางการภาคตะวันตก):</strong>
+              <span style="font-size:11px; color:#6b7280;">รวม 100% (12 เดือน)</span>
+            </div>
+            <div id="chalBaselineMonthlyGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(75px, 1fr)); gap:6px;"></div>
+          </div>
+        </div>
+
         <!-- 21-Day Cycle Control & Helper Bar -->
         <div class="cycle-helper-bar">
           <div class="cycle-helper-left">
@@ -1405,6 +1464,12 @@
               <span id="chalCutBannerYieldTree" class="text-primary" style="display:inline-flex; align-items:center; gap:4px;">🥥 - ผล/ต้น</span>
               <span id="chalCutBannerRev" style="color:#b45309; display:inline-flex; align-items:center; gap:4px;">💰 - บาท</span>
             </div>
+          </div>
+
+          <!-- Notice: Overwrite / Last-Write-Wins -->
+          <div style="margin-top:10px; font-size:12px; color:#1e40af; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:8px 12px; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:16px;">💡</span>
+            <span><strong>หมายเหตุการกรอกรอบซ้ำ:</strong> สามารถกรอกข้อมูลรอบการตัดเดิมซ้ำได้ตลอดเวลา โดยระบบจะยึดข้อมูลที่กรอกล่าสุดเป็นเลขสุดท้ายให้อัตโนมัติ (Update ทับข้อมูลเดิม ไม่เกิดข้อมูลซ้ำซ้อน)</span>
           </div>
 
           <div style="display:flex; justify-content:flex-end; margin-top:16px;">

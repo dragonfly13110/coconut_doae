@@ -2,7 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateChallengeExcelXml } from '../src/challenge-export.js';
 import macroBaseline from '../src/macro-baseline.json' with { type: 'json' };
-import { CHALLENGE_PROVINCES, SAMPLE_POINTS, SAMPLE_TREES, MONTH_NAMES, computePlotBoard2D } from '../src/challenge-db.js';
+import {
+  CHALLENGE_PROVINCES,
+  SAMPLE_POINTS,
+  SAMPLE_TREES,
+  MONTH_NAMES,
+  computePlotBoard2D,
+  calculatePlot2569BaselineForecast,
+  PROVINCE_MONTHLY_DISTRIBUTION_2569,
+} from '../src/challenge-db.js';
 
 test('macro baseline contains 28 records for Western region and 4 provinces', () => {
   assert.equal(macroBaseline.length, 28);
@@ -418,6 +426,145 @@ test('Sheet 3 (harvest.js): saves harvest cut with trees_per_rai and auto-calcul
   assert.equal(insertedCut[7], 40); // trees_per_rai
   assert.equal(insertedCut[8], 7); // yield_per_tree = 280 / 40 = 7
   assert.equal(insertedCut[9], 18.5); // price_per_fruit
+});
+
+test('calculatePlot2569BaselineForecast accurately projects annual, per-cut, and 12-month distribution using Year 2569 baseline', () => {
+  // Plot in Damnoen Saduak, Ratchaburi
+  const plot = {
+    id: 1,
+    province_code: 'ratchaburi',
+    district: 'อำเภอดำเนินสะดวก',
+    productive_area_rai: 10,
+    trees_per_rai: 40,
+  };
+
+  const baseline = calculatePlot2569BaselineForecast(plot, macroBaseline);
+  assert.ok(baseline);
+  assert.equal(baseline.year, 2569);
+  assert.equal(baseline.districtName, 'ดำเนินสะดวก');
+  assert.equal(baseline.yieldPerRai, 3014); // Official 2569 yield for Damnoen Saduak
+  assert.equal(baseline.totalAnnualYield, 30140); // 10 rai * 3014
+  assert.equal(baseline.cutsPerYear, 18);
+  assert.equal(baseline.perCutCycleYield, 1674); // Math.round(30140 / 18)
+  assert.equal(baseline.yieldPerTree, 75.4); // 3014 / 40 = 75.35 -> 75.4
+
+  // Check 12-month distribution
+  assert.equal(baseline.monthlyDistribution.length, 12);
+  const totalPct = baseline.monthlyDistribution.reduce((acc, m) => acc + m.percent, 0);
+  assert.equal(Math.round(totalPct), 100);
+
+  // Month 1 (Jan) for Ratchaburi is 9.58%
+  assert.equal(baseline.monthlyDistribution[0].monthName, 'ม.ค.');
+  assert.equal(baseline.monthlyDistribution[0].percent, 9.58);
+  assert.equal(baseline.monthlyDistribution[0].estimatedFruits, Math.round(30140 * 0.0958)); // 2887
+
+  // Month 6 (June - low season) for Ratchaburi is 5.16%
+  assert.equal(baseline.monthlyDistribution[5].monthName, 'มิ.ย.');
+  assert.equal(baseline.monthlyDistribution[5].percent, 5.16);
+  assert.equal(baseline.monthlyDistribution[5].estimatedFruits, Math.round(30140 * 0.0516)); // 1555
+
+  // Fallback test: plot in unknown district falls back to province total
+  const unknownPlot = {
+    id: 2,
+    province_code: 'ratchaburi',
+    district: 'อำเภอที่ไม่มีในฐาน',
+    productive_area_rai: 5,
+    trees_per_rai: 35,
+  };
+  const fallbackBaseline = calculatePlot2569BaselineForecast(unknownPlot, macroBaseline);
+  assert.ok(fallbackBaseline);
+  assert.equal(fallbackBaseline.districtName, 'รวมทั้งจังหวัดราชบุรี');
+  assert.equal(fallbackBaseline.yieldPerRai, 2497); // Province total yield for Ratchaburi
+  assert.equal(fallbackBaseline.totalAnnualYield, 12485); // 5 rai * 2497
+});
+
+test('Sheet 3 (harvest.js): Last-Write-Wins updates existing cut when round is submitted repeatedly', async () => {
+  const { onRequest: onHarvestRequest } = await import('../functions/api/challenge/harvest.js');
+
+  let updatedSql = null;
+  let updatedParams = null;
+
+  const mockDb = {
+    prepare(sql) {
+      return {
+        sql,
+        params: [],
+        bind(...params) {
+          this.params = params;
+          return this;
+        },
+        async run() {
+          if (sql.includes('UPDATE harvest_cuts')) {
+            updatedSql = sql;
+            updatedParams = this.params;
+            return { success: true };
+          }
+          return { success: true };
+        },
+        async first() {
+          const s = sql.replace(/\s+/g, ' ');
+          if (s.includes('FROM sessions') || s.includes('FROM users')) {
+            return { id: 1, province_code: 'ratchaburi', province_label: 'ราชบุรี', role: 'province' };
+          }
+          if (s.includes('FROM farmer_plots')) {
+            return {
+              id: 1,
+              province_code: 'ratchaburi',
+              full_name: 'นาย สมชาย มะพร้าวทอง',
+              productive_area_rai: 10,
+              trees_per_rai: 40,
+            };
+          }
+          // Existing cut for plot_id = 1 AND cut_round = 2
+          if (s.includes('SELECT id FROM harvest_cuts WHERE plot_id = ? AND cut_round = ?')) {
+            return { id: 42 };
+          }
+          return null;
+        },
+        async all() {
+          return { results: [] };
+        },
+      };
+    },
+  };
+
+  // User submits round 2 again with updated/latest numbers (3200 fruits instead of 2800)
+  const payload = {
+    plot_id: 1,
+    cut_round: 2,
+    cut_date: '2026-05-18',
+    total_yield: 3200,
+    trees_per_rai: 40,
+    price_per_fruit: 19.0,
+    twin_fruits: 30,
+    damaged_fruits: 10,
+    notes: 'ตัวเลขนับแก้รอบล่าสุด',
+  };
+
+  const req = new Request('https://coconut-doae.internal/api/challenge/harvest', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      cookie: 'sid=valid-session-token',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const res = await onHarvestRequest({ request: req, env: { DB: mockDb } });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.equal(data.success, true);
+  assert.equal(data.id, 42); // matched existing cut id
+  assert.equal(data.isUpdated, true); // Overwrite / Last-Write-Wins confirmed
+
+  assert.ok(updatedSql.includes('UPDATE harvest_cuts'));
+  // bind(cutRound, cutDate, totalYield, yieldPerRai, treesPerRai, yieldPerTree, price, twin, damaged, notes, targetId)
+  assert.equal(updatedParams[0], 2); // cut_round
+  assert.equal(updatedParams[2], 3200); // latest total_yield
+  assert.equal(updatedParams[3], 320); // yield_per_rai = 3200 / 10 = 320
+  assert.equal(updatedParams[5], 8); // yield_per_tree = 320 / 40 = 8
+  assert.equal(updatedParams[6], 19.0); // latest price
+  assert.equal(updatedParams[10], 42); // updated existing id
 });
 
 

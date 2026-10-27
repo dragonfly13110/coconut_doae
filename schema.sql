@@ -165,7 +165,7 @@ CREATE TABLE IF NOT EXISTS harvest_cuts (
   FOREIGN KEY (plot_id) REFERENCES farmer_plots(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_harvest_cuts_plot ON harvest_cuts(plot_id, cut_round);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_harvest_cuts_plot ON harvest_cuts(plot_id, cut_round);
 
 -- 4. Macro district stats (Sheet 4)
 CREATE TABLE IF NOT EXISTS macro_district_stats (

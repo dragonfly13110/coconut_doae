@@ -1,5 +1,5 @@
 import { authErrorResponse, json, methodNotAllowed, readJson, requireUser } from '../../../src/pages-api.js';
-import { ensureChallengeDb, SAMPLE_POINTS, SAMPLE_TREES } from '../../../src/challenge-db.js';
+import { ensureChallengeDb, SAMPLE_POINTS, SAMPLE_TREES, calculatePlot2569BaselineForecast } from '../../../src/challenge-db.js';
 
 export async function onRequest({ request, env }) {
   try {
@@ -24,7 +24,7 @@ async function getForecast(request, env, user) {
     return json({ error: 'กรุณาระบุรหัสแปลง (plot_id)' }, { status: 400 });
   }
 
-  const plot = await env.DB.prepare('SELECT id, province_code, plot_label, full_name, productive_area_rai, trees_per_rai FROM farmer_plots WHERE id = ?').bind(plotId).first();
+  const plot = await env.DB.prepare('SELECT id, province_code, province_name, district, plot_label, full_name, productive_area_rai, total_area_rai, trees_per_rai FROM farmer_plots WHERE id = ?').bind(plotId).first();
   if (!plot) {
     return json({ error: 'ไม่พบข้อมูลแปลง' }, { status: 404 });
   }
@@ -132,6 +132,10 @@ async function getForecast(request, env, user) {
   const avgFruitPerTree = activeTreesCount > 0 ? (grandTotalFruits / activeTreesCount) : 0;
   const estimatedPlotYieldPerYear = Math.round(avgFruitPerTree * (plot.trees_per_rai || 35) * (plot.productive_area_rai || 1));
 
+  // Compute official Year 2569 baseline projection
+  const { results: macroRows } = await env.DB.prepare('SELECT * FROM macro_district_stats').all();
+  const baseline2569 = calculatePlot2569BaselineForecast(plot, macroRows);
+
   return json({
     plot,
     pointLabel,
@@ -142,6 +146,7 @@ async function getForecast(request, env, user) {
     monthlyTotals,
     treeTotal,
     pointsSummary,
+    baseline2569,
     plotSummary: {
       plotMonthlyTotals,
       grandTotalFruits,

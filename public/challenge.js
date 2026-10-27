@@ -111,6 +111,11 @@ function bindChalEvents() {
   cel('chalBtnSaveForecast')?.addEventListener('click', onSaveForecastMatrix);
   cel('chalBtnClearForecast')?.addEventListener('click', onClearForecastMatrix);
   cel('chalBtnAutoProject')?.addEventListener('click', () => window.chalAutoProject21Days());
+  cel('chalBtnToggleMonthly2569')?.addEventListener('click', () => {
+    const col = cel('chalBaselineMonthlyCollapse');
+    if (col) col.style.display = col.style.display === 'none' ? 'block' : 'none';
+  });
+  cel('chalBtnApplyBaseline2569')?.addEventListener('click', () => window.chalApplyBaseline2569ToTimeline());
   cel('chalCycleStartDate')?.addEventListener('change', (e) => {
     chalState.cycleStartDate = e.target.value;
     if (chalState.forecastData) renderMatrixGrid(chalState.forecastData);
@@ -1281,9 +1286,86 @@ function recalculateAllForecastSums() {
     chalState.forecastData.monthlyTotals = monthlyTotals;
   }
 
+  // Live comparison against 2569 Baseline
+  const b = chalState.forecastData?.baseline2569;
+  const badgeEl = cel('chalBaselineComparisonBadge');
+  const diffEl = cel('chalBaselineComparisonDiff');
+  if (b && badgeEl) {
+    if (estPlotTotal > 0 && b.totalAnnualYield > 0) {
+      const diff = estPlotTotal - b.totalAnnualYield;
+      const diffPct = Math.round((diff / b.totalAnnualYield) * 100);
+      const isAbove = diffPct >= 0;
+      badgeEl.textContent = isAbove ? `+${diffPct}% เหนือเกณฑ์ 69` : `${diffPct}% ต่ำกว่าเกณฑ์ 69`;
+      badgeEl.style.color = isAbove ? '#16a34a' : '#d97706';
+      if (diffEl) {
+        diffEl.textContent = `ผลนับจริง: ${estPlotTotal.toLocaleString()} vs ฐาน: ${b.totalAnnualYield.toLocaleString()} (ต่าง ${Math.abs(diff).toLocaleString()} ผล)`;
+      }
+    } else {
+      badgeEl.textContent = 'รอผลการนับจริง';
+      badgeEl.style.color = '#6b7280';
+      if (diffEl) diffEl.textContent = '(ใช้ฐาน 69 เป็นตัวเลขประมาณการล่วงหน้า)';
+    }
+  }
+
   updateLiveMonthlyChart();
   updateTimelineTableCalculations();
 }
+
+window.chalApplyBaseline2569ToTimeline = () => {
+  const b = chalState.forecastData?.baseline2569;
+  if (!b) {
+    alert('ไม่พบข้อมูลฐานสถิติปี 2569 ของแปลงนี้');
+    return;
+  }
+
+  const startDateStr = cel('chalCycleStartDate')?.value || DEFAULT_CYCLE_START;
+  const interval = Number(cel('chalCycleInterval')?.value) || 21;
+  const schedule = get21DaySchedule(startDateStr, interval, 20);
+
+  // Expected fruits per tree across ~18 bunches per year based on 2569 official yield
+  const annualTreeYield = b.yieldPerTree > 0 ? b.yieldPerTree : (b.totalAnnualYield / Math.max(1, (b.productiveAreaRai * (b.treesPerRai || 35))));
+  const baseFruitPerBunch = Math.max(5, Math.round(annualTreeYield / 18));
+
+  // Seasonality multiplier map from official 2569 monthly percentages
+  const monthMap = {};
+  if (Array.isArray(b.monthlyDistribution)) {
+    b.monthlyDistribution.forEach((m) => {
+      monthMap[m.month] = m.percent;
+    });
+  }
+
+  // Clear existing matrix inputs
+  document.querySelectorAll('.matrix-input').forEach((inp) => {
+    inp.value = '';
+    inp.classList.remove('has-val');
+  });
+
+  if (!chalState.forecastData) chalState.forecastData = {};
+  chalState.forecastData.matrixMap = {};
+
+  // Distribute based on 2569 seasonality
+  for (const s of schedule) {
+    const monthPct = monthMap[s.month] || (100 / 12);
+    const multiplier = monthPct / (100 / 12);
+    const bunchFruits = Math.max(3, Math.round(baseFruitPerBunch * multiplier));
+
+    chalState.forecastData.matrixMap[`${s.bunch_no}_${s.month}`] = bunchFruits;
+    const inp = document.querySelector(`.matrix-input[data-bunch="${s.bunch_no}"][data-month="${s.month}"]`);
+    if (inp) {
+      inp.value = bunchFruits;
+      inp.classList.add('has-val');
+    }
+  }
+
+  recalculateAllForecastSums();
+  if (chalState.forecastViewMode === 'timeline') {
+    renderTimelineSchedule(chalState.forecastData, schedule);
+  } else {
+    renderMatrixGrid(chalState.forecastData);
+  }
+
+  alert(`⚡ นำฐานสถิติปี 2569 เป็นตัวตั้งต้นสำเร็จ!\n\n• อ้างอิงเกณฑ์ทางการ อ.${b.districtName}: ${b.yieldPerRai.toLocaleString()} ผล/ไร่/ปี\n• เฉลี่ยต้นนี้ประมาณ ${baseFruitPerBunch} ผล/ทะลาย (กระจายตามสัดส่วนฤดูกาลจริง 12 เดือน)\n• สามารถปรับแก้ตัวเลขตามการนับจริงหน้างาน แล้วกด "💾 บันทึกข้อมูลคาดการณ์" ได้เลย`);
+};
 
 window.chalAutoProject21Days = () => {
   const startDateStr = cel('chalCycleStartDate')?.value || DEFAULT_CYCLE_START;
@@ -1381,6 +1463,81 @@ function renderForecastKPIs(data) {
   }
 
   updateLiveMonthlyChart();
+  renderBaseline2569Section(data);
+}
+
+function renderBaseline2569Section(data) {
+  const b = data?.baseline2569;
+  const box = cel('chalBaselineBox');
+  if (!box) return;
+
+  if (!b) {
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = '';
+
+  const metaEl = cel('chalBaselinePlotMeta');
+  if (metaEl) {
+    metaEl.textContent = `อ้างอิงสถิติผลผลิตทางการรายอำเภอ ปี 2569 ของกรมส่งเสริมการเกษตร (${b.districtName || 'อำเภอ'}, ${b.provinceName || 'จังหวัด'})`;
+  }
+
+  const yieldRaiEl = cel('chalBaselineYieldRaiVal');
+  if (yieldRaiEl) yieldRaiEl.textContent = `${(b.yieldPerRai || 0).toLocaleString()} ผล/ไร่/ปี`;
+
+  const dNameEl = cel('chalBaselineDistrictName');
+  if (dNameEl) {
+    dNameEl.textContent = b.isDistrictLevel ? `เกณฑ์ทางการ อ.${b.districtName}` : `เกณฑ์ทางการ ${b.provinceName}`;
+  }
+
+  const annualEl = cel('chalBaselineAnnualYieldVal');
+  if (annualEl) annualEl.textContent = `${(b.totalAnnualYield || 0).toLocaleString()} ผล/ปี`;
+
+  const plotAreaEl = cel('chalBaselinePlotArea');
+  if (plotAreaEl) {
+    plotAreaEl.textContent = `(คำนวณจากพื้นที่ให้ผล ${(b.productiveAreaRai || 0).toLocaleString()} ไร่)`;
+  }
+
+  const perCutEl = cel('chalBaselinePerCutVal');
+  if (perCutEl) perCutEl.textContent = `${(b.perCutCycleYield || 0).toLocaleString()} ผล/รอบ`;
+
+  // Compare actual counted estimate with 2569 baseline
+  const sampleYield = data?.plotSummary?.estimatedPlotYieldPerYear || 0;
+  const badgeEl = cel('chalBaselineComparisonBadge');
+  const diffEl = cel('chalBaselineComparisonDiff');
+
+  if (sampleYield > 0 && b.totalAnnualYield > 0) {
+    const diff = sampleYield - b.totalAnnualYield;
+    const diffPct = Math.round((diff / b.totalAnnualYield) * 100);
+    const isAbove = diffPct >= 0;
+    if (badgeEl) {
+      badgeEl.textContent = isAbove ? `+${diffPct}% เหนือเกณฑ์ 69` : `${diffPct}% ต่ำกว่าเกณฑ์ 69`;
+      badgeEl.style.color = isAbove ? '#16a34a' : '#d97706';
+    }
+    if (diffEl) {
+      diffEl.textContent = `ผลนับจริง: ${sampleYield.toLocaleString()} vs ฐาน: ${b.totalAnnualYield.toLocaleString()} (ต่าง ${Math.abs(diff).toLocaleString()} ผล)`;
+    }
+  } else {
+    if (badgeEl) {
+      badgeEl.textContent = 'รอผลการนับจริง';
+      badgeEl.style.color = '#6b7280';
+    }
+    if (diffEl) {
+      diffEl.textContent = '(ใช้ฐาน 69 เป็นตัวเลขประมาณการล่วงหน้า)';
+    }
+  }
+
+  // Render 12 months grid
+  const gridEl = cel('chalBaselineMonthlyGrid');
+  if (gridEl && Array.isArray(b.monthlyDistribution)) {
+    gridEl.innerHTML = b.monthlyDistribution.map((m) => `
+      <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:6px; text-align:center;">
+        <span style="font-size:11px; font-weight:700; color:#14532d; display:block;">${escapeHtml(m.monthName)}</span>
+        <strong style="font-size:12px; color:#16a34a; display:block;">${m.percent}%</strong>
+        <small style="font-size:10px; color:#4b5563;">${m.estimatedFruits.toLocaleString()} ผล</small>
+      </div>
+    `).join('');
+  }
 }
 
 async function onSaveForecastMatrix() {
@@ -1690,13 +1847,45 @@ function renderHarvestTable(cuts) {
         <td class="text-right text-warning">${c.twin_fruits ? Number(c.twin_fruits).toLocaleString() : '0'}</td>
         <td class="text-right text-danger">${c.damaged_fruits ? Number(c.damaged_fruits).toLocaleString() : '0'}</td>
         <td class="text-right font-bold">${estRev}</td>
-        <td class="text-center">
+        <td class="text-center" style="white-space:nowrap;">
+          <button class="btn-icon text-primary" title="แก้ไข/ดูรอบนี้" onclick="window.chalEditHarvest(${c.id})">✏️</button>
           <button class="btn-icon text-danger" title="ลบรายการนี้" onclick="window.chalDeleteHarvest(${c.id})">🗑️</button>
         </td>
       </tr>
     `;
   }).join('');
 }
+
+window.chalEditHarvest = (id) => {
+  const cuts = chalState.harvestData?.cuts || [];
+  const c = cuts.find((item) => item.id === Number(id));
+  if (!c) return;
+
+  if (cel('chalHarvestPlotSelect')) cel('chalHarvestPlotSelect').value = c.plot_id;
+  if (cel('chalCutRound')) cel('chalCutRound').value = c.cut_round;
+  if (cel('chalCutDate')) cel('chalCutDate').value = c.cut_date || '';
+  if (cel('chalCutTotalYield')) cel('chalCutTotalYield').value = c.total_yield || 0;
+  if (cel('chalCutTreesPerRai')) cel('chalCutTreesPerRai').value = c.trees_per_rai || '';
+  if (cel('chalCutYieldPerRai')) {
+    cel('chalCutYieldPerRai').value = c.yield_per_rai || '';
+    cel('chalCutYieldPerRai').dataset.manual = 'true';
+  }
+  if (cel('chalCutYieldPerTree')) {
+    cel('chalCutYieldPerTree').value = c.yield_per_tree || '';
+    cel('chalCutYieldPerTree').dataset.manual = 'true';
+  }
+  if (cel('chalCutPrice')) cel('chalCutPrice').value = c.price_per_fruit || '';
+  if (cel('chalCutTwin')) cel('chalCutTwin').value = c.twin_fruits || 0;
+  if (cel('chalCutDamaged')) cel('chalCutDamaged').value = c.damaged_fruits || 0;
+  if (cel('chalCutNotes')) cel('chalCutNotes').value = c.notes || '';
+
+  recalcHarvestYields();
+  const bannerText = cel('chalCutCalcBannerText');
+  if (bannerText) {
+    bannerText.innerHTML = `✏️ <strong>กำลังแก้ไขรอบที่ ${c.cut_round}</strong> (หากกดบันทึก ข้อมูลใหม่จะทับข้อมูลเดิมทันที)`;
+  }
+  cel('chalHarvestForm')?.scrollIntoView({ behavior: 'smooth' });
+};
 
 async function onSaveHarvestCut(e) {
   e.preventDefault();
@@ -1721,7 +1910,7 @@ async function onSaveHarvestCut(e) {
   };
 
   try {
-    await chalApi('/api/challenge/harvest', {
+    const res = await chalApi('/api/challenge/harvest', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -1732,7 +1921,10 @@ async function onSaveHarvestCut(e) {
     cel('chalCutRound').value = Number(payload.cut_round) + 1;
     cel('chalCutDate').value = new Date().toISOString().slice(0, 10);
     updateHarvestPlotInfo();
-    alert('บันทึกข้อมูลรอบการตัดสำเร็จ');
+    const successMsg = res.isUpdated 
+      ? `✅ บันทึกทับรอบที่ ${payload.cut_round} สำเร็จ!\n(ยึดตัวเลขที่กรอกล่าสุดเป็นข้อมูลสุดท้ายเรียบร้อยแล้ว)`
+      : `✅ บันทึกข้อมูลรอบที่ ${payload.cut_round} สำเร็จ!`;
+    alert(successMsg);
     loadHarvestCuts();
   } catch (err) {
     alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message);
