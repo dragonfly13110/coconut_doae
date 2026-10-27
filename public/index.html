@@ -19,34 +19,33 @@
         <p>ติดตามคุณภาพมะพร้าวน้ำหอม 4 จังหวัด 6 รอบการเก็บข้อมูล</p>
       </div>
     </div>
-    <div class="session-block">
-      <span id="userLine">กำลังตรวจสอบสถานะ...</span>
-      <button id="changePinBtn" class="button ghost small" type="button" hidden>🔑 เปลี่ยน PIN</button>
-      <button id="logoutBtn" class="button ghost small" hidden>ออกจากระบบ</button>
-    </div>
-  </header>
-  <div class="mode-navigation-bar" id="modeNavBar" hidden>
-    <div class="mode-navigation-inner">
-      <span class="mode-switch-title">เลือกโหมดการทำงาน:</span>
-      <div class="mode-switcher-pill">
-        <button type="button" id="btnModeQuality" class="mode-btn active" data-mode="quality">
-          <span class="mode-icon">📊</span>
-          <span class="mode-info">
-            <span class="mode-name">โหมดติดตามคุณภาพ 6 รอบ</span>
-            <span class="mode-desc">ประเมินคุณภาพ & ขนาด 4 เกรด (เดิม)</span>
-          </span>
-        </button>
-        <button type="button" id="btnModeChallenge" class="mode-btn" data-mode="challenge">
-          <span class="mode-icon">🌴</span>
-          <span class="mode-info">
-            <span class="mode-name">โหมดข้อมูลแปลงและการคาดการณ์ผลผลิต</span>
-            <span class="mode-desc">ชุดข้อมูล Challenge (4 แบบ / สถิติ 2569)</span>
-          </span>
-          <span class="badge-new-mode">โหมดใหม่</span>
-        </button>
+    <div class="header-right-group">
+      <div class="mode-navigation-bar" id="modeNavBar" hidden>
+        <div class="mode-switcher-pill">
+          <button type="button" id="btnModeQuality" class="mode-btn active" data-mode="quality">
+            <span class="mode-icon">📊</span>
+            <span class="mode-info">
+              <span class="mode-name">โหมดติดตามคุณภาพ 6 รอบ</span>
+              <span class="mode-desc">ประเมินคุณภาพ & ขนาด 4 เกรด (เดิม)</span>
+            </span>
+          </button>
+          <button type="button" id="btnModeChallenge" class="mode-btn" data-mode="challenge">
+            <span class="mode-icon">🌴</span>
+            <span class="mode-info">
+              <span class="mode-name">โหมดแปลงและคาดการณ์</span>
+              <span class="mode-desc">Challenge / สถิติ 2569</span>
+            </span>
+            <span class="badge-new-mode">โหมดใหม่</span>
+          </button>
+        </div>
+      </div>
+      <div class="session-block">
+        <span id="userLine">กำลังตรวจสอบสถานะ...</span>
+        <button id="changePinBtn" class="button ghost small" type="button" hidden>🔑 เปลี่ยน PIN</button>
+        <button id="logoutBtn" class="button ghost small" hidden>ออกจากระบบ</button>
       </div>
     </div>
-  </div>
+  </header>
 
 
   <main class="shell-main">
@@ -1107,7 +1106,7 @@
 
         <!-- 5 Trees Selector per Point -->
         <div style="margin-bottom:6px; display:flex; align-items:center; gap:8px;">
-          <span style="font-size:13px; font-weight:700; color:var(--ink);" id="chalTreeBarLabel">🌴 เลือกต้นตัวอย่างในจุดที่เลือก (5 ต้น: C กลาง, L ซ้าย, R ขวา, F หน้า, B หลัง):</span>
+          <span style="font-size:13px; font-weight:700; color:var(--ink);" id="chalTreeBarLabel">🌴 เลือกต้นตัวอย่างในจุดที่เลือก (5 ต้น):</span>
         </div>
         <div class="tree-tabs-bar" id="chalTreeTabs"></div>
 
@@ -1172,9 +1171,11 @@
           <!-- 4 Grid KPI of Baseline 2569 -->
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:8px;">
             <div style="background:#ffffff; padding:10px 14px; border-radius:8px; border:1px solid #bbf7d0;">
-              <span style="font-size:11px; color:#15803d; font-weight:600; display:block;">📍 เกณฑ์อำเภอ/จังหวัด ปี 69</span>
+              <span style="font-size:11px; color:#15803d; font-weight:700; display:block;">📍 เกณฑ์รายอำเภอ ปี 69</span>
               <strong id="chalBaselineYieldRaiVal" style="font-size:16px; color:#14532d;">- ผล/ไร่/ปี</strong>
-              <small id="chalBaselineDistrictName" style="display:block; font-size:10px; color:#4b5563; margin-top:2px;">-</small>
+              <div style="margin-top:4px;">
+                <select id="chalBaselineDistrictSelect" style="width:100%; font-size:11px; padding:3px 6px; border-radius:4px; border:1px solid #86efac; color:#166534; font-weight:700; background:#f0fdf4; cursor:pointer;" title="เปลี่ยนอำเภอเพื่อดูเกณฑ์ทางการของอำเภอนั้นๆ"></select>
+              </div>
             </div>
             <div style="background:#ffffff; padding:10px 14px; border-radius:8px; border:1px solid #bbf7d0;">
               <span style="font-size:11px; color:#15803d; font-weight:600; display:block;">🌾 ผลผลิตคาดการณ์ทั้งแปลง (ฐาน 69)</span>
@@ -1251,11 +1252,6 @@
           <div class="matrix-table-wrap" id="chalMatrixTableWrap">
             <p class="text-center py-4 text-muted">กำลังสร้างตารางเมทริกซ์ 20 ทะลาย...</p>
           </div>
-          <!-- Monthly Forecast Distribution Bar Chart -->
-          <div style="margin-top:20px;">
-            <h4 style="font-size:14px; margin-bottom:8px; color:var(--primary-strong);">📊 แนวโน้มผลผลิตคาดการณ์รายเดือน (ลูก/เดือน):</h4>
-            <div class="monthly-bar-chart" id="chalMonthlyBarChart"></div>
-          </div>
         </div>
 
         <!-- View 2: 21-Day Timeline Schedule (Table View) -->
@@ -1297,7 +1293,7 @@
               <ol>
                 <li>เลือกแปลงเกษตรกรที่ต้องการประเมินผลผลิต</li>
                 <li>คลิกเลือก <strong>จุดสำรวจ (📍 จุดที่ 1 ถึง 7)</strong> ให้ครบตามผังแปลง</li>
-                <li>เลือก <strong>ต้นตัวอย่าง (5 ต้น: C กลาง, L ซ้าย, R ขวา, F หน้า, B หลัง)</strong></li>
+                <li>เลือก <strong>ต้นตัวอย่าง (ต้นที่ 1 ถึง 5)</strong></li>
                 <li>กรอกจำนวนลูกต่อทะลายในตาราง 12 เดือน หรือกด <strong>"⚡ จัดรอบตัด 21 วันอัตโนมัติ"</strong></li>
                 <li>ตรวจสอบยอดผลผลิตรวม และกดปุ่ม <strong>"💾 บันทึกข้อมูลคาดการณ์"</strong></li>
               </ol>
@@ -1337,7 +1333,28 @@
             </label>
             <label>
               รอบการตัดที่:
-              <input id="chalCutRound" type="number" min="1" step="1" value="1" required style="padding:8px;" />
+              <select id="chalCutRound" required style="padding:8px;">
+                <option value="1">รอบที่ 1</option>
+                <option value="2">รอบที่ 2</option>
+                <option value="3">รอบที่ 3</option>
+                <option value="4">รอบที่ 4</option>
+                <option value="5">รอบที่ 5</option>
+                <option value="6">รอบที่ 6</option>
+                <option value="7">รอบที่ 7</option>
+                <option value="8">รอบที่ 8</option>
+                <option value="9">รอบที่ 9</option>
+                <option value="10">รอบที่ 10</option>
+                <option value="11">รอบที่ 11</option>
+                <option value="12">รอบที่ 12</option>
+                <option value="13">รอบที่ 13</option>
+                <option value="14">รอบที่ 14</option>
+                <option value="15">รอบที่ 15</option>
+                <option value="16">รอบที่ 16</option>
+                <option value="17">รอบที่ 17</option>
+                <option value="18">รอบที่ 18</option>
+                <option value="19">รอบที่ 19</option>
+                <option value="20">รอบที่ 20</option>
+              </select>
             </label>
             <label>
               วัน/เดือนที่ตัด:

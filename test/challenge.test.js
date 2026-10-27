@@ -476,6 +476,17 @@ test('calculatePlot2569BaselineForecast accurately projects annual, per-cut, and
   assert.equal(fallbackBaseline.districtName, 'รวมทั้งจังหวัดราชบุรี');
   assert.equal(fallbackBaseline.yieldPerRai, 2497); // Province total yield for Ratchaburi
   assert.equal(fallbackBaseline.totalAnnualYield, 12485); // 5 rai * 2497
+
+  // District switching test: user chooses 'บางแพ' explicitly
+  const bangPhaeBaseline = calculatePlot2569BaselineForecast(plot, macroBaseline, 'บางแพ');
+  assert.ok(bangPhaeBaseline);
+  assert.equal(bangPhaeBaseline.districtName, 'บางแพ');
+  assert.equal(bangPhaeBaseline.yieldPerRai, 2581); // Bang Phae official yield
+  assert.equal(bangPhaeBaseline.totalAnnualYield, 25810); // 10 rai * 2581
+  assert.equal(bangPhaeBaseline.isDistrictLevel, true);
+  assert.equal(bangPhaeBaseline.availableDistricts.length, 10);
+  assert.ok(bangPhaeBaseline.availableDistricts.some(d => d.districtName === 'ดำเนินสะดวก' && d.yieldPerRai === 3014));
+  assert.ok(bangPhaeBaseline.availableDistricts.some(d => d.districtName === 'บางแพ' && d.yieldPerRai === 2581));
 });
 
 test('Sheet 3 (harvest.js): Last-Write-Wins updates existing cut when round is submitted repeatedly', async () => {
@@ -565,6 +576,152 @@ test('Sheet 3 (harvest.js): Last-Write-Wins updates existing cut when round is s
   assert.equal(updatedParams[5], 8); // yield_per_tree = 320 / 40 = 8
   assert.equal(updatedParams[6], 19.0); // latest price
   assert.equal(updatedParams[10], 42); // updated existing id
+});
+
+test('Sheet 2 (forecast.js): saveForecast cleanly replaces previous bunch counts when bunches are updated or damaged without accumulating', async () => {
+  const { onRequest: onForecastRequest } = await import('../functions/api/challenge/forecast.js');
+
+  const storedRows = [];
+  let deletedWhere = null;
+
+  const mockDb = {
+    prepare(sql) {
+      return {
+        sql,
+        params: [],
+        bind(...params) {
+          this.params = params;
+          return this;
+        },
+        async run() {
+          if (sql.includes('DELETE FROM yield_forecasts')) {
+            deletedWhere = this.params;
+            storedRows.length = 0; // cleared
+            return { success: true };
+          }
+          if (sql.includes('INSERT INTO yield_forecasts')) {
+            // (plot_id, province_code, tree_no, tree_position, point_label, bunch_no, harvest_month, fruit_count, updated_at)
+            storedRows.push({
+              plot_id: this.params[0],
+              province_code: this.params[1],
+              tree_no: this.params[2],
+              tree_position: this.params[3],
+              point_label: this.params[4],
+              bunch_no: this.params[5],
+              harvest_month: this.params[6],
+              fruit_count: this.params[7],
+            });
+            return { success: true };
+          }
+          return { success: true };
+        },
+        async first() {
+          const s = sql.replace(/\s+/g, ' ');
+          if (s.includes('FROM sessions')) {
+            return { id: 1, province_code: 'ratchaburi', province_label: 'ราชบุรี', role: 'province' };
+          }
+          if (s.includes('FROM users')) {
+            return { id: 1, province_code: 'ratchaburi', province_label: 'ราชบุรี', role: 'province' };
+          }
+          if (s.includes('FROM farmer_plots')) {
+            return {
+              id: 1,
+              province_code: 'ratchaburi',
+              district: 'ดำเนินสะดวก',
+              productive_area_rai: 10,
+              trees_per_rai: 40,
+            };
+          }
+          return null;
+        },
+        async all() {
+          return { results: [] };
+        },
+      };
+    },
+  };
+
+  // Visit 1: Farmer records bunches 1, 2, 3, 4, 5
+  // Bunch 4 has 11 fruits, Bunch 5 has 13 fruits
+  const visit1Entries = [
+    { bunch_no: 1, harvest_month: 1, fruit_count: 12 },
+    { bunch_no: 2, harvest_month: 1, fruit_count: 10 },
+    { bunch_no: 3, harvest_month: 2, fruit_count: 14 },
+    { bunch_no: 4, harvest_month: 3, fruit_count: 11 },
+    { bunch_no: 5, harvest_month: 3, fruit_count: 13 },
+  ];
+
+  const req1 = new Request('https://coconut-doae.internal/api/challenge/forecast', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', cookie: 'sid=valid-session-token' },
+    body: JSON.stringify({
+      plot_id: 1,
+      tree_no: 1,
+      tree_position: 'C',
+      point_label: 'จุดที่ 1',
+      entries: visit1Entries,
+    }),
+  });
+
+  const res1 = await onForecastRequest({ request: req1, env: { DB: mockDb } });
+  assert.equal(res1.status, 200);
+  assert.equal(storedRows.length, 5);
+
+  // Visit 2 (2 months later): Officer visits again.
+  // Insects/pests damaged bunch 4 (reduced from 11 to 8) and bunch 5 (reduced from 13 to 9).
+  // Bunches 6, 7, 8 newly emerged.
+  const visit2Entries = [
+    { bunch_no: 1, harvest_month: 1, fruit_count: 12 },
+    { bunch_no: 2, harvest_month: 1, fruit_count: 10 },
+    { bunch_no: 3, harvest_month: 2, fruit_count: 14 },
+    { bunch_no: 4, harvest_month: 3, fruit_count: 8 }, // reduced due to insect damage
+    { bunch_no: 5, harvest_month: 3, fruit_count: 9 }, // reduced due to insect damage
+    { bunch_no: 6, harvest_month: 4, fruit_count: 15 }, // new bunch
+    { bunch_no: 7, harvest_month: 5, fruit_count: 12 }, // new bunch
+    { bunch_no: 8, harvest_month: 5, fruit_count: 10 }, // new bunch
+  ];
+
+  const req2 = new Request('https://coconut-doae.internal/api/challenge/forecast', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', cookie: 'sid=valid-session-token' },
+    body: JSON.stringify({
+      plot_id: 1,
+      tree_no: 1,
+      tree_position: 'C',
+      point_label: 'จุดที่ 1',
+      entries: visit2Entries,
+    }),
+  });
+
+  const res2 = await onForecastRequest({ request: req2, env: { DB: mockDb } });
+  assert.equal(res2.status, 200);
+
+  // Verify that bunch 4 has EXACTLY 8 fruits (not 11 + 8 = 19!)
+  const bunch4 = storedRows.find((r) => r.bunch_no === 4);
+  assert.ok(bunch4);
+  assert.equal(bunch4.fruit_count, 8);
+
+  // Verify that bunch 5 has EXACTLY 9 fruits (not 13 + 9 = 22!)
+  const bunch5 = storedRows.find((r) => r.bunch_no === 5);
+  assert.ok(bunch5);
+  assert.equal(bunch5.fruit_count, 9);
+
+  // Total count for this tree must be 12 + 10 + 14 + 8 + 9 + 15 + 12 + 10 = 90
+  const treeTotal = storedRows.reduce((sum, r) => sum + r.fruit_count, 0);
+  assert.equal(treeTotal, 90);
+  assert.equal(storedRows.length, 8);
+});
+
+test('Sheet 3: chalCutRound dropdown in index.html contains rounds 1 to 20', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const html = fs.readFileSync(path.join(process.cwd(), 'public', 'index.html'), 'utf-8');
+
+  // Verify chalCutRound is a select element
+  assert.ok(html.includes('<select id="chalCutRound"'));
+  for (let r = 1; r <= 20; r++) {
+    assert.ok(html.includes(`<option value="${r}">รอบที่ ${r}</option>`), `Missing round option ${r}`);
+  }
 });
 
 

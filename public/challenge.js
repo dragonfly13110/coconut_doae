@@ -20,11 +20,11 @@ const SAMPLE_POINTS = [
 ];
 
 const SAMPLE_TREES = [
-  { no: 1, pos: 'C', label: 'ต้นที่ 1 (จุด C - กึ่งกลาง)', short: 'ต้น 1 (C กลาง)' },
-  { no: 2, pos: 'L', label: 'ต้นที่ 2 (จุด L - ด้านซ้าย)', short: 'ต้น 2 (L ซ้าย)' },
-  { no: 3, pos: 'R', label: 'ต้นที่ 3 (จุด R - ด้านขวา)', short: 'ต้น 3 (R ขวา)' },
-  { no: 4, pos: 'F', label: 'ต้นที่ 4 (จุด F - ด้านหน้า)', short: 'ต้น 4 (F หน้า)' },
-  { no: 5, pos: 'B', label: 'ต้นที่ 5 (จุด B - ด้านหลัง)', short: 'ต้น 5 (B หลัง)' },
+  { no: 1, pos: 'C', label: 'ต้นที่ 1', short: 'ต้น 1' },
+  { no: 2, pos: 'L', label: 'ต้นที่ 2', short: 'ต้น 2' },
+  { no: 3, pos: 'R', label: 'ต้นที่ 3', short: 'ต้น 3' },
+  { no: 4, pos: 'F', label: 'ต้นที่ 4', short: 'ต้น 4' },
+  { no: 5, pos: 'B', label: 'ต้นที่ 5', short: 'ต้น 5' },
 ];
 
 const MONTH_NAMES = [
@@ -43,6 +43,7 @@ const chalState = {
   selectedPlotId: null,
   selectedPointLabel: 'จุดที่ 1',
   selectedTreePos: 'C',
+  selectedDistrict: null,
   forecastData: null,
   harvestData: null,
   macroData: null,
@@ -106,6 +107,7 @@ function bindChalEvents() {
   // Forecast Tab
   cel('chalForecastPlotSelect')?.addEventListener('change', (e) => {
     chalState.selectedPlotId = Number(e.target.value);
+    chalState.selectedDistrict = null;
     loadForecastMatrix();
   });
   cel('chalBtnSaveForecast')?.addEventListener('click', onSaveForecastMatrix);
@@ -166,6 +168,7 @@ function bindChalEvents() {
 
   // Harvest Tab
   cel('chalHarvestForm')?.addEventListener('submit', onSaveHarvestCut);
+  cel('chalCutRound')?.addEventListener('change', () => window.chalOnCutRoundChange?.());
   cel('chalHarvestPlotSelect')?.addEventListener('change', (e) => {
     updateHarvestPlotInfo();
     loadHarvestCuts(e.target.value);
@@ -774,7 +777,11 @@ async function loadForecastMatrix() {
 
   try {
     const pointParam = encodeURIComponent(chalState.selectedPointLabel || 'จุดที่ 1');
-    const data = await chalApi(`/api/challenge/forecast?plot_id=${plotId}&point_label=${pointParam}&pos=${chalState.selectedTreePos}`);
+    let url = `/api/challenge/forecast?plot_id=${plotId}&point_label=${pointParam}&pos=${chalState.selectedTreePos}`;
+    if (chalState.selectedDistrict) {
+      url += `&district=${encodeURIComponent(chalState.selectedDistrict)}`;
+    }
+    const data = await chalApi(url);
     chalState.forecastData = data;
     renderPointTabs(data);
     renderTreeTabs(data);
@@ -829,7 +836,7 @@ function renderTreeTabs(data) {
 
   const treeBarLabel = cel('chalTreeBarLabel');
   if (treeBarLabel) {
-    treeBarLabel.textContent = `🌴 เลือกต้นตัวอย่างใน "${pointLabel}" (5 ต้น: C กลาง, L ซ้าย, R ขวา, F หน้า, B หลัง):`;
+    treeBarLabel.textContent = `🌴 เลือกต้นตัวอย่างใน "${pointLabel}" (5 ต้น):`;
   }
 
   container.innerHTML = SAMPLE_TREES.map((tree) => {
@@ -838,7 +845,7 @@ function renderTreeTabs(data) {
     const indicator = fruitSum > 0 ? `🟢 ${fruitSum} ผล` : `⚪ ยังไม่มีข้อมูล`;
     return `
       <button type="button" class="tree-tab-btn ${isActive ? 'active' : ''}" onclick="window.chalSelectTree('${tree.pos}')">
-        <span class="tree-badge">${tree.pos}</span>
+        <span class="tree-badge">${tree.no}</span>
         <span>${tree.label}</span>
         <small style="opacity:0.85; font-size:11px; margin-left:4px;">(${indicator})</small>
       </button>
@@ -891,6 +898,89 @@ function get21DaySchedule(startDateStr, interval = 21, bunchCount = 20) {
   }));
 }
 
+function getMatrixMonthBunchMapping(matrixMap = {}) {
+  // Check actual recorded month for each bunch in matrixMap
+  const recordedMonth = {};
+  for (let b = 1; b <= 20; b++) {
+    for (let m = 1; m <= 12; m++) {
+      if (matrixMap[`${b}_${m}`] !== undefined && matrixMap[`${b}_${m}`] !== '') {
+        recordedMonth[b] = m;
+        break;
+      }
+    }
+  }
+
+  // Standard sequential mapping across the 12 calendar months of the survey year
+  const defaultMapping = {
+    1: [1, 2],
+    2: [3],
+    3: [4, 5],
+    4: [6],
+    5: [7],
+    6: [8, 9],
+    7: [10],
+    8: [11, 12],
+    9: [13],
+    10: [14, 15],
+    11: [16, 17],
+    12: [18, 19, 20],
+  };
+
+  const monthBunches = {};
+  for (let m = 1; m <= 12; m++) monthBunches[m] = [];
+
+  const bunchScheduledMonth = {};
+  for (let b = 1; b <= 20; b++) {
+    let m = recordedMonth[b];
+    if (!m) {
+      for (let dm = 1; dm <= 12; dm++) {
+        if (defaultMapping[dm].includes(b)) {
+          m = dm;
+          break;
+        }
+      }
+    }
+    m = m || 12;
+    bunchScheduledMonth[b] = m;
+    monthBunches[m].push(b);
+  }
+
+  const monthBunchCount = new Array(13).fill(0);
+  for (let m = 1; m <= 12; m++) {
+    monthBunchCount[m] = monthBunches[m].length;
+  }
+
+  return { monthBunches, bunchScheduledMonth, monthBunchCount };
+}
+
+window.chalFocusBunchCell = (bunch, month) => {
+  if (!bunch && month) {
+    const first = document.querySelector(`.matrix-input.has-val[data-month="${month}"]`)
+      || document.querySelector(`.matrix-cell.cycle-spotlight[data-month="${month}"] .matrix-input`)
+      || document.querySelector(`.matrix-input[data-month="${month}"]`);
+    if (first) { first.focus(); first.select(); }
+    return;
+  }
+  let targetMonth = month;
+  if (!targetMonth || targetMonth <= 0) {
+    const matrixMap = chalState.forecastData?.matrixMap || {};
+    for (let m = 1; m <= 12; m++) {
+      if (matrixMap[`${bunch}_${m}`]) { targetMonth = m; break; }
+    }
+  }
+  if (!targetMonth) {
+    const startDateStr = cel('chalCycleStartDate')?.value || DEFAULT_CYCLE_START;
+    const interval = Number(cel('chalCycleInterval')?.value) || 21;
+    const schedule = get21DaySchedule(startDateStr, interval, 20);
+    targetMonth = schedule[bunch - 1]?.month || 1;
+  }
+  const inp = document.querySelector(`.matrix-input[data-bunch="${bunch}"][data-month="${targetMonth}"]`);
+  if (inp) {
+    inp.focus();
+    inp.select();
+  }
+};
+
 function renderMatrixGrid(data) {
   const container = cel('chalMatrixTableWrap');
   if (!container) return;
@@ -902,36 +992,31 @@ function renderMatrixGrid(data) {
   const interval = Number(cel('chalCycleInterval')?.value) || chalState.cycleInterval || 21;
   const schedule = get21DaySchedule(startDateStr, interval, 20);
 
-  const bunchScheduledMonth = {};
-  const monthBunchCount = new Array(13).fill(0);
-  for (const s of schedule) {
-    bunchScheduledMonth[s.bunch_no] = s.month;
-    monthBunchCount[s.month]++;
-  }
+  const { bunchScheduledMonth, monthBunchCount } = getMatrixMonthBunchMapping(matrixMap);
 
-  // Table header: 20 bunches
+  // Table header: 20 bunches (no redundant rightmost column!)
   let headerHtml = '<tr><th class="matrix-sticky-col">เดือนที่เก็บเกี่ยว</th>';
   for (let b = 1; b <= 20; b++) {
     const s = schedule[b - 1];
-    headerHtml += `<th class="matrix-th-bunch" title="รอบตัดคาดการณ์: ${s ? s.thaiDate : ''}">ทะลาย ${b}</th>`;
+    headerHtml += `<th class="matrix-th-bunch" data-bunch="${b}" title="ทะลายที่ ${b} (รอบตัดคาดการณ์: ${s ? s.thaiDate : ''})">ทะลาย ${b}</th>`;
   }
-  headerHtml += '<th class="matrix-th-total">รวมเดือนนี้</th></tr>';
+  headerHtml += '</tr>';
 
   // 12 rows for months
   let rowsHtml = '';
   for (let m = 1; m <= 12; m++) {
     const hasDouble = monthBunchCount[m] >= 2;
     const badgeHtml = hasDouble ? `<span class="badge-double-month" title="มี 2 ทะลายในรอบ 21 วัน">2 ทะลาย</span>` : '';
-    let rowCells = `<td class="matrix-sticky-col matrix-month-label"><strong>${MONTH_NAMES[m - 1]}</strong>${badgeHtml}</td>`;
     let rowSum = 0;
+    let bunchCells = '';
 
     for (let b = 1; b <= 20; b++) {
       const key = `${b}_${m}`;
       const val = matrixMap[key] !== undefined && matrixMap[key] !== null ? matrixMap[key] : '';
       if (val !== '') rowSum += Number(val);
       const isSpotlight = bunchScheduledMonth[b] === m;
-      rowCells += `
-        <td class="matrix-cell ${isSpotlight ? 'cycle-spotlight' : ''}" title="${isSpotlight ? `รอบ 21 วัน: ทะลาย ${b} ตกเดือน ${MONTH_NAMES[m - 1]}` : ''}">
+      bunchCells += `
+        <td class="matrix-cell ${isSpotlight ? 'cycle-spotlight' : ''}" data-bunch="${b}" data-month="${m}" title="${isSpotlight ? `รอบ 21 วัน: ทะลาย ${b} ตกเดือน ${MONTH_NAMES[m - 1]}` : ''}">
           <input 
             type="text" 
             inputmode="numeric"
@@ -948,34 +1033,105 @@ function renderMatrixGrid(data) {
         </td>
       `;
     }
-    rowCells += `<td class="matrix-month-sum font-bold" id="mSum_${m}">${rowSum > 0 ? rowSum.toLocaleString() : '-'}</td>`;
-    rowsHtml += `<tr>${rowCells}</tr>`;
+
+    const rowCells = `
+      <td class="matrix-sticky-col matrix-month-label" data-month="${m}">
+        <div class="month-title-group">
+          <strong>${MONTH_NAMES[m - 1]}</strong>
+          ${badgeHtml}
+        </div>
+      </td>
+      ${bunchCells}
+    `;
+    rowsHtml += `<tr class="matrix-row-month" data-month="${m}">${rowCells}</tr>`;
+  }
+
+  // Pre-calculate bunch sums
+  let grandTotal = 0;
+  const bunchSums = new Array(21).fill(0);
+  for (let b = 1; b <= 20; b++) {
+    let bSum = 0;
+    for (let m = 1; m <= 12; m++) {
+      const key = `${b}_${m}`;
+      if (matrixMap[key]) bSum += Number(matrixMap[key]);
+    }
+    bunchSums[b] = bSum;
+    grandTotal += bSum;
   }
 
   // Summary row at bottom: "จำนวนผลที่เก็บเกี่ยว"
-  let footerCells = `<td class="matrix-sticky-col font-bold text-success">จำนวนผลที่เก็บเกี่ยว</td>`;
-  let grandTotal = 0;
+  let footerCells = `
+    <td class="matrix-sticky-col font-bold text-success">
+      <span>จำนวนผลรวม</span> <span id="chalMatrixGrandTotal" style="font-size:11px; font-weight:600; color:#047857;">(${grandTotal.toLocaleString()} ผล)</span>
+    </td>
+  `;
   for (let b = 1; b <= 20; b++) {
-    let bunchSum = 0;
-    for (let m = 1; m <= 12; m++) {
-      const key = `${b}_${m}`;
-      if (matrixMap[key]) bunchSum += Number(matrixMap[key]);
-    }
-    grandTotal += bunchSum;
-    footerCells += `<td class="matrix-bunch-sum font-bold" id="bSum_${b}">${bunchSum > 0 ? bunchSum : '-'}</td>`;
+    const bSum = bunchSums[b];
+    footerCells += `<td class="matrix-bunch-sum font-bold" data-bunch="${b}" id="bSum_${b}">${bSum > 0 ? bSum : '-'}</td>`;
   }
-  footerCells += `<td class="matrix-grand-total font-bold text-success" id="chalMatrixGrandTotal">${grandTotal.toLocaleString()}</td>`;
 
   container.innerHTML = `
     <table class="matrix-table">
       <thead>${headerHtml}</thead>
       <tbody>${rowsHtml}</tbody>
-      <tfoot><tr class="matrix-footer-row">${footerCells}</tr></tfoot>
+      <tfoot>
+        <tr class="matrix-footer-row">${footerCells}</tr>
+      </tfoot>
     </table>
+    <div class="month-chart" id="chalMonthChart"></div>
   `;
+  refreshMonthChart(matrixMap);
+
+  // Interactive hover: month row <-> month bar <-> bunch headers
+  const setHl = (m, on) => {
+    if (!m) return;
+    container.querySelector(`.matrix-row-month[data-month="${m}"]`)?.classList.toggle('highlight-month-row', on);
+    container.querySelector(`.month-bar[data-month="${m}"]`)?.classList.toggle('highlight-month', on);
+    container.querySelectorAll(`.matrix-input.has-val[data-month="${m}"]`).forEach((inp) => {
+      container.querySelector(`.matrix-th-bunch[data-bunch="${inp.dataset.bunch}"]`)?.classList.toggle('highlight-bunch-th', on);
+    });
+  };
+  let hlMonth = null;
+  container.onmouseover = (e) => {
+    const el = e.target.closest('.matrix-row-month, .month-bar');
+    const m = el ? el.dataset.month : null;
+    if (m === hlMonth) return;
+    setHl(hlMonth, false);
+    hlMonth = m;
+    setHl(m, true);
+  };
+  container.onmouseleave = () => {
+    setHl(hlMonth, false);
+    hlMonth = null;
+  };
 
   // Render timeline schedule
   renderTimelineSchedule(data, schedule);
+}
+
+// 12 month bars: height = month total, chips = bunches that fall in that month. Rebuilt on every input.
+function refreshMonthChart(matrixMap) {
+  const el = cel('chalMonthChart');
+  if (!el) return;
+  const months = [];
+  for (let m = 1; m <= 12; m++) {
+    const bunches = [];
+    let sum = 0;
+    for (let b = 1; b <= 20; b++) {
+      const v = Number(matrixMap[`${b}_${m}`]) || 0;
+      if (v > 0) { bunches.push(b); sum += v; }
+    }
+    months.push({ m, bunches, sum });
+  }
+  const max = Math.max(...months.map((x) => x.sum), 1);
+  el.innerHTML = months.map(({ m, bunches, sum }) => `
+    <div class="month-bar ${sum > 0 ? 'has-val' : ''}" data-month="${m}" onclick="window.chalFocusBunchCell(${bunches[0] || 0}, ${m})"
+         title="${MONTH_NAMES[m - 1]}: ${sum} ผล${bunches.length ? ' (ทะลาย ' + bunches.join(', ') + ')' : ''} — คลิกเพื่อแก้ไข">
+      <span class="month-bar-val">${sum > 0 ? sum.toLocaleString() : '-'}</span>
+      <div class="month-bar-track"><div class="month-bar-fill" style="height:${sum > 0 ? Math.max(4, Math.round((sum / max) * 100)) : 0}%"></div></div>
+      <strong class="month-bar-name">${MONTH_NAMES[m - 1]}</strong>
+      <span class="month-bar-chips">${bunches.length ? bunches.map((b) => `ท.${b}`).join(' ') : '&nbsp;'}</span>
+    </div>`).join('');
 }
 
 function renderTimelineSchedule(data, schedule) {
@@ -1197,7 +1353,24 @@ window.chalOnMatrixInput = (input) => {
 
   if (!chalState.forecastData) chalState.forecastData = {};
   if (!chalState.forecastData.matrixMap) chalState.forecastData.matrixMap = {};
-  chalState.forecastData.matrixMap[`${bunch}_${month}`] = val ? Number(val) : '';
+
+  // Rule: 1 bunch only ever belongs to 1 harvest month per tree!
+  // If setting a positive count, clear this bunch in all other months
+  if (val && Number(val) > 0) {
+    for (let m = 1; m <= 12; m++) {
+      if (m !== month) {
+        chalState.forecastData.matrixMap[`${bunch}_${m}`] = '';
+        const otherInp = document.querySelector(`#chalMatrixTableWrap .matrix-input[data-bunch="${bunch}"][data-month="${m}"]`);
+        if (otherInp) {
+          otherInp.value = '';
+          otherInp.classList.remove('has-val');
+        }
+      }
+    }
+    chalState.forecastData.matrixMap[`${bunch}_${month}`] = Number(val);
+  } else {
+    chalState.forecastData.matrixMap[`${bunch}_${month}`] = '';
+  }
 
   // Synchronize to timeline view input
   const timelineInp = document.querySelector(`.timeline-fruit-input[data-bunch="${bunch}"]`);
@@ -1220,10 +1393,23 @@ window.chalOnTimelineInput = (input) => {
 
   if (!chalState.forecastData) chalState.forecastData = {};
   if (!chalState.forecastData.matrixMap) chalState.forecastData.matrixMap = {};
+
+  // Clear other months for this bunch in matrixMap & matrix table
+  for (let m = 1; m <= 12; m++) {
+    if (m !== month) {
+      chalState.forecastData.matrixMap[`${bunch}_${m}`] = '';
+      const otherInp = document.querySelector(`#chalMatrixTableWrap .matrix-input[data-bunch="${bunch}"][data-month="${m}"]`);
+      if (otherInp) {
+        otherInp.value = '';
+        otherInp.classList.remove('has-val');
+      }
+    }
+  }
+
   chalState.forecastData.matrixMap[`${bunch}_${month}`] = val ? Number(val) : '';
 
   // Synchronize to matrix view input
-  const matrixInp = document.querySelector(`.matrix-input[data-bunch="${bunch}"][data-month="${month}"]`);
+  const matrixInp = document.querySelector(`#chalMatrixTableWrap .matrix-input[data-bunch="${bunch}"][data-month="${month}"]`);
   if (matrixInp) {
     matrixInp.value = val;
     matrixInp.classList.toggle('has-val', Number(val) > 0);
@@ -1244,24 +1430,26 @@ function recalculateAllForecastSums() {
       rowSum += v;
     }
     monthlyTotals[m - 1] = rowSum;
-    const mSumEl = cel(`mSum_${m}`);
-    if (mSumEl) mSumEl.textContent = rowSum > 0 ? rowSum.toLocaleString() : '-';
   }
 
   // Recalculate column sums (bunches)
   let total = 0;
+  const bunchSums = new Array(21).fill(0);
   for (let b = 1; b <= 20; b++) {
     let bSum = 0;
     for (let m = 1; m <= 12; m++) {
       bSum += Number(matrixMap[`${b}_${m}`]) || 0;
     }
+    bunchSums[b] = bSum;
     total += bSum;
     const bSumEl = cel(`bSum_${b}`);
     if (bSumEl) bSumEl.textContent = bSum > 0 ? bSum : '-';
   }
 
+  refreshMonthChart(matrixMap);
+
   const grandEl = cel('chalMatrixGrandTotal');
-  if (grandEl) grandEl.textContent = total.toLocaleString();
+  if (grandEl) grandEl.textContent = total > 0 ? `(${total.toLocaleString()} ผล)` : '';
 
   // Update KPI cards
   const treeTotalValEl = cel('chalTreeTotalVal');
@@ -1307,7 +1495,6 @@ function recalculateAllForecastSums() {
     }
   }
 
-  updateLiveMonthlyChart();
   updateTimelineTableCalculations();
 }
 
@@ -1428,26 +1615,6 @@ window.chalSwitchForecastView = (mode) => {
   }
 };
 
-function updateLiveMonthlyChart() {
-  const monthlyTotals = chalState.forecastData?.monthlyTotals || new Array(12).fill(0);
-  const maxMonth = Math.max(...monthlyTotals, 1);
-  const chartEl = cel('chalMonthlyBarChart');
-  if (!chartEl) return;
-
-  chartEl.innerHTML = monthlyTotals.map((val, idx) => {
-    const pct = Math.round((val / maxMonth) * 100);
-    return `
-      <div class="mini-bar-col">
-        <span class="mini-bar-val">${val > 0 ? val.toLocaleString() : ''}</span>
-        <div class="mini-bar-track">
-          <div class="mini-bar-fill" style="height: ${pct}%;"></div>
-        </div>
-        <span class="mini-bar-label">${MONTH_NAMES[idx]}</span>
-      </div>
-    `;
-  }).join('');
-}
-
 function renderForecastKPIs(data) {
   const plot = data.plot;
   const summary = data.plotSummary || {};
@@ -1462,7 +1629,6 @@ function renderForecastKPIs(data) {
     activePointsSub.textContent = `(${summary.activePointsWithData || 0} จาก 7 จุดมีข้อมูล, สมบูรณ์ครบ 5 ต้นแล้ว ${summary.activePointsCompleted || 0} จุด)`;
   }
 
-  updateLiveMonthlyChart();
   renderBaseline2569Section(data);
 }
 
@@ -1479,11 +1645,25 @@ function renderBaseline2569Section(data) {
 
   const metaEl = cel('chalBaselinePlotMeta');
   if (metaEl) {
-    metaEl.textContent = `อ้างอิงสถิติผลผลิตทางการรายอำเภอ ปี 2569 ของกรมส่งเสริมการเกษตร (${b.districtName || 'อำเภอ'}, ${b.provinceName || 'จังหวัด'})`;
+    metaEl.textContent = `อ้างอิงสถิติผลผลิตทางการรายอำเภอ ปี 2569 ของกรมส่งเสริมการเกษตร (${b.districtName || 'อำเภอ'}, จ.${b.provinceName || 'จังหวัด'})`;
   }
 
   const yieldRaiEl = cel('chalBaselineYieldRaiVal');
   if (yieldRaiEl) yieldRaiEl.textContent = `${(b.yieldPerRai || 0).toLocaleString()} ผล/ไร่/ปี`;
+
+  // Populate District Dropdown with all districts in province
+  const districtSelect = cel('chalBaselineDistrictSelect');
+  if (districtSelect && Array.isArray(b.availableDistricts) && b.availableDistricts.length > 0) {
+    districtSelect.innerHTML = b.availableDistricts.map((d) => {
+      const isSel = (d.districtName === b.districtName) ? 'selected' : '';
+      return `<option value="${escapeHtml(d.districtName)}" ${isSel}>อ.${escapeHtml(d.districtName)} (${d.yieldPerRai.toLocaleString()} ผล/ไร่)</option>`;
+    }).join('');
+
+    districtSelect.onchange = (e) => {
+      chalState.selectedDistrict = e.target.value;
+      loadForecastMatrix();
+    };
+  }
 
   const dNameEl = cel('chalBaselineDistrictName');
   if (dNameEl) {
@@ -1495,7 +1675,7 @@ function renderBaseline2569Section(data) {
 
   const plotAreaEl = cel('chalBaselinePlotArea');
   if (plotAreaEl) {
-    plotAreaEl.textContent = `(คำนวณจากพื้นที่ให้ผล ${(b.productiveAreaRai || 0).toLocaleString()} ไร่)`;
+    plotAreaEl.textContent = `(คำนวณจากพื้นที่ให้ผล ${(b.productiveAreaRai || 0).toLocaleString()} ไร่ × เกณฑ์ อ.${b.districtName} ${(b.yieldPerRai || 0).toLocaleString()} ผล/ไร่)`;
   }
 
   const perCutEl = cel('chalBaselinePerCutVal');
@@ -1541,19 +1721,40 @@ function renderBaseline2569Section(data) {
 }
 
 async function onSaveForecastMatrix() {
-  const plotId = cel('chalForecastPlotSelect')?.value;
+  const plotId = cel('chalForecastPlotSelect')?.value || cel('chalPlotSelect')?.value || chalState.selectedPlotId;
   if (!plotId) {
     alert('กรุณาเลือกแปลงก่อนบันทึก');
     return;
   }
 
   const entries = [];
-  document.querySelectorAll('.matrix-input').forEach((inp) => {
+  const bunchMap = new Map();
+
+  // Query ONLY inputs from the 12-month matrix table to prevent duplicates from timeline
+  document.querySelectorAll('#chalMatrixTableWrap .matrix-input').forEach((inp) => {
     const bunch_no = Number(inp.dataset.bunch);
     const harvest_month = Number(inp.dataset.month);
     const fruit_count = Number(inp.value) || 0;
-    entries.push({ bunch_no, harvest_month, fruit_count });
+    if (fruit_count > 0) {
+      bunchMap.set(bunch_no, { bunch_no, harvest_month, fruit_count });
+    }
   });
+
+  // Fallback: If table is not rendered or user worked strictly from timeline
+  if (bunchMap.size === 0 && chalState.forecastData?.matrixMap) {
+    for (let b = 1; b <= 20; b++) {
+      for (let m = 1; m <= 12; m++) {
+        const count = Number(chalState.forecastData.matrixMap[`${b}_${m}`]) || 0;
+        if (count > 0) {
+          bunchMap.set(b, { bunch_no: b, harvest_month: m, fruit_count: count });
+        }
+      }
+    }
+  }
+
+  for (const item of bunchMap.values()) {
+    entries.push(item);
+  }
 
   const currentTree = SAMPLE_TREES.find((t) => t.pos === chalState.selectedTreePos) || SAMPLE_TREES[0];
   const pointLabel = chalState.selectedPointLabel || 'จุดที่ 1';
@@ -1569,7 +1770,7 @@ async function onSaveForecastMatrix() {
         entries,
       }),
     });
-    alert(`บันทึกคาดการณ์ผลผลิตสำหรับ "${pointLabel} - ${currentTree.label}" สำเร็จ`);
+    alert(`✅ บันทึกคาดการณ์ผลผลิตสำหรับ "${pointLabel} - ${currentTree.label}" สำเร็จ!\n(อัปเดตตัวเลขล่าสุดเรียบร้อยแล้ว ไม่มีการทับซ้อนหรือบวกซ้ำ)`);
     loadForecastMatrix();
   } catch (err) {
     alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message);
@@ -1917,8 +2118,11 @@ async function onSaveHarvestCut(e) {
     cel('chalHarvestForm').reset();
     if (cel('chalCutYieldPerRai')) cel('chalCutYieldPerRai').dataset.manual = 'false';
     if (cel('chalCutYieldPerTree')) cel('chalCutYieldPerTree').dataset.manual = 'false';
-    // Default round to next round
-    cel('chalCutRound').value = Number(payload.cut_round) + 1;
+    // Default round to next round (capped at 20)
+    const nextRound = Number(payload.cut_round) + 1;
+    if (cel('chalCutRound')) {
+      cel('chalCutRound').value = nextRound <= 20 ? String(nextRound) : '20';
+    }
     cel('chalCutDate').value = new Date().toISOString().slice(0, 10);
     updateHarvestPlotInfo();
     const successMsg = res.isUpdated 
@@ -1930,6 +2134,36 @@ async function onSaveHarvestCut(e) {
     alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message);
   }
 }
+
+window.chalOnCutRoundChange = () => {
+  const plotId = cel('chalHarvestPlotSelect')?.value;
+  const round = Number(cel('chalCutRound')?.value);
+  const cuts = chalState.harvestData?.cuts || [];
+  const existing = cuts.find((c) => String(c.plot_id) === String(plotId) && Number(c.cut_round) === round);
+  if (existing) {
+    window.chalEditHarvest(existing.id);
+  } else {
+    // Clear fields for this round
+    if (cel('chalCutTotalYield')) cel('chalCutTotalYield').value = '';
+    if (cel('chalCutPrice')) cel('chalCutPrice').value = '';
+    if (cel('chalCutTwin')) cel('chalCutTwin').value = '0';
+    if (cel('chalCutDamaged')) cel('chalCutDamaged').value = '0';
+    if (cel('chalCutNotes')) cel('chalCutNotes').value = '';
+    if (cel('chalCutYieldPerRai')) {
+      cel('chalCutYieldPerRai').value = '';
+      cel('chalCutYieldPerRai').dataset.manual = 'false';
+    }
+    if (cel('chalCutYieldPerTree')) {
+      cel('chalCutYieldPerTree').value = '';
+      cel('chalCutYieldPerTree').dataset.manual = 'false';
+    }
+    recalcHarvestYields();
+    const bannerText = cel('chalCutCalcBannerText');
+    if (bannerText) {
+      bannerText.innerHTML = `📝 <strong>บันทึกข้อมูลรอบการตัดที่ ${round}</strong>`;
+    }
+  }
+};
 
 window.chalDeleteHarvest = async (id) => {
   if (!confirm('ต้องการลบข้อมูลรอบการตัดนี้หรือไม่?')) return;

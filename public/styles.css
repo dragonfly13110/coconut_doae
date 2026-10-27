@@ -59,6 +59,14 @@ body {
   gap: 12px;
 }
 
+.header-right-group {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .brand-mark {
   display: grid;
   place-items: center;
@@ -1460,13 +1468,11 @@ th {
    =================================================== */
 
 .mode-navigation-bar {
-  background: #ffffff;
-  border-bottom: 2px solid #e2ede7;
-  padding: 10px 28px;
-  position: sticky;
-  top: 71px;
-  z-index: 15;
-  box-shadow: 0 4px 16px rgba(22, 122, 85, 0.06);
+  background: transparent;
+  border: none;
+  padding: 0;
+  position: static;
+  box-shadow: none;
 }
 
 .mode-navigation-inner {
@@ -1490,18 +1496,18 @@ th {
 .mode-switcher-pill {
   display: flex;
   background: #eef5f1;
-  padding: 4px;
-  border-radius: 12px;
-  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  gap: 3px;
   border: 1px solid #d5e5dc;
 }
 
 .mode-btn {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
-  border-radius: 9px;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 7px;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -1804,8 +1810,9 @@ th {
 }
 
 .matrix-table {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: 1170px;
+  table-layout: fixed;
   margin: 0 auto;
   border-collapse: separate;
   border-spacing: 0;
@@ -1831,9 +1838,11 @@ th {
   left: 0;
   background: #f7fbf9;
   z-index: 2;
-  min-width: 110px;
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
   text-align: left !important;
-  padding-left: 12px !important;
+  padding: 6px 8px !important;
 }
 
 /* Matrix Inputs: Remove all spinners and provide clear, readable digits */
@@ -1846,30 +1855,21 @@ th {
 }
 
 .matrix-th-bunch {
-  min-width: 52px !important;
-  width: 52px !important;
+  min-width: 50px !important;
   padding: 8px 2px !important;
   font-size: 12px !important;
   white-space: nowrap !important;
-}
-
-.matrix-th-total {
-  min-width: 75px !important;
-  background: #e6f4ed !important;
-  color: var(--primary-strong) !important;
-  font-size: 12px !important;
+  transition: all 0.15s ease;
 }
 
 .matrix-cell {
   padding: 3px !important;
-  min-width: 52px !important;
-  width: 52px !important;
 }
 
-.matrix-month-sum {
-  background: #f9fdfb;
-  color: var(--primary);
-  font-size: 13px !important;
+.month-title-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .matrix-input {
@@ -1930,10 +1930,102 @@ th {
   border-top: 2px solid var(--primary);
 }
 
-.matrix-grand-total {
-  background: #d1fae5 !important;
-  font-size: 15px;
+/* Month-grouped chart (12 bars) under the matrix */
+.month-chart {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(48px, 1fr));
+  gap: 6px;
+  padding: 10px 12px 12px;
+  background: #f8fafc;
+  border-top: 2px solid #bbf7d0;
+  overflow-x: auto;
 }
+
+.month-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  padding: 6px 2px 4px;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.month-bar:hover,
+.month-bar.highlight-month {
+  background: #dcfce7;
+  border-color: #10b981;
+  transform: translateY(-2px);
+}
+
+.month-bar-val {
+  font-size: 12px;
+  font-weight: 800;
+  color: #6b7280;
+  min-height: 16px;
+}
+
+.month-bar.has-val .month-bar-val {
+  color: #065f46;
+}
+
+.month-bar-track {
+  width: 100%;
+  max-width: 34px;
+  height: 70px;
+  background: #e2e8f0;
+  border-radius: 5px 5px 0 0;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.month-bar-fill {
+  width: 100%;
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  border-radius: 5px 5px 0 0;
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.month-bar.highlight-month .month-bar-fill,
+.month-bar:hover .month-bar-fill {
+  background: linear-gradient(180deg, #059669 0%, #047857 100%);
+}
+
+.month-bar-name {
+  font-size: 12px;
+  color: #1f2937;
+}
+
+.month-bar-chips {
+  font-size: 9px;
+  font-weight: 700;
+  color: #047857;
+  line-height: 1.2;
+  min-height: 11px;
+  text-align: center;
+  word-break: break-word;
+}
+
+/* Bidirectional hover highlight: month row + bunch headers */
+.matrix-row-month.highlight-month-row td:not(.matrix-sticky-col) {
+  background: #ecfdf5;
+}
+
+.matrix-row-month.highlight-month-row .matrix-sticky-col {
+  background: #d1fae5 !important;
+}
+
+.matrix-th-bunch.highlight-bunch-th {
+  background: #d1fae5 !important;
+  color: #065f46 !important;
+  border-bottom: 2px solid #059669 !important;
+}
+
 
 /* 21-Day Cycle Control & Helper Bar */
 .cycle-helper-bar {
@@ -2377,6 +2469,18 @@ th {
   font-size: 11px;
   color: var(--muted);
   margin-top: 6px;
+}
+
+.mini-bar-bunch-tag {
+  font-size: 9px;
+  color: #047857;
+  font-weight: 700;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-top: 2px;
+  white-space: nowrap;
 }
 
 /* Macro Table & Benchmark */
