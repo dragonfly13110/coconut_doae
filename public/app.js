@@ -289,7 +289,7 @@ async function login(event) {
     try {
       if (response.session_id) localStorage.setItem('coconut_session_id', response.session_id);
       if (response.user) localStorage.setItem('coconut_user', JSON.stringify(response.user));
-    } catch (e) {}
+    } catch (e) { }
     el('loginPin').value = '';
     showApp();
     try { await loadDashboard(); } catch (e) { console.warn('loadDashboard error', e); }
@@ -303,7 +303,7 @@ async function logout() {
   try {
     localStorage.removeItem('coconut_session_id');
     localStorage.removeItem('coconut_user');
-  } catch (e) {}
+  } catch (e) { }
   await api('/api/logout', { method: 'POST', body: {} }).catch(() => null);
   state.user = null;
   state.data = null;
@@ -321,12 +321,12 @@ async function loadMe() {
       const savedTab = localStorage.getItem('coconut_active_tab');
       if (savedTab) showTab(savedTab);
     }
-  } catch (e) {}
+  } catch (e) { }
 
   try {
     const response = await api('/api/me');
     state.user = response.user;
-    try { localStorage.setItem('coconut_user', JSON.stringify(response.user)); } catch (e) {}
+    try { localStorage.setItem('coconut_user', JSON.stringify(response.user)); } catch (e) { }
     showApp();
     const savedTab = localStorage.getItem('coconut_active_tab');
     if (savedTab) showTab(savedTab);
@@ -336,7 +336,7 @@ async function loadMe() {
       try {
         localStorage.removeItem('coconut_session_id');
         localStorage.removeItem('coconut_user');
-      } catch (e) {}
+      } catch (e) { }
       state.user = null;
       showLogin();
       return;
@@ -349,9 +349,9 @@ async function loadMe() {
 
 async function loadEntry() {
   if (!state.user) return;
-  
+
   updatePlotSelect();
-  
+
   setStatus('entryStatus', 'กำลังโหลดข้อมูลเดิม...', '');
   const params = new URLSearchParams({
     round: el('round').value,
@@ -403,7 +403,7 @@ async function saveEntry(event) {
       return;
     }
   }
-  
+
   // **1. Validate early with shared logic**
   let validated;
   try {
@@ -537,7 +537,7 @@ function renderCompletion() {
   const maxPlotsOfProvince = Math.max(maxRows / 2, state.tempMaxPlots?.[key] || 0);
 
   const statuses = getRecordedStatuses(roundNumber, provinceCode);
-  
+
   let doneCount = 0;
   let incompleteCount = 0;
   let missingCount = 0;
@@ -573,17 +573,17 @@ function renderCompletion() {
         <div class="plot-check-title">แปลง ${plot}</div>
         <div class="bunch-checks">
           ${[1, 2].map((bunch) => {
-            const info = statuses.get(`${plot}:${bunch}`) || { status: 'missing', missingFields: [] };
-            const statusClass = info.status; // 'done', 'incomplete', 'missing'
-            let tooltip = `แปลง ${plot} ทะลาย ${bunch}: `;
-            if (info.status === 'done') {
-              tooltip += 'บันทึกครบถ้วนสมบูรณ์';
-            } else if (info.status === 'incomplete') {
-              tooltip += `บันทึกแล้ว แต่ขาด: ${info.missingFields.join(', ')}`;
-            } else {
-              tooltip += 'ยังไม่ได้บันทึกข้อมูล';
-            }
-            return `
+      const info = statuses.get(`${plot}:${bunch}`) || { status: 'missing', missingFields: [] };
+      const statusClass = info.status; // 'done', 'incomplete', 'missing'
+      let tooltip = `แปลง ${plot} ทะลาย ${bunch}: `;
+      if (info.status === 'done') {
+        tooltip += 'บันทึกครบถ้วนสมบูรณ์';
+      } else if (info.status === 'incomplete') {
+        tooltip += `บันทึกแล้ว แต่ขาด: ${info.missingFields.join(', ')}`;
+      } else {
+        tooltip += 'ยังไม่ได้บันทึกข้อมูล';
+      }
+      return `
               <button
                 type="button"
                 class="bunch-check ${statusClass}"
@@ -594,7 +594,7 @@ function renderCompletion() {
                 title="${tooltip}"
               >ท${bunch}</button>
             `;
-          }).join('')}
+    }).join('')}
         </div>
       </div>
     `;
@@ -836,13 +836,13 @@ function barsMarkup(provinces) {
       <h3>สัดส่วนข้อมูลรายจังหวัด</h3>
       <div class="bar-list">
         ${activeProvinces().map((province) => {
-          const data = provinces[province.code];
-          const total = data.totalFruits || 0;
-          const width = Math.max((total / maxTotal) * 100, total > 0 ? 6 : 0);
-          const q = total > 0 ? (data.quality / total) * 100 : 0;
-          const b = total > 0 ? (data.below / total) * 100 : 0;
-          const d = total > 0 ? (data.damaged / total) * 100 : 0;
-          return `
+    const data = provinces[province.code];
+    const total = data.totalFruits || 0;
+    const width = Math.max((total / maxTotal) * 100, total > 0 ? 6 : 0);
+    const q = total > 0 ? (data.quality / total) * 100 : 0;
+    const b = total > 0 ? (data.below / total) * 100 : 0;
+    const d = total > 0 ? (data.damaged / total) * 100 : 0;
+    return `
             <div class="bar-row">
               <div class="bar-name">${province.label}</div>
               <div class="bar-track-wide" style="width:${width}%">
@@ -853,7 +853,7 @@ function barsMarkup(provinces) {
               <div class="bar-total">${total.toLocaleString()}</div>
             </div>
           `;
-        }).join('')}
+  }).join('')}
       </div>
       <div class="legend">
         <span><i class="dot quality"></i>1.8+</span>
@@ -900,12 +900,12 @@ function metricCompareMarkup(provinces) {
       <h3>เทียบขนาดผลเฉลี่ยรายจังหวัด</h3>
       <div class="metric-compare">
         ${activeProvinces().map((province) => {
-          const data = provinces[province.code];
-          const weight = data.avgWeight || 0;
-          const circum = data.avgCircum || 0;
-          const weightWidth = Math.max((weight / maxWeight) * 100, weight > 0 ? 5 : 0);
-          const circumWidth = Math.max((circum / maxCircum) * 100, circum > 0 ? 5 : 0);
-          return `
+    const data = provinces[province.code];
+    const weight = data.avgWeight || 0;
+    const circum = data.avgCircum || 0;
+    const weightWidth = Math.max((weight / maxWeight) * 100, weight > 0 ? 5 : 0);
+    const circumWidth = Math.max((circum / maxCircum) * 100, circum > 0 ? 5 : 0);
+    return `
             <div class="metric-row">
               <div class="metric-name">${province.label}</div>
               <div class="metric-bars">
@@ -922,7 +922,7 @@ function metricCompareMarkup(provinces) {
               </div>
             </div>
           `;
-        }).join('')}
+  }).join('')}
       </div>
       <div class="legend">
         <span><i class="dot weight"></i>น้ำหนักเฉลี่ย</span>
@@ -939,8 +939,8 @@ function renderTable(provinces) {
     </thead>
     <tbody>
       ${activeProvinces().map((province) => {
-        const data = provinces[province.code];
-        return `
+    const data = provinces[province.code];
+    return `
           <tr>
             <td>${province.label}</td>
             <td>${data.totalFruits.toLocaleString()}</td>
@@ -951,7 +951,7 @@ function renderTable(provinces) {
             <td>${data.filled}/${data.maxRows}</td>
           </tr>
         `;
-      }).join('')}
+  }).join('')}
     </tbody>
   `;
 }
@@ -1098,17 +1098,17 @@ function bunchProvinceBars(provinces, key, title, unit) {
       <h3>${title} รายจังหวัด</h3>
       <div class="bunch-bar-list">
         ${activeProvinces().map((province) => {
-          const data = provinces[province.code].total;
-          const value = data[key] || 0;
-          const width = Math.max((value / maxValue) * 100, value > 0 ? 5 : 0);
-          return `
+    const data = provinces[province.code].total;
+    const value = data[key] || 0;
+    const width = Math.max((value / maxValue) * 100, value > 0 ? 5 : 0);
+    return `
             <div class="bunch-bar-row">
               <span>${province.label}</span>
               <div class="bunch-track"><i style="width:${width}%"></i></div>
               <strong>${value > 0 ? `${value.toFixed(1)} ${unit}` : '-'}</strong>
             </div>
           `;
-        }).join('')}
+  }).join('')}
       </div>
     </section>
   `;
@@ -1126,8 +1126,8 @@ function renderBunchTable(provinces) {
     </thead>
     <tbody>
       ${activeProvinces().flatMap((province) => [1, 2].map((bunch) => {
-        const data = provinces[province.code].bunches[bunch];
-        return `
+    const data = provinces[province.code].bunches[bunch];
+    return `
           <tr>
             <td>${province.label}</td>
             <td>ทะลายที่ ${bunch}</td>
@@ -1141,7 +1141,7 @@ function renderBunchTable(provinces) {
             <td>${formatNumber(data.avgPriceDamaged, ' ฿')}</td>
           </tr>
         `;
-      })).join('')}
+  })).join('')}
     </tbody>
   `;
 }
@@ -1163,7 +1163,7 @@ function showApp() {
 
 function switchSystemMode(mode) {
   state.systemMode = mode;
-  try { localStorage.setItem('coconut_system_mode', mode); } catch (e) {}
+  try { localStorage.setItem('coconut_system_mode', mode); } catch (e) { }
   const isQuality = mode === 'quality';
 
   el('btnModeQuality')?.classList.toggle('active', isQuality);
@@ -1195,7 +1195,7 @@ function showLogin() {
 
 function showTab(tab) {
   state.activeTab = tab;
-  try { localStorage.setItem('coconut_active_tab', tab); } catch (e) {}
+  try { localStorage.setItem('coconut_active_tab', tab); } catch (e) { }
   el('entryTab').hidden = tab !== 'entry';
   el('dashboardTab').hidden = tab !== 'dashboard';
   el('bunchTab').hidden = tab !== 'bunch';
@@ -1253,7 +1253,7 @@ function updatePlotSelect() {
   const round = Number(el('round').value);
   const province = provinceForRequest();
   const key = `${province}-${round}`;
-  
+
   let maxPlot = 10;
   if (state.data && state.data.entries) {
     state.data.entries.forEach((entry) => {
@@ -1265,10 +1265,10 @@ function updatePlotSelect() {
   if (state.tempMaxPlots && state.tempMaxPlots[key]) {
     maxPlot = Math.max(maxPlot, state.tempMaxPlots[key]);
   }
-  
+
   const prevVal = el('plot').value;
   fillNumberSelect(el('plot'), 1, maxPlot, 'แปลงที่ ');
-  
+
   if (prevVal && Number(prevVal) <= maxPlot) {
     el('plot').value = prevVal;
   }
@@ -1278,7 +1278,7 @@ async function addPlot() {
   const round = Number(el('round').value);
   const province = provinceForRequest();
   const key = `${province}-${round}`;
-  
+
   let currentMax = 10;
   if (state.data && state.data.entries) {
     state.data.entries.forEach((entry) => {
@@ -1290,13 +1290,13 @@ async function addPlot() {
   if (state.tempMaxPlots && state.tempMaxPlots[key]) {
     currentMax = Math.max(currentMax, state.tempMaxPlots[key]);
   }
-  
+
   const newPlot = currentMax + 1;
   if (!state.tempMaxPlots) {
     state.tempMaxPlots = {};
   }
   state.tempMaxPlots[key] = newPlot;
-  
+
   updatePlotSelect();
   el('plot').value = newPlot;
   await loadEntry();
@@ -1748,12 +1748,12 @@ function renderSummaryCards(stats) {
     <div class="summary-card">
       <div class="card-value">${stats.avgWeight !== null ? stats.avgWeight.toFixed(2) : '-'} <span style="font-size:13px;font-weight:400;color:var(--muted)">±${stats.sdWeight !== null ? stats.sdWeight.toFixed(2) : '-'} กก.</span></div>
       <div class="card-label">น้ำหนักเฉลี่ย</div>
-      <div class="card-sub">${stats.missingWeight > 0 ? `<span class="warn">หาย ${stats.missingWeight}/${stats.n+stats.missingWeight}</span>` : 'ครบทุกบันทึก'}</div>
+      <div class="card-sub">${stats.missingWeight > 0 ? `<span class="warn">หาย ${stats.missingWeight}/${stats.n + stats.missingWeight}</span>` : 'ครบทุกบันทึก'}</div>
     </div>
     <div class="summary-card">
       <div class="card-value">${stats.avgCircum !== null ? stats.avgCircum.toFixed(2) : '-'} <span style="font-size:13px;font-weight:400;color:var(--muted)">±${stats.sdCircum !== null ? stats.sdCircum.toFixed(2) : '-'} ซม.</span></div>
       <div class="card-label">เส้นรอบวงเฉลี่ย</div>
-      <div class="card-sub">${stats.missingCircum > 0 ? `<span class="warn">หาย ${stats.missingCircum}/${stats.n+stats.missingCircum}</span>` : 'ครบทุกบันทึก'}</div>
+      <div class="card-sub">${stats.missingCircum > 0 ? `<span class="warn">หาย ${stats.missingCircum}/${stats.n + stats.missingCircum}</span>` : 'ครบทุกบันทึก'}</div>
     </div>
     <div class="summary-card">
       <div class="card-value">${stats.avgPriceStandard !== null ? stats.avgPriceStandard.toFixed(2) : '-'} <span style="font-size:13px;font-weight:400;color:var(--muted)">±${stats.sdPriceStandard !== null ? stats.sdPriceStandard.toFixed(2) : '-'} ฿</span></div>
@@ -1936,19 +1936,19 @@ function renderProvinceTrends(stats) {
               <span class="trend-line-name">${t.province.label}</span>
               <div class="trend-line-track">
                 ${t.points.map((p) => {
-                  const hasData = p.rate !== null;
-                  const isLowN = p.n > 0 && p.n < 5;
-                  const title = `รอบ ${p.round}: ${hasData ? (p.rate * 100).toFixed(0) + '% (n=' + p.n + ')' : 'ไม่มีข้อมูล'}`;
-                  const bubbleStyle = hasData
-                    ? `background:${colors[idx]}; bottom:${Math.max(p.rate * 100, 2)}%; ${isLowN ? 'opacity:0.4' : ''}`
-                    : '';
-                  return `
+    const hasData = p.rate !== null;
+    const isLowN = p.n > 0 && p.n < 5;
+    const title = `รอบ ${p.round}: ${hasData ? (p.rate * 100).toFixed(0) + '% (n=' + p.n + ')' : 'ไม่มีข้อมูล'}`;
+    const bubbleStyle = hasData
+      ? `background:${colors[idx]}; bottom:${Math.max(p.rate * 100, 2)}%; ${isLowN ? 'opacity:0.4' : ''}`
+      : '';
+    return `
                     <div class="trend-point-wrap" title="${title}">
                       <div class="trend-bubble ${hasData ? '' : 'no-data'}" style="${bubbleStyle}"></div>
                       <span>${p.round}${isLowN ? '⚠' : ''}</span>
                     </div>
                   `;
-                }).join('')}
+  }).join('')}
               </div>
             </div>
           `).join('')}
@@ -1987,9 +1987,9 @@ function renderBunchComparison(stats) {
           </thead>
           <tbody>
             ${PROVINCES.map((p) => {
-              const b1 = stats.byProvinceBunch[`${p.code}-1`] || blankGroupStats();
-              const b2 = stats.byProvinceBunch[`${p.code}-2`] || blankGroupStats();
-              return `
+    const b1 = stats.byProvinceBunch[`${p.code}-1`] || blankGroupStats();
+    const b2 = stats.byProvinceBunch[`${p.code}-2`] || blankGroupStats();
+    return `
                 <tr><td rowspan="2"><strong>${p.label}</strong></td>
                   <td>ทะลายที่ 1</td><td>${b1.n}</td><td>${b1.totalFruits}</td><td class="${rateClass(b1.qualityRate)}">${(b1.qualityRate * 100).toFixed(1)}%</td>
                   <td>${formatMeanSd(b1.avgWeight, b1.sdWeight, 'กก.')}</td>
@@ -1999,7 +1999,7 @@ function renderBunchComparison(stats) {
                   <td>${formatMeanSd(b2.avgWeight, b2.sdWeight, 'กก.')}</td>
                   <td>${formatMeanSd(b2.avgCircum, b2.sdCircum, 'ซม.')}</td></tr>
               `;
-            }).join('')}
+  }).join('')}
             <tr style="border-top:2px solid var(--primary);font-weight:700">
               <td colspan="2">รวมทุกจังหวัด</td><td>ทะลาย 1: ${overallB1.n} / ทะลาย 2: ${overallB2.n}</td>
               <td>ท1: ${overallB1.totalFruits} / ท2: ${overallB2.totalFruits}</td>
@@ -2013,24 +2013,24 @@ function renderBunchComparison(stats) {
       <h4 style="margin-bottom:10px">อัตรา 1.80+ ทะลาย 1 vs 2</h4>
       <div class="comp-bar-chart">
         ${PROVINCES.map((p, idx) => {
-          const b1 = stats.byProvinceBunch[`${p.code}-1`] || blankGroupStats();
-          const b2 = stats.byProvinceBunch[`${p.code}-2`] || blankGroupStats();
-          const maxR = Math.max(b1.qualityRate, b2.qualityRate, 0.01);
-          return `
+    const b1 = stats.byProvinceBunch[`${p.code}-1`] || blankGroupStats();
+    const b2 = stats.byProvinceBunch[`${p.code}-2`] || blankGroupStats();
+    const maxR = Math.max(b1.qualityRate, b2.qualityRate, 0.01);
+    return `
             <div class="comp-bar-row" style="grid-template-columns:100px minmax(0,1fr) minmax(0,1fr) 100px">
               <span>${p.label}</span>
               <div>
                 <div style="font-size:10px;color:var(--muted)">ทลาย 1</div>
-                <div class="comp-bar-track"><i style="width:${(b1.qualityRate/maxR)*100}%;background:${colors[idx]}"></i></div><small>${(b1.qualityRate*100).toFixed(0)}%</small>
+                <div class="comp-bar-track"><i style="width:${(b1.qualityRate / maxR) * 100}%;background:${colors[idx]}"></i></div><small>${(b1.qualityRate * 100).toFixed(0)}%</small>
               </div>
               <div>
                 <div style="font-size:10px;color:var(--muted)">ทลาย 2</div>
-                <div class="comp-bar-track"><i style="width:${(b2.qualityRate/maxR)*100}%;background:${colors[idx]};opacity:0.5"></i></div><small>${(b2.qualityRate*100).toFixed(0)}%</small>
+                <div class="comp-bar-track"><i style="width:${(b2.qualityRate / maxR) * 100}%;background:${colors[idx]};opacity:0.5"></i></div><small>${(b2.qualityRate * 100).toFixed(0)}%</small>
               </div>
               <span style="font-size:12px;color:var(--muted)">Δ ${(b1.qualityRate - b2.qualityRate > 0 ? '+' : '')}${((b1.qualityRate - b2.qualityRate) * 100).toFixed(1)}%</span>
             </div>
           `;
-        }).join('')}
+  }).join('')}
       </div>
     </section>
   `;
@@ -2203,11 +2203,11 @@ function renderStatsTable(stats) {
         </thead>
         <tbody>
           ${PROVINCES.map((province) => {
-            return [1, 2].map((bunch) => {
-              const pKey = `${province.code}-${bunch}`;
-              const g = stats.byProvinceBunch[pKey] || blankGroupStats();
-              const nWarn = g.n > 0 && g.n < 5;
-              return `
+    return [1, 2].map((bunch) => {
+      const pKey = `${province.code}-${bunch}`;
+      const g = stats.byProvinceBunch[pKey] || blankGroupStats();
+      const nWarn = g.n > 0 && g.n < 5;
+      return `
                 <tr>
                   <td>${province.label}</td>
                   <td>ทะลายที่ ${bunch}</td>
@@ -2226,8 +2226,8 @@ function renderStatsTable(stats) {
                   <td>${g.avgPriceBelow !== null ? g.avgPriceBelow.toFixed(2) + ' ฿' : '-'}</td>
                 </tr>
               `;
-            }).join('');
-          }).join('')}
+    }).join('');
+  }).join('')}
         </tbody>
       </table>
     </div>
@@ -2292,7 +2292,7 @@ async function api(path, options = {}) {
       try {
         const sid = localStorage.getItem('coconut_session_id');
         if (sid) h['x-session-id'] = sid;
-      } catch (e) {}
+      } catch (e) { }
       return h;
     })(),
   };
@@ -2372,7 +2372,7 @@ function renderEconomy() {
 
   const provData = provinces.map(prov => {
     const provEntries = allEntries.filter(e => e.province_code === prov.code);
-    
+
     // 1. Get user configuration inputs for scaling
     const areaInput = el(`area_${prov.code}`);
     const yieldInput = el(`yield_${prov.code}`);
@@ -2579,9 +2579,9 @@ function renderEconomy() {
   el('econVisual').innerHTML = `
     <div class="comp-bar-chart" style="display:flex; flex-direction:column; gap:20px; padding: 10px 0;">
       ${provData.map((d, idx) => {
-        const realizedWidth = (d.realized / maxPotential) * 100;
-        const lostWidth = (d.lost / maxPotential) * 100;
-        return `
+    const realizedWidth = (d.realized / maxPotential) * 100;
+    const lostWidth = (d.lost / maxPotential) * 100;
+    return `
           <div class="comp-bar-row" style="display: grid; grid-template-columns: 120px 1fr 110px; align-items: center; gap: 16px;">
             <strong style="color:#2c3e50; font-size: 13px">${d.label}</strong>
             <div style="display:flex; flex-direction:column; gap:8px">
@@ -2608,7 +2608,7 @@ function renderEconomy() {
             </div>
           </div>
         `;
-      }).join('')}
+  }).join('')}
     </div>
   `;
 }
@@ -3183,7 +3183,7 @@ function triggerAutoDraftSave() {
     if (hasData) {
       try {
         localStorage.setItem(draftKey(), JSON.stringify(current));
-      } catch (e) {}
+      } catch (e) { }
     }
   }, 400);
 }
@@ -3226,13 +3226,13 @@ function restoreDraft() {
     calcTotal();
     checkCurrentFormAnomalies();
     setStatus('entryStatus', 'กู้คืนข้อมูลแบบร่างจากเครื่องสำเร็จ ✅', 'success');
-  } catch (e) {}
+  } catch (e) { }
 }
 
 function discardDraft() {
   try {
     localStorage.removeItem(draftKey());
-  } catch (e) {}
+  } catch (e) { }
   if (el('draftNotice')) el('draftNotice').style.display = 'none';
   setStatus('entryStatus', 'ลบข้อมูลแบบร่างในเครื่องแล้ว', '');
 }
@@ -3240,7 +3240,7 @@ function discardDraft() {
 function clearOfflineDraft() {
   try {
     localStorage.removeItem(draftKey());
-  } catch (e) {}
+  } catch (e) { }
   if (el('draftNotice')) el('draftNotice').style.display = 'none';
 }
 
@@ -3549,7 +3549,7 @@ function renderImportPreview(res) {
   }).join('');
 
   wrap.style.display = 'block';
-  el('importStatusMsg').innerHTML = res.valid_count > 0 
+  el('importStatusMsg').innerHTML = res.valid_count > 0
     ? `<span style="color:#16a34a;">พร้อมนำเข้าข้อมูลจำนวน <strong>${res.valid_count}</strong> แถว</span>`
     : '<span style="color:#dc2626;">ไม่มีข้อมูลแถวที่ถูกต้องสำหรับนำเข้า</span>';
 
@@ -3652,10 +3652,10 @@ function renderHarvestCycles() {
       <div class="cal-cycle-card ${isRound ? 'highlight-round' : ''} ${c.isPast ? 'cycle-past' : ''}">
         <div class="cal-cycle-head">
           <span class="cal-cycle-num">มีดที่ ${c.cutNo}</span>
-          ${isRound 
-            ? `<span class="cal-cycle-badge cal-badge-round">🎯 รอบสำรวจที่ ${c.roundNumber}</span>`
-            : '<span class="cal-cycle-badge cal-badge-harvest">รอบตัดปกติ 21 วัน</span>'
-          }
+          ${isRound
+        ? `<span class="cal-cycle-badge cal-badge-round">🎯 รอบสำรวจที่ ${c.roundNumber}</span>`
+        : '<span class="cal-cycle-badge cal-badge-harvest">รอบตัดปกติ 21 วัน</span>'
+      }
         </div>
         <div class="cal-cycle-date">📅 ${dateFormatted}</div>
         <div class="cal-cycle-desc">
@@ -4029,8 +4029,8 @@ window.viewLogDiff = (logId) => {
 
   let before = null;
   let after = null;
-  try { if (log.before_json) before = JSON.parse(log.before_json); } catch {}
-  try { if (log.after_json) after = JSON.parse(log.after_json); } catch {}
+  try { if (log.before_json) before = JSON.parse(log.before_json); } catch { }
+  try { if (log.after_json) after = JSON.parse(log.after_json); } catch { }
 
   const allKeys = Array.from(new Set([...Object.keys(before || {}), ...Object.keys(after || {})]))
     .filter((k) => !['created_at', 'updated_at', 'id'].includes(k));
