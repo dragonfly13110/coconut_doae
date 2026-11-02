@@ -136,9 +136,12 @@ h1 {
 .photo-panel {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #093c27 0%, #157954 60%, #1c525c 100%);
-  background-size: 200% 200%;
-  animation: organicGradient 12s ease infinite;
+  background-image: linear-gradient(135deg, rgba(8, 44, 28, 0.85) 0%, rgba(14, 72, 48, 0.65) 50%, rgba(18, 48, 56, 0.88) 100%), url('/images/coconut-cover.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+
 }
 
 @keyframes organicGradient {
