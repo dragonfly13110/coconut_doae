@@ -7,9 +7,9 @@ export async function onRequest({ request, env }) {
     const user = await requireUser(request, env);
     await ensureChallengeDb(env.DB);
 
-    if (request.method === 'GET') return listOrGetFarmers(request, env, user);
-    if (request.method === 'POST') return saveFarmer(request, env, user);
-    if (request.method === 'DELETE') return deleteFarmer(request, env, user);
+    if (request.method === 'GET') return await listOrGetFarmers(request, env, user);
+    if (request.method === 'POST') return await saveFarmer(request, env, user);
+    if (request.method === 'DELETE') return await deleteFarmer(request, env, user);
     return methodNotAllowed();
   } catch (error) {
     return authErrorResponse(error) || json({ error: error.message }, { status: 400 });

@@ -6,7 +6,7 @@ export async function onRequest({ request, env }) {
     const user = await requireUser(request, env);
     await ensureChallengeDb(env.DB);
 
-    if (request.method === 'GET') return getMacroStats(request, env, user);
+    if (request.method === 'GET') return await getMacroStats(request, env, user);
     return methodNotAllowed();
   } catch (error) {
     return authErrorResponse(error) || json({ error: error.message }, { status: 400 });

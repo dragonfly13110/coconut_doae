@@ -7,8 +7,8 @@ export async function onRequest({ request, env }) {
     const user = await requireUser(request, env);
     await ensureChallengeDb(env.DB);
 
-    if (request.method === 'GET') return getForecast(request, env, user);
-    if (request.method === 'POST') return saveForecast(request, env, user);
+    if (request.method === 'GET') return await getForecast(request, env, user);
+    if (request.method === 'POST') return await saveForecast(request, env, user);
     return methodNotAllowed();
   } catch (error) {
     return authErrorResponse(error) || json({ error: error.message }, { status: 400 });
@@ -21,6 +21,8 @@ async function getForecast(request, env, user) {
   const pointLabel = String(url.searchParams.get('point_label') || url.searchParams.get('point') || 'จุดที่ 1').trim();
   const treePos = String(url.searchParams.get('pos') || 'C').trim();
   const districtParam = url.searchParams.get('district') ? String(url.searchParams.get('district')).trim() : null;
+  const sampleTree = SAMPLE_TREES.find((t) => t.pos === treePos);
+  const treeNo = Number(url.searchParams.get('tree_no') || sampleTree?.no || 1);
 
   if (!plotId) {
     return json({ error: 'กรุณาระบุรหัสแปลง (plot_id)' }, { status: 400 });

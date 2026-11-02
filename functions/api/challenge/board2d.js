@@ -7,7 +7,7 @@ export async function onRequest({ request, env }) {
     await ensureChallengeDb(env.DB);
 
     if (request.method === 'GET') {
-      return getBoard2D(request, env, user);
+      return await getBoard2D(request, env, user);
     }
     return methodNotAllowed();
   } catch (error) {

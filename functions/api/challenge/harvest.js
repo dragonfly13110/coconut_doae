@@ -7,9 +7,9 @@ export async function onRequest({ request, env }) {
     const user = await requireUser(request, env);
     await ensureChallengeDb(env.DB);
 
-    if (request.method === 'GET') return listHarvestCuts(request, env, user);
-    if (request.method === 'POST') return saveHarvestCut(request, env, user);
-    if (request.method === 'DELETE') return deleteHarvestCut(request, env, user);
+    if (request.method === 'GET') return await listHarvestCuts(request, env, user);
+    if (request.method === 'POST') return await saveHarvestCut(request, env, user);
+    if (request.method === 'DELETE') return await deleteHarvestCut(request, env, user);
     return methodNotAllowed();
   } catch (error) {
     return authErrorResponse(error) || json({ error: error.message }, { status: 400 });
