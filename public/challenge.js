@@ -92,6 +92,10 @@ export function initChallenge(user) {
   }
   bindChalEvents();
   initPlotMap(); // pre-warm the Form 1 plot map (vendored Leaflet)
+  try {
+    const savedChalTab = localStorage.getItem('coconut_chal_active_tab');
+    if (savedChalTab) showChalTab(savedChalTab);
+  } catch (e) {}
   loadAllChalData();
 }
 
@@ -238,6 +242,7 @@ function bindChalEvents() {
 
 export function showChalTab(tab) {
   chalState.activeTab = tab;
+  try { localStorage.setItem('coconut_chal_active_tab', tab); } catch (e) {}
   document.querySelectorAll('[data-chal-tab]').forEach((b) => {
     b.classList.toggle('active', b.dataset.chalTab === tab);
   });

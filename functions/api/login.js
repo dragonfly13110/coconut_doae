@@ -50,6 +50,7 @@ export async function onRequest({ request, env }) {
 
     return json(
       {
+        session_id: sessionId,
         user: {
           id: user.id,
           username: user.username || user.province_code,

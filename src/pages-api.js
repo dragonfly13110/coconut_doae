@@ -245,7 +245,8 @@ export async function readJson(request) {
 export async function requireUser(request, env) {
   await ensureDbInitialized(env.DB);
   const cookies = parseCookies(request.headers.get('cookie') || '');
-  if (!cookies.sid) throw unauthorized();
+  const sid = cookies.sid || request.headers.get('x-session-id');
+  if (!sid) throw unauthorized();
 
   let row = null;
   try {
@@ -254,14 +255,14 @@ export async function requireUser(request, env) {
       FROM sessions s
       JOIN users u ON u.id = s.user_id
       WHERE s.id = ? AND s.expires_at > CURRENT_TIMESTAMP
-    `).bind(cookies.sid).first();
+    `).bind(sid).first();
   } catch {
     row = await env.DB.prepare(`
       SELECT s.id AS session_id, u.id, u.province_code, u.province_label, u.role
       FROM sessions s
       JOIN users u ON u.id = s.user_id
       WHERE s.id = ? AND s.expires_at > CURRENT_TIMESTAMP
-    `).bind(cookies.sid).first();
+    `).bind(sid).first();
   }
 
   if (!row) throw unauthorized();

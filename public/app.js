@@ -286,16 +286,24 @@ async function login(event) {
       },
     });
     state.user = response.user;
+    try {
+      if (response.session_id) localStorage.setItem('coconut_session_id', response.session_id);
+      if (response.user) localStorage.setItem('coconut_user', JSON.stringify(response.user));
+    } catch (e) {}
     el('loginPin').value = '';
     showApp();
-    await loadDashboard();
-    await loadEntry();
+    try { await loadDashboard(); } catch (e) { console.warn('loadDashboard error', e); }
+    try { await loadEntry(); } catch (e) { console.warn('loadEntry error', e); }
   } catch (error) {
     setStatus('loginStatus', `เข้าสู่ระบบไม่สำเร็จ: ${error.message}`, 'error');
   }
 }
 
 async function logout() {
+  try {
+    localStorage.removeItem('coconut_session_id');
+    localStorage.removeItem('coconut_user');
+  } catch (e) {}
   await api('/api/logout', { method: 'POST', body: {} }).catch(() => null);
   state.user = null;
   state.data = null;
@@ -303,15 +311,40 @@ async function logout() {
 }
 
 async function loadMe() {
+  let hasCachedUser = false;
+  try {
+    const cachedUser = localStorage.getItem('coconut_user');
+    if (cachedUser) {
+      state.user = JSON.parse(cachedUser);
+      hasCachedUser = true;
+      showApp();
+      const savedTab = localStorage.getItem('coconut_active_tab');
+      if (savedTab) showTab(savedTab);
+    }
+  } catch (e) {}
+
   try {
     const response = await api('/api/me');
     state.user = response.user;
+    try { localStorage.setItem('coconut_user', JSON.stringify(response.user)); } catch (e) {}
     showApp();
-    await loadDashboard();
-    await loadEntry();
-  } catch {
-    showLogin();
+    const savedTab = localStorage.getItem('coconut_active_tab');
+    if (savedTab) showTab(savedTab);
+  } catch (error) {
+    const isAuthError = error && (String(error.message).includes('401') || String(error.message).includes('เข้าสู่ระบบ') || String(error.message).includes('session') || String(error.message).includes('unauthorized'));
+    if (isAuthError || !hasCachedUser) {
+      try {
+        localStorage.removeItem('coconut_session_id');
+        localStorage.removeItem('coconut_user');
+      } catch (e) {}
+      state.user = null;
+      showLogin();
+      return;
+    }
   }
+
+  try { await loadDashboard(); } catch (e) { console.warn('loadDashboard error', e); }
+  try { await loadEntry(); } catch (e) { console.warn('loadEntry error', e); }
 }
 
 async function loadEntry() {
@@ -1162,6 +1195,7 @@ function showLogin() {
 
 function showTab(tab) {
   state.activeTab = tab;
+  try { localStorage.setItem('coconut_active_tab', tab); } catch (e) {}
   el('entryTab').hidden = tab !== 'entry';
   el('dashboardTab').hidden = tab !== 'dashboard';
   el('bunchTab').hidden = tab !== 'bunch';
@@ -2253,7 +2287,14 @@ function fmtNum(value, unit) {
 async function api(path, options = {}) {
   const init = {
     method: options.method || 'GET',
-    headers: {},
+    headers: (() => {
+      const h = {};
+      try {
+        const sid = localStorage.getItem('coconut_session_id');
+        if (sid) h['x-session-id'] = sid;
+      } catch (e) {}
+      return h;
+    })(),
   };
   if (options.body) {
     init.headers['content-type'] = 'application/json';
