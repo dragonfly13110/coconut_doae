@@ -1814,18 +1814,18 @@ th {
 
 .matrix-table {
   width: 100%;
-  min-width: 1170px;
+  min-width: 660px;
   table-layout: fixed;
   margin: 0 auto;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .matrix-table th, .matrix-table td {
   border-right: 1px solid #edf2f0;
   border-bottom: 1px solid #edf2f0;
-  padding: 6px 4px;
+  padding: 3px 1px;
   text-align: center;
 }
 
@@ -1841,11 +1841,12 @@ th {
   left: 0;
   background: #f7fbf9;
   z-index: 2;
-  width: 120px;
-  min-width: 120px;
-  max-width: 120px;
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
   text-align: left !important;
-  padding: 6px 8px !important;
+  padding: 3px 5px !important;
+  box-sizing: border-box;
 }
 
 /* Matrix Inputs: Remove all spinners and provide clear, readable digits */
@@ -1858,38 +1859,63 @@ th {
 }
 
 .matrix-th-bunch {
-  min-width: 50px !important;
-  padding: 8px 2px !important;
-  font-size: 12px !important;
+  min-width: 26px !important;
+  padding: 3px 1px !important;
+  font-size: 10.5px !important;
+  line-height: 1.15;
+  text-align: center;
   white-space: nowrap !important;
   transition: all 0.15s ease;
 }
 
+.matrix-th-bunch .th-bunch-sub {
+  display: block;
+  font-size: 8.5px;
+  color: #64748b;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.matrix-th-bunch .th-bunch-num {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
 .matrix-cell {
-  padding: 3px !important;
+  padding: 2px 1px !important;
 }
 
 .month-title-group {
   display: flex;
   align-items: center;
-  gap: 5px;
+  justify-content: space-between;
+  gap: 2px;
+}
+
+.month-title-group strong {
+  font-size: 11px;
+  color: var(--ink);
 }
 
 .matrix-input {
   width: 100% !important;
-  min-width: 44px !important;
-  height: 34px !important;
-  min-height: 34px !important;
-  max-height: 34px !important;
-  line-height: 32px !important;
+  min-width: 22px !important;
+  max-width: 36px !important;
+  height: 26px !important;
+  min-height: 26px !important;
+  max-height: 26px !important;
+  line-height: 24px !important;
   padding: 0 !important;
   margin: 0 auto !important;
   box-sizing: border-box !important;
   border: 1.5px solid #d1d5db !important;
-  border-radius: 6px !important;
+  border-radius: 4px !important;
   text-align: center !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-  font-size: 15px !important;
+  font-size: 12.5px !important;
   font-weight: 700 !important;
   color: #111827 !important;
   background: #ffffff !important;
@@ -1930,18 +1956,31 @@ th {
 .matrix-footer-row td {
   background: #e6f4ed;
   font-weight: 700;
+  font-size: 10.5px;
+  padding: 3px 1px !important;
   border-top: 2px solid var(--primary);
+}
+
+.matrix-footer-label {
+  line-height: 1.15;
+}
+
+.matrix-grand-total {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  color: #047857;
 }
 
 /* Month-grouped chart (12 bars) under the matrix */
 .month-chart {
   display: grid;
-  grid-template-columns: repeat(12, minmax(48px, 1fr));
-  gap: 6px;
-  padding: 10px 12px 12px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 4px;
+  padding: 6px 6px 8px;
   background: #f8fafc;
   border-top: 2px solid #bbf7d0;
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 .month-bar {
@@ -1949,13 +1988,14 @@ th {
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  gap: 3px;
-  padding: 6px 2px 4px;
-  border-radius: 8px;
+  gap: 2px;
+  padding: 4px 1px 2px;
+  border-radius: 6px;
   border: 1.5px solid transparent;
   cursor: pointer;
   user-select: none;
   transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  min-width: 0;
 }
 
 .month-bar:hover,
@@ -1966,10 +2006,11 @@ th {
 }
 
 .month-bar-val {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   color: #6b7280;
-  min-height: 16px;
+  min-height: 14px;
+  line-height: 1.2;
 }
 
 .month-bar.has-val .month-bar-val {
@@ -1978,10 +2019,10 @@ th {
 
 .month-bar-track {
   width: 100%;
-  max-width: 34px;
-  height: 70px;
+  max-width: 28px;
+  height: 52px;
   background: #e2e8f0;
-  border-radius: 5px 5px 0 0;
+  border-radius: 4px 4px 0 0;
   display: flex;
   align-items: flex-end;
   overflow: hidden;
@@ -1990,7 +2031,7 @@ th {
 .month-bar-fill {
   width: 100%;
   background: linear-gradient(180deg, #10b981 0%, #059669 100%);
-  border-radius: 5px 5px 0 0;
+  border-radius: 4px 4px 0 0;
   transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -2000,18 +2041,22 @@ th {
 }
 
 .month-bar-name {
-  font-size: 12px;
+  font-size: 10.5px;
   color: #1f2937;
+  white-space: nowrap;
 }
 
 .month-bar-chips {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   color: #047857;
-  line-height: 1.2;
-  min-height: 11px;
+  line-height: 1.1;
+  min-height: 9px;
   text-align: center;
-  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 /* Bidirectional hover highlight: month row + bunch headers */
@@ -2160,14 +2205,16 @@ th {
 
 .badge-double-month {
   display: inline-block;
-  margin-left: 6px;
-  padding: 2px 6px;
-  border-radius: 4px;
+  margin-left: 2px;
+  padding: 1px 3px;
+  border-radius: 3px;
   background: #fef3c7;
   color: #92400e;
-  font-size: 10px;
+  font-size: 8.5px;
   font-weight: 700;
   vertical-align: middle;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .matrix-cell.cycle-spotlight {
@@ -6757,8 +6804,8 @@ th {
    ========================================================================== */
 .forecast-workspace-split {
   display: grid;
-  grid-template-columns: 290px minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 16px;
   align-items: start;
   margin-top: 14px;
 }

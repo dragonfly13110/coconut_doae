@@ -123,6 +123,13 @@ function bindChalEvents() {
   cel('chalProvFilter')?.addEventListener('change', (e) => {
     chalState.filterProvince = e.target.value;
     renderFarmersTable();
+  if (chalState.activeTab === 'forecast') {
+    loadForecastMatrix();
+  } else if (chalState.activeTab === 'harvest') {
+    loadHarvestCuts();
+  } else if (chalState.activeTab === 'board2d') {
+    loadBoard2D();
+  }
   });
   cel('chalBtnGoBoard2D')?.addEventListener('click', () => showChalTab('board2d'));
 
@@ -255,6 +262,13 @@ export function showChalTab(tab) {
 
   if (tab === 'farmers') {
     renderFarmersTable();
+  if (chalState.activeTab === 'forecast') {
+    loadForecastMatrix();
+  } else if (chalState.activeTab === 'harvest') {
+    loadHarvestCuts();
+  } else if (chalState.activeTab === 'board2d') {
+    loadBoard2D();
+  }
     // The panel was just un-hidden: recompute the map size (Leaflet can't
     // measure a hidden container) and fit bounds on first display.
     refreshPlotMap();
@@ -697,6 +711,13 @@ window.chalDeletePlot = async (id) => {
     await loadPlots();
     populatePlotDropdowns();
     renderFarmersTable();
+  if (chalState.activeTab === 'forecast') {
+    loadForecastMatrix();
+  } else if (chalState.activeTab === 'harvest') {
+    loadHarvestCuts();
+  } else if (chalState.activeTab === 'board2d') {
+    loadBoard2D();
+  }
     alert('ลบข้อมูลแปลงเรียบร้อยแล้ว');
   } catch (err) {
     alert('เกิดข้อผิดพลาดในการลบ: ' + err.message);
@@ -777,6 +798,13 @@ async function onSaveFarmerPlot(e) {
     await loadPlots();
     populatePlotDropdowns();
     renderFarmersTable();
+  if (chalState.activeTab === 'forecast') {
+    loadForecastMatrix();
+  } else if (chalState.activeTab === 'harvest') {
+    loadHarvestCuts();
+  } else if (chalState.activeTab === 'board2d') {
+    loadBoard2D();
+  }
     alert(id ? 'บันทึกการแก้ไขข้อมูลพื้นฐานแปลงเรียบร้อยแล้ว' : 'บันทึกข้อมูลแปลงใหม่สำเร็จ (แบบฟอร์มที่ 1)');
   } catch (err) {
     alert('เกิดข้อผิดพลาด: ' + err.message);
@@ -1046,10 +1074,10 @@ function renderMatrixGrid(data) {
   const { bunchScheduledMonth, monthBunchCount } = getMatrixMonthBunchMapping(matrixMap);
 
   // Table header: 20 bunches (no redundant rightmost column!)
-  let headerHtml = '<tr><th class="matrix-sticky-col">เดือนที่เก็บเกี่ยว</th>';
+  let headerHtml = '<tr><th class="matrix-sticky-col matrix-th-month">เดือนเก็บเกี่ยว</th>';
   for (let b = 1; b <= 20; b++) {
     const s = schedule[b - 1];
-    headerHtml += `<th class="matrix-th-bunch" data-bunch="${b}" title="ทะลายที่ ${b} (รอบตัดคาดการณ์: ${s ? s.thaiDate : ''})">ทะลาย ${b}</th>`;
+    headerHtml += `<th class="matrix-th-bunch" data-bunch="${b}" title="ทะลายที่ ${b} (รอบตัดคาดการณ์: ${s ? s.thaiDate : ''})"><span class="th-bunch-sub">ทะลาย</span><span class="th-bunch-num">${b}</span></th>`;
   }
   headerHtml += '</tr>';
 
@@ -1112,8 +1140,8 @@ function renderMatrixGrid(data) {
 
   // Summary row at bottom: "จำนวนผลที่เก็บเกี่ยว"
   let footerCells = `
-    <td class="matrix-sticky-col font-bold text-success">
-      <span>จำนวนผลรวม</span> <span id="chalMatrixGrandTotal" style="font-size:11px; font-weight:600; color:#047857;">(${grandTotal.toLocaleString()} ผล)</span>
+    <td class="matrix-sticky-col font-bold text-success matrix-footer-label">
+      <span>รวม</span> <span id="chalMatrixGrandTotal" class="matrix-grand-total">(${grandTotal.toLocaleString()} ผล)</span>
     </td>
   `;
   for (let b = 1; b <= 20; b++) {
