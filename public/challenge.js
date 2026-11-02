@@ -277,12 +277,24 @@ async function loadAllChalData() {
   }
   populatePlotDropdowns();
   renderFarmersTable();
+  if (chalState.activeTab === 'forecast') {
+    loadForecastMatrix();
+  } else if (chalState.activeTab === 'harvest') {
+    loadHarvestCuts();
+  } else if (chalState.activeTab === 'board2d') {
+    loadBoard2D();
+  }
 }
 
 async function chalApi(url, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  try {
+    const sid = localStorage.getItem('coconut_session_id');
+    if (sid) headers['x-session-id'] = sid;
+  } catch (e) {}
   const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options,
+    headers,
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'API Error');
@@ -792,8 +804,20 @@ function populatePlotDropdowns() {
 // ==========================================
 
 async function loadForecastMatrix() {
-  const plotId = cel('chalForecastPlotSelect')?.value || chalState.selectedPlotId;
-  if (!plotId) return;
+  const plotSelect = cel('chalForecastPlotSelect');
+  let plotId = plotSelect?.value || chalState.selectedPlotId;
+  if (!plotId && chalState.plots && chalState.plots.length > 0) {
+    plotId = chalState.plots[0].id;
+    chalState.selectedPlotId = plotId;
+    if (plotSelect) plotSelect.value = plotId;
+  }
+  if (!plotId) {
+    const container = cel('chalMatrixTableWrap');
+    if (container && (!chalState.plots || chalState.plots.length === 0)) {
+      container.innerHTML = '<p class="text-center py-4 text-muted">กำลังโหลดข้อมูลแปลง...</p>';
+    }
+    return;
+  }
 
   renderPointTabs(chalState.forecastData);
   renderTreeTabs(chalState.forecastData);
@@ -812,6 +836,10 @@ async function loadForecastMatrix() {
     renderForecastKPIs(data);
   } catch (err) {
     console.error('Failed to load forecast matrix:', err);
+    const container = cel('chalMatrixTableWrap');
+    if (container) {
+      container.innerHTML = `<p class="text-center py-4 text-danger">โหลดข้อมูลไม่สำเร็จ: ${escapeHtml(err.message)}</p>`;
+    }
   }
 }
 

@@ -2,8 +2,15 @@ import { clearSessionCookie, parseCookies } from './auth.js';
 import { ensureChallengeDb } from './challenge-db.js';
 import { SYSTEM_ACCOUNTS, ensureSystemAuditDb } from './user-accounts.js';
 
+let _dbInitialized = false;
+
+export function _resetDbInitializedForTesting() {
+  _dbInitialized = false;
+}
+
 export async function ensureDbInitialized(db) {
   if (!db || typeof db.exec !== 'function' || typeof db.prepare !== 'function') return;
+  if (_dbInitialized) return;
   try {
     const stmt = db.prepare('SELECT 1 FROM users LIMIT 1');
     if (stmt && typeof stmt.first === 'function') {
@@ -64,25 +71,26 @@ export async function ensureDbInitialized(db) {
     } catch (err) {
       try {
         await db.prepare('ALTER TABLE entries ADD COLUMN domestic INTEGER NOT NULL DEFAULT 0').run();
-      } catch (alterError) {}
+      } catch (alterError) { }
     }
     try {
       await db.prepare('SELECT price_domestic FROM entries LIMIT 1').first();
     } catch (err) {
       try {
         await db.prepare('ALTER TABLE entries ADD COLUMN price_domestic REAL').run();
-      } catch (alterError) {}
+      } catch (alterError) { }
     }
     try {
       await db.prepare('SELECT price_damaged FROM entries LIMIT 1').first();
     } catch (err) {
       try {
         await db.prepare('ALTER TABLE entries ADD COLUMN price_damaged REAL').run();
-      } catch (alterError) {}
+      } catch (alterError) { }
     }
     await ensureChallengeDb(db);
     await ensureSystemAuditDb(db);
     await seedSystemUsers(db);
+    _dbInitialized = true;
   } catch (error) {
     if (error.message.includes('no such table') || error.message.includes('SQLITE_ERROR')) {
       const schemaSql = `
@@ -155,6 +163,7 @@ export async function ensureDbInitialized(db) {
       await runSql(schemaSql);
       await ensureSystemAuditDb(db);
       await seedSystemUsers(db);
+    _dbInitialized = true;
     } else {
       throw error;
     }
@@ -163,6 +172,10 @@ export async function ensureDbInitialized(db) {
 
 export async function seedSystemUsers(db) {
   if (!db || typeof db.prepare !== 'function') return;
+  try {
+    const userCount = await db.prepare('SELECT count(*) as c FROM users').first();
+    if (userCount && userCount.c >= SYSTEM_ACCOUNTS.length) return;
+  } catch {}
 
   // Self-heal: ensure users table columns exist
   try {
@@ -170,7 +183,7 @@ export async function seedSystemUsers(db) {
   } catch {
     try {
       await db.prepare('ALTER TABLE users ADD COLUMN username TEXT').run();
-    } catch {}
+    } catch { }
   }
   try {
     await db.prepare('SELECT district_code FROM users LIMIT 1').first();
@@ -178,7 +191,7 @@ export async function seedSystemUsers(db) {
     try {
       await db.prepare('ALTER TABLE users ADD COLUMN district_code TEXT').run();
       await db.prepare('ALTER TABLE users ADD COLUMN district_name TEXT').run();
-    } catch {}
+    } catch { }
   }
 
 
