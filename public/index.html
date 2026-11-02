@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ระบบติดตามสถานการณ์การผลิตมะพร้าวน้ำหอม กรมส่งเสริมการเกษตร - DOAE</title>
-  <link rel="stylesheet" href="/styles.css?v=2.6">
+  <link rel="stylesheet" href="/styles.css?v=2.7">
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="/vendor/leaflet/MarkerCluster.css">
   <link rel="stylesheet" href="/vendor/leaflet/MarkerCluster.Default.css">
@@ -1081,41 +1081,50 @@
           </div>
         </div>
 
-        <!-- Plot and Tree Selectors -->
-        <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin-bottom:16px; background:#f9fbf9; padding:14px; border-radius:10px; border:1px solid #e1ebe5;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <label for="chalForecastPlotSelect" style="font-weight:700; font-size:13px; color:var(--ink);">เลือกแปลงเกษตรกร:</label>
-            <select id="chalForecastPlotSelect" style="padding:8px 12px; border-radius:6px; border:1px solid #ccc; font-weight:600; min-width:260px;"></select>
-          </div>
-          <button type="button" id="btnChalQuick3DAtlas" class="button ghost small" style="white-space:nowrap; border-color:#86efac; color:#166534; background:#f0fdf4; display:flex; align-items:center; gap:6px;">
-            🌴 ดูระยะจั่น 1–9 ในโมเดล 3D
-          </button>
-          <button type="button" id="btnChalForecastGoBoard" class="button ghost small" style="white-space:nowrap; border-color:#86efac; color:#166534; background:#f0fdf4; display:flex; align-items:center; gap:6px;">
-            🗺️ ผังกระดาน 2D เช็คความครบถ้วน
-          </button>
-        </div>
-
-        <!-- 7 Sample Points Selector (ระดับจุดสำรวจ 7 จุดต่อแปลง) -->
-        <div class="point-tabs-wrapper" style="margin-bottom:14px; background:#ffffff; border:1px solid #d5e5dc; border-radius:10px; padding:12px 16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-weight:700; font-size:13px; color:var(--ink);">📍 เลือกระดับจุดสำรวจ (7 จุด กระจายทั่วแปลง):</span>
-              <span class="badge-point-hint" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700;">จุดละ 5 ต้น (รวม 35 ต้นตัวอย่าง)</span>
+        <div class="forecast-workspace-split">
+          <!-- Left Sidebar: Selection Controls (แปลง, 7 จุด, 5 ต้น) -->
+          <aside class="forecast-sidebar-panel">
+            <!-- 1. เลือกแปลงเกษตรกร -->
+            <div class="f-sidebar-card">
+              <label for="chalForecastPlotSelect" class="f-sidebar-title">
+                <span>🏡</span>
+                <span>เลือกแปลงเกษตรกร:</span>
+              </label>
+              <select id="chalForecastPlotSelect" class="f-sidebar-select"></select>
+              <div class="f-sidebar-actions">
+                <button type="button" id="btnChalQuick3DAtlas" class="button ghost small" style="white-space:nowrap; border-color:#86efac; color:#166534; background:#f0fdf4; display:flex; align-items:center; justify-content:center; gap:6px;">
+                  🌴 ดูระยะจั่น 1–9 ในโมเดล 3D
+                </button>
+                <button type="button" id="btnChalForecastGoBoard" class="button ghost small" style="white-space:nowrap; border-color:#86efac; color:#166534; background:#f0fdf4; display:flex; align-items:center; justify-content:center; gap:6px;">
+                  🗺️ ผังกระดาน 2D เช็คความครบถ้วน
+                </button>
+              </div>
             </div>
-            <div id="chalPointProgressBadge" style="font-size:12px; font-weight:700; color:var(--primary);">
-              ความคืบหน้าภาพรวมแปลง
+
+            <!-- 2. เลือกระดับจุดสำรวจ (7 จุด กระจายทั่วแปลง) -->
+            <div class="f-sidebar-card">
+              <div class="f-sidebar-title-row">
+                <span class="f-sidebar-title" style="margin-bottom:0;">📍 ระดับจุดสำรวจ (7 จุด):</span>
+                <span class="badge-point-hint" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-size:10.5px; font-weight:700;">รวม 35 ต้น</span>
+              </div>
+              <div id="chalPointProgressBadge" class="f-sidebar-progress">
+                ความคืบหน้าภาพรวมแปลง
+              </div>
+              <div class="point-tabs-bar" id="chalPointTabs"></div>
             </div>
-          </div>
-          <div class="point-tabs-bar" id="chalPointTabs"></div>
-        </div>
 
-        <!-- 5 Trees Selector per Point -->
-        <div style="margin-bottom:6px; display:flex; align-items:center; gap:8px;">
-          <span style="font-size:13px; font-weight:700; color:var(--ink);" id="chalTreeBarLabel">🌴 เลือกต้นตัวอย่างในจุดที่เลือก (5 ต้น):</span>
-        </div>
-        <div class="tree-tabs-bar" id="chalTreeTabs"></div>
+            <!-- 3. เลือกต้นตัวอย่าง (5 ต้น) -->
+            <div class="f-sidebar-card">
+              <div class="f-sidebar-title-row">
+                <span class="f-sidebar-title" id="chalTreeBarLabel" style="margin-bottom:0;">🌴 เลือกต้นตัวอย่าง (5 ต้น):</span>
+              </div>
+              <div class="tree-tabs-bar" id="chalTreeTabs"></div>
+            </div>
+          </aside>
 
-        <!-- Summary KPIs for Selected Tree -->
+          <!-- Right Main Workspace (พื้นที่ทำงานเต็ม 16:9) -->
+          <div class="forecast-main-workspace">
+            <!-- Summary KPIs for Selected Tree -->
         <div class="chal-kpi-grid" style="margin-bottom:16px;">
           <div class="kpi-card highlight">
             <div class="kpi-icon">🌴</div>
@@ -1275,6 +1284,8 @@
             <p class="text-center py-4 text-muted">กำลังสร้างตารางไทม์ไลน์ 20 ทะลาย...</p>
           </div>
         </div>
+          </div><!-- /.forecast-main-workspace -->
+        </div><!-- /.forecast-workspace-split -->
 
         <!-- Bottom Guide & Instructions for แบบที่ 2 -->
         <div class="tab-guide-box">
