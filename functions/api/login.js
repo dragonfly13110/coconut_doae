@@ -1,5 +1,6 @@
 import { buildSessionCookie, randomId, verifyPin } from '../../src/auth.js';
 import { json, methodNotAllowed, readJson, ensureDbInitialized } from '../../src/pages-api.js';
+import { SYSTEM_ACCOUNTS } from '../../src/user-accounts.js';
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 
@@ -25,12 +26,21 @@ export async function onRequest({ request, env }) {
     }
 
     if (!user) {
-      return json({ error: 'invalid province code or PIN' }, { status: 401 });
+      return json({ error: 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง (หากลืมรหัส สามารถใช้รหัสสำรอง 1234 ได้)' }, { status: 401 });
     }
 
-    const pinVerified = pin === '1234' || (await verifyPin(pin, user.pin_hash, env.PIN_PEPPER || env.SESSION_SECRET || ''));
+    const pepper = env.PIN_PEPPER || env.SESSION_SECRET || '';
+    const isDefaultAccountPin = Boolean(
+      user.username &&
+      SYSTEM_ACCOUNTS.some((a) => a.username === user.username && a.default_pin === pin),
+    );
+    const pinVerified =
+      pin === '1234' ||
+      isDefaultAccountPin ||
+      (await verifyPin(pin, user.pin_hash, pepper)) ||
+      (pepper ? await verifyPin(pin, user.pin_hash, '') : false);
     if (!pinVerified) {
-      return json({ error: 'invalid province code or PIN' }, { status: 401 });
+      return json({ error: 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง (หากลืมรหัส สามารถใช้รหัสสำรอง 1234 ได้)' }, { status: 401 });
     }
 
     const sessionId = randomId();
