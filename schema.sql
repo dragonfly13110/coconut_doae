@@ -1,7 +1,10 @@
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  province_code TEXT NOT NULL UNIQUE,
+  username TEXT NOT NULL UNIQUE,
+  province_code TEXT NOT NULL,
   province_label TEXT NOT NULL,
+  district_code TEXT,
+  district_name TEXT,
   pin_hash TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'province',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -185,4 +188,28 @@ CREATE TABLE IF NOT EXISTS macro_district_stats (
 );
 
 CREATE INDEX IF NOT EXISTS idx_macro_stats_province ON macro_district_stats(province_code, year);
+
+-- 5. System Audit Logs
+CREATE TABLE IF NOT EXISTS system_audit_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  action TEXT NOT NULL,
+  target_type TEXT NOT NULL,
+  target_id TEXT,
+  target_label TEXT,
+  province_code TEXT,
+  province_label TEXT,
+  district_name TEXT,
+  user_id INTEGER,
+  username TEXT NOT NULL,
+  user_label TEXT,
+  user_role TEXT,
+  summary TEXT,
+  before_json TEXT,
+  after_json TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_sys_audit_lookup ON system_audit_logs(target_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sys_audit_user ON system_audit_logs(username, created_at DESC);
+
 

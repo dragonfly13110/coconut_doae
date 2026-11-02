@@ -1,3 +1,21 @@
+
+export function canUserEditPlot(user, plot) {
+  if (!user || !plot) return false;
+  const role = user.role;
+  if (['admin', 'central', 'region'].includes(role) || user.username === 'admin' || user.username === 'doae_hq' || user.username === 'doae') {
+    return true;
+  }
+  if (role === 'province') {
+    return user.province_code === plot.province_code;
+  }
+  if (role === 'district') {
+    if (user.province_code !== plot.province_code) return false;
+    const uDist = (user.district_name || '').replace(/^(อำเภอ|อ\.)\s*/, '').trim().toLowerCase();
+    const pDist = (plot.district || '').replace(/^(อำเภอ|อ\.)\s*/, '').trim().toLowerCase();
+    return uDist === pDist || (uDist && pDist.includes(uDist)) || (pDist && uDist.includes(pDist));
+  }
+  return false;
+}
 // Challenge Mode Controller - ระบบข้อมูลการผลิตและคาดการณ์ผลผลิต (4 แบบ)
 
 import { initPlotMap, updatePlotMap, refreshPlotMap } from './plot-map.js';

@@ -23,13 +23,62 @@ const PROVINCES = [
 ];
 
 const LOGIN_ACCOUNTS = [
-  { code: 'doae', label: 'กรมส่งเสริมการเกษตร (ส่วนกลาง)' },
-  ...PROVINCES,
+  // ส่วนกลาง & ผู้ดูแลระบบ & เขต
+  { code: 'doae_hq', label: '🏛️ กรมส่งเสริมการเกษตร (ส่วนกลาง)' },
+  { code: 'region2', label: '🏢 สสก.เขต 2 ราชบุรี (ภาคตะวันตก)' },
+  { code: 'admin', label: '👑 ผู้ดูแลระบบหลัก (Admin)' },
+
+  // 4 จังหวัด
+  { code: 'prov70', label: '🌴 สำนักงานเกษตรจังหวัดราชบุรี (70)' },
+  { code: 'prov73', label: '🌴 สำนักงานเกษตรจังหวัดนครปฐม (73)' },
+  { code: 'prov74', label: '🌴 สำนักงานเกษตรจังหวัดสมุทรสาคร (74)' },
+  { code: 'prov75', label: '🌴 สำนักงานเกษตรจังหวัดสมุทรสงคราม (75)' },
+
+  // ราชบุรี (70) 10 อำเภอ
+  { code: '7001', label: '🌾 7001 เกษตรอำเภอเมืองราชบุรี' },
+  { code: '7002', label: '🌾 7002 เกษตรอำเภอจอมบึง' },
+  { code: '7003', label: '🌾 7003 เกษตรอำเภอสวนผึ้ง' },
+  { code: '7004', label: '🌾 7004 เกษตรอำเภอดำเนินสะดวก' },
+  { code: '7005', label: '🌾 7005 เกษตรอำเภอบ้านโป่ง' },
+  { code: '7006', label: '🌾 7006 เกษตรอำเภอบางแพ' },
+  { code: '7007', label: '🌾 7007 เกษตรอำเภอโพธาราม' },
+  { code: '7008', label: '🌾 7008 เกษตรอำเภอปากท่อ' },
+  { code: '7009', label: '🌾 7009 เกษตรอำเภอวัดเพลง' },
+  { code: '7010', label: '🌾 7010 เกษตรอำเภอบ้านคา' },
+
+  // นครปฐม (73) 7 อำเภอ
+  { code: '7301', label: '🌾 7301 เกษตรอำเภอเมืองนครปฐม' },
+  { code: '7302', label: '🌾 7302 เกษตรอำเภอกำแพงแสน' },
+  { code: '7303', label: '🌾 7303 เกษตรอำเภอนครชัยศรี' },
+  { code: '7304', label: '🌾 7304 เกษตรอำเภอดอนตูม' },
+  { code: '7305', label: '🌾 7305 เกษตรอำเภอบางเลน' },
+  { code: '7306', label: '🌾 7306 เกษตรอำเภอสามพราน' },
+  { code: '7307', label: '🌾 7307 เกษตรอำเภอพุทธมณฑล' },
+
+  // สมุทรสาคร (74) 3 อำเภอ
+  { code: '7401', label: '🌾 7401 เกษตรอำเภอเมืองสมุทรสาคร' },
+  { code: '7402', label: '🌾 7402 เกษตรอำเภอกระทุ่มแบน' },
+  { code: '7403', label: '🌾 7403 เกษตรอำเภอบ้านแพ้ว' },
+
+  // สมุทรสงคราม (75) 3 อำเภอ
+  { code: '7501', label: '🌾 7501 เกษตรอำเภอเมืองสมุทรสงคราม' },
+  { code: '7502', label: '🌾 7502 เกษตรอำเภอบางคนที' },
+  { code: '7503', label: '🌾 7503 เกษตรอำเภออัมพวา' },
+
+  // เดิม (เข้ากันได้ย้อนหลัง)
+  { code: 'doae', label: '🏛️ doae (ส่วนกลาง)' },
+  { code: 'ratchaburi', label: '🌴 ratchaburi (ราชบุรี)' },
+  { code: 'nakhon_pathom', label: '🌴 nakhon_pathom (นครปฐม)' },
+  { code: 'samut_sakhon', label: '🌴 samut_sakhon (สมุทรสาคร)' },
+  { code: 'samut_songkhram', label: '🌴 samut_songkhram (สมุทรสงคราม)' },
 ];
 
 const ROLE_LABELS = {
-  admin: 'ผู้ดูแลระบบ',
-  province: 'ผู้ใช้งานจังหวัด',
+  admin: 'ผู้ดูแลระบบหลัก',
+  central: 'ส่วนกลาง (กรม)',
+  region: 'ระดับเขต',
+  province: 'ผู้ใช้งานระดับจังหวัด',
+  district: 'ผู้ใช้งานระดับอำเภอ',
 };
 
 const state = {
@@ -74,6 +123,23 @@ function bindEvents() {
   el('entryForm').addEventListener('submit', saveEntry);
   el('loadBtn').addEventListener('click', loadEntry);
   el('refreshBtn').addEventListener('click', loadDashboard);
+  el('loginProvince')?.addEventListener('change', (e) => {
+    if (e.target.value && el('loginUsername')) {
+      el('loginUsername').value = e.target.value;
+      el('loginPin')?.focus();
+    }
+  });
+  el('btnOpenSystemLogsModal')?.addEventListener('click', openSystemLogsModal);
+  el('btnCloseSystemLogsModal')?.addEventListener('click', closeSystemLogsModal);
+  el('btnCloseLogDiffModal')?.addEventListener('click', () => { if (el('logDiffModal')) el('logDiffModal').hidden = true; });
+  el('btnRefreshLogs')?.addEventListener('click', loadSystemLogs);
+  el('logActionFilter')?.addEventListener('change', loadSystemLogs);
+  el('logTypeFilter')?.addEventListener('change', loadSystemLogs);
+  let _logSearchTimer = null;
+  el('logSearchInput')?.addEventListener('input', () => {
+    clearTimeout(_logSearchTimer);
+    _logSearchTimer = setTimeout(loadSystemLogs, 350);
+  });
   el('bunchRefreshBtn').addEventListener('click', loadDashboard);
   el('econRefreshBtn').addEventListener('click', renderEconomy);
   el('econRecalcBtn').addEventListener('click', renderEconomy);
@@ -214,8 +280,9 @@ async function login(event) {
     const response = await api('/api/login', {
       method: 'POST',
       body: {
-        province_code: el('loginProvince').value,
-        pin: el('loginPin').value,
+        username: (el('loginUsername')?.value || el('loginProvince')?.value || '').trim(),
+        province_code: (el('loginUsername')?.value || el('loginProvince')?.value || '').trim(),
+        pin: el('loginPin').value.trim(),
       },
     });
     state.user = response.user;
@@ -3830,3 +3897,135 @@ function closeQuick3DModal() {
 }
 
 
+
+
+// ==========================================
+// System Audit Log (Hidden for Central DOAE & Admin)
+// ==========================================
+let systemLogsCache = [];
+
+async function openSystemLogsModal() {
+  const modal = el('systemLogsModal');
+  if (modal) modal.hidden = false;
+  await loadSystemLogs();
+}
+
+function closeSystemLogsModal() {
+  const modal = el('systemLogsModal');
+  if (modal) modal.hidden = true;
+}
+
+async function loadSystemLogs() {
+  const tbody = el('systemLogsTbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--muted);">กำลังโหลดข้อมูลประวัติระบบ...</td></tr>';
+  try {
+    const action = el('logActionFilter')?.value || 'all';
+    const targetType = el('logTypeFilter')?.value || 'all';
+    const search = el('logSearchInput')?.value?.trim() || '';
+
+    const params = new URLSearchParams({ limit: '100' });
+    if (action !== 'all') params.set('action', action);
+    if (targetType !== 'all') params.set('target_type', targetType);
+    if (search) params.set('search', search);
+
+    const data = await api(`/api/logs?${params}`);
+    systemLogsCache = data.logs || [];
+    if (el('logTotalCount')) el('logTotalCount').textContent = `${data.total || systemLogsCache.length} รายการ`;
+    renderSystemLogs(systemLogsCache);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:#ef4444;">โหลดข้อมูลไม่สำเร็จ: ${err.message}</td></tr>`;
+  }
+}
+
+function renderSystemLogs(logs) {
+  const tbody = el('systemLogsTbody');
+  if (!tbody) return;
+  if (!logs || logs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:32px; color:var(--muted);">ไม่พบประวัติการแก้ไขตามเงื่อนไขที่เลือก</td></tr>';
+    return;
+  }
+  tbody.innerHTML = logs.map((log) => {
+    let actionBadge = '';
+    if (log.action === 'create') actionBadge = '<span style="background:#dcfce7; color:#15803d; padding:2px 8px; border-radius:12px; font-weight:700;">➕ เพิ่ม</span>';
+    else if (log.action === 'update') actionBadge = '<span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:12px; font-weight:700;">✏️ แก้ไข</span>';
+    else if (log.action === 'delete') actionBadge = '<span style="background:#fee2e2; color:#b91c1c; padding:2px 8px; border-radius:12px; font-weight:700;">🗑️ ลบ</span>';
+    else actionBadge = `<span style="background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:12px;">${log.action}</span>`;
+
+    const areaText = [log.province_label || log.province_code, log.district_name ? `อ.${log.district_name}` : ''].filter(Boolean).join(' / ') || '-';
+    const roleName = ROLE_LABELS[log.user_role] || log.user_role || '';
+    const hasDiff = Boolean(log.before_json || log.after_json);
+
+    return `
+      <tr style="border-bottom:1px solid #e2e8f0;">
+        <td style="white-space:nowrap; color:var(--muted); font-size:11px;">${log.created_at || '-'}</td>
+        <td>
+          <strong style="color:var(--text);">${log.username}</strong>
+          <div style="font-size:11px; color:var(--muted);">${log.user_label || ''} <span style="font-size:10px; background:#f1f5f9; padding:1px 4px; border-radius:3px;">${roleName}</span></div>
+        </td>
+        <td>${areaText}</td>
+        <td>${actionBadge}</td>
+        <td><strong>${log.target_label || log.target_type || '-'}</strong></td>
+        <td>${log.summary || '-'}</td>
+        <td style="text-align:center;">
+          ${hasDiff ? `<button type="button" class="button ghost small" style="font-size:11px; padding:2px 8px;" onclick="window.viewLogDiff(${log.id})">👁️ ตรวจดู</button>` : '-'}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+window.viewLogDiff = (logId) => {
+  const log = systemLogsCache.find((l) => l.id === logId);
+  if (!log) return;
+
+  const modal = el('logDiffModal');
+  const title = el('logDiffTitle');
+  const content = el('logDiffContent');
+  if (!modal || !content) return;
+
+  title.textContent = `รายละเอียดการแก้ไข: ${log.target_label || log.target_type} โดย ${log.username} (${log.created_at})`;
+
+  let before = null;
+  let after = null;
+  try { if (log.before_json) before = JSON.parse(log.before_json); } catch {}
+  try { if (log.after_json) after = JSON.parse(log.after_json); } catch {}
+
+  const allKeys = Array.from(new Set([...Object.keys(before || {}), ...Object.keys(after || {})]))
+    .filter((k) => !['created_at', 'updated_at', 'id'].includes(k));
+
+  let diffRows = '';
+  allKeys.forEach((key) => {
+    const valBefore = before ? before[key] : '-';
+    const valAfter = after ? after[key] : '-';
+    const isChanged = String(valBefore) !== String(valAfter);
+
+    diffRows += `
+      <tr style="background:${isChanged ? '#fef3c7' : 'transparent'};">
+        <td style="padding:6px 10px; font-weight:600; border-bottom:1px solid #e2e8f0;">${key}</td>
+        <td style="padding:6px 10px; color:${isChanged ? '#b91c1c' : 'inherit'}; border-bottom:1px solid #e2e8f0;">${valBefore ?? '-'}</td>
+        <td style="padding:6px 10px; color:${isChanged ? '#15803d' : 'inherit'}; font-weight:${isChanged ? '700' : 'normal'}; border-bottom:1px solid #e2e8f0;">${valAfter ?? '-'}</td>
+      </tr>
+    `;
+  });
+
+  content.innerHTML = `
+    <div style="margin-bottom:10px; font-size:13px; color:#475569;">
+      <strong>สรุป:</strong> ${log.summary || '-'}
+    </div>
+    <table style="width:100%; border-collapse:collapse; font-size:12px;">
+      <thead>
+        <tr style="background:#f8fafc; border-bottom:2px solid #cbd5e1; text-align:left;">
+          <th style="padding:6px 10px;">หัวข้อ / ฟิลด์</th>
+          <th style="padding:6px 10px; color:#b91c1c;">ค่าเดิม (Before)</th>
+          <th style="padding:6px 10px; color:#15803d;">ค่าใหม่ (After)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${diffRows || '<tr><td colspan="3" style="text-align:center; padding:12px;">ไม่มีข้อมูลเปรียบเทียบ</td></tr>'}
+      </tbody>
+    </table>
+  `;
+
+  modal.hidden = false;
+};

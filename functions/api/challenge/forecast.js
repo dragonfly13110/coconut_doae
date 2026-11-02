@@ -1,5 +1,6 @@
 import { authErrorResponse, json, methodNotAllowed, readJson, requireUser } from '../../../src/pages-api.js';
 import { ensureChallengeDb, SAMPLE_POINTS, SAMPLE_TREES, calculatePlot2569BaselineForecast } from '../../../src/challenge-db.js';
+import { canUserEditDistrict, recordSystemAuditLog } from '../../../src/user-accounts.js';
 
 export async function onRequest({ request, env }) {
   try {
@@ -30,10 +31,6 @@ async function getForecast(request, env, user) {
     return json({ error: 'ไม่พบข้อมูลแปลง' }, { status: 404 });
   }
 
-  if (user.role !== 'admin' && plot.province_code !== user.province_code) {
-    return json({ error: 'ไม่มีสิทธิ์เข้าถึงแปลงของจังหวัดอื่น' }, { status: 403 });
-  }
-
   // Load forecast entries for this point and tree position (latest per bunch)
   const { results: entries } = await env.DB.prepare(`
     SELECT bunch_no, harvest_month, fruit_count, id
@@ -48,104 +45,91 @@ async function getForecast(request, env, user) {
 
   const matrixMap = {};
   const seenBunches = new Set();
-  for (const item of (entries || [])) {
-    if (seenBunches.has(item.bunch_no)) continue;
-    seenBunches.add(item.bunch_no);
-
-    const key = `${item.bunch_no}_${item.harvest_month}`;
-    matrixMap[key] = item.fruit_count;
-    if (item.harvest_month >= 1 && item.harvest_month <= 12) {
-      monthlyTotals[item.harvest_month - 1] += item.fruit_count;
+  (entries || []).forEach((row) => {
+    if (seenBunches.has(row.bunch_no)) return;
+    seenBunches.add(row.bunch_no);
+    matrixMap[row.bunch_no] = {
+      month: row.harvest_month,
+      fruitCount: row.fruit_count,
+    };
+    if (row.harvest_month >= 1 && row.harvest_month <= 12) {
+      monthlyTotals[row.harvest_month - 1] += row.fruit_count;
+      treeTotal += row.fruit_count;
     }
-    treeTotal += item.fruit_count;
-  }
+  });
 
-  // Plot-wide overview across all 7 points x 5 trees = 35 trees
-  const { results: allTreeEntries } = await env.DB.prepare(`
-    SELECT point_label, tree_position, harvest_month, SUM(fruit_count) as total_fruits
+  // Calculate sampling summary across all points and sample trees in this plot
+  const { results: allPlotEntries } = await env.DB.prepare(`
+    SELECT point_label, tree_position, bunch_no, harvest_month, fruit_count
     FROM yield_forecasts
     WHERE plot_id = ?
-    GROUP BY point_label, tree_position, harvest_month
+    ORDER BY id DESC
   `).bind(plotId).all();
 
   const plotMonthlyTotals = new Array(12).fill(0);
-  const treeTotalsByPointAndPos = {};
+  let grandTotalFruits = 0;
+  const activeTreesSet = new Set();
+  const completedPointsSet = new Set();
   const pointsSummary = {};
 
-  for (const p of SAMPLE_POINTS) {
+  SAMPLE_POINTS.forEach((p) => {
     pointsSummary[p.label] = {
-      label: p.label,
-      no: p.no,
-      activeTrees: 0,
-      totalFruits: 0,
-      treeTotals: { C: 0, L: 0, R: 0, F: 0, B: 0 },
+      completedTrees: 0,
+      totalTrees: SAMPLE_TREES.length,
+      fruitCount: 0,
     };
-  }
+  });
 
-  let grandTotalFruits = 0;
-  const distinctTreesWithData = new Set();
+  const seenTreeBunches = new Set();
+  (allPlotEntries || []).forEach((row) => {
+    const key = `${row.point_label}:${row.tree_position}:${row.bunch_no}`;
+    if (seenTreeBunches.has(key)) return;
+    seenTreeBunches.add(key);
 
-  for (const row of (allTreeEntries || [])) {
-    const pLabel = row.point_label || 'จุดที่ 1';
-    const pos = row.tree_position || 'C';
-    const fruits = Number(row.total_fruits) || 0;
+    const treeKey = `${row.point_label}:${row.tree_position}`;
+    activeTreesSet.add(treeKey);
 
     if (row.harvest_month >= 1 && row.harvest_month <= 12) {
-      plotMonthlyTotals[row.harvest_month - 1] += fruits;
+      plotMonthlyTotals[row.harvest_month - 1] += row.fruit_count;
+      grandTotalFruits += row.fruit_count;
     }
 
-    if (!treeTotalsByPointAndPos[pLabel]) {
-      treeTotalsByPointAndPos[pLabel] = { C: 0, L: 0, R: 0, F: 0, B: 0 };
+    if (pointsSummary[row.point_label]) {
+      pointsSummary[row.point_label].fruitCount += row.fruit_count;
     }
-    treeTotalsByPointAndPos[pLabel][pos] = (treeTotalsByPointAndPos[pLabel][pos] || 0) + fruits;
+  });
 
-    if (!pointsSummary[pLabel]) {
-      pointsSummary[pLabel] = {
-        label: pLabel,
-        no: 1,
-        activeTrees: 0,
-        totalFruits: 0,
-        treeTotals: { C: 0, L: 0, R: 0, F: 0, B: 0 },
-      };
+  // Count completed trees per point
+  SAMPLE_POINTS.forEach((p) => {
+    let treeCount = 0;
+    SAMPLE_TREES.forEach((t) => {
+      const treeKey = `${p.label}:${t.pos}`;
+      if (activeTreesSet.has(treeKey)) treeCount += 1;
+    });
+    if (pointsSummary[p.label]) {
+      pointsSummary[p.label].completedTrees = treeCount;
+      if (treeCount === SAMPLE_TREES.length) {
+        completedPointsSet.add(p.label);
+      }
     }
-    pointsSummary[pLabel].treeTotals[pos] = (pointsSummary[pLabel].treeTotals[pos] || 0) + fruits;
-    pointsSummary[pLabel].totalFruits += fruits;
+  });
 
-    if (fruits > 0) {
-      distinctTreesWithData.add(`${pLabel}_${pos}`);
-    }
+  const totalTrees = SAMPLE_POINTS.length * SAMPLE_TREES.length; // 7 points x 5 trees = 35 sample trees
+  const activeTreesCount = activeTreesSet.size;
+  const activePointsCompleted = completedPointsSet.size;
+  const activePointsWithData = Object.values(pointsSummary).filter((p) => p.completedTrees > 0).length;
 
-    grandTotalFruits += fruits;
-  }
-
-  // Count active trees per point
-  let activePointsCompleted = 0;
-  let activePointsWithData = 0;
-
-  for (const pLabel in pointsSummary) {
-    const pt = pointsSummary[pLabel];
-    let treesCount = 0;
-    for (const pos in pt.treeTotals) {
-      if (pt.treeTotals[pos] > 0) treesCount++;
-    }
-    pt.activeTrees = treesCount;
-    if (treesCount === 5) activePointsCompleted++;
-    if (treesCount > 0) activePointsWithData++;
-  }
-
-  const activeTreesCount = distinctTreesWithData.size;
-  const totalTrees = SAMPLE_POINTS.length * SAMPLE_TREES.length; // 7 x 5 = 35 trees
   const avgFruitPerTree = activeTreesCount > 0 ? (grandTotalFruits / activeTreesCount) : 0;
-  const estimatedPlotYieldPerYear = Math.round(avgFruitPerTree * (plot.trees_per_rai || 35) * (plot.productive_area_rai || 1));
+  const estimatedPlotYieldPerYear = Math.round(avgFruitPerTree * (plot.trees_per_rai || 0) * (plot.productive_area_rai || 0));
 
-  // Compute official Year 2569 baseline projection
-  const { results: macroRows } = await env.DB.prepare('SELECT * FROM macro_district_stats').all();
-  const baseline2569 = calculatePlot2569BaselineForecast(plot, macroRows, districtParam);
+  // Compute baseline forecast using official 2569 stats (prior anchor)
+  const baseline2569 = calculatePlot2569BaselineForecast(plot, undefined, districtParam);
 
   return json({
     plot,
     pointLabel,
     treePos,
+    treeNo,
     samplePoints: SAMPLE_POINTS,
     sampleTrees: SAMPLE_TREES,
     matrixMap,
@@ -179,13 +163,13 @@ async function saveForecast(request, env, user) {
     return json({ error: 'ระบุรหัสแปลง (plot_id)' }, { status: 400 });
   }
 
-  const plot = await env.DB.prepare('SELECT id, province_code FROM farmer_plots WHERE id = ?').bind(plotId).first();
+  const plot = await env.DB.prepare('SELECT id, province_code, district, plot_label, full_name FROM farmer_plots WHERE id = ?').bind(plotId).first();
   if (!plot) {
     return json({ error: 'ไม่พบข้อมูลแปลง' }, { status: 404 });
   }
 
-  if (user.role !== 'admin' && plot.province_code !== user.province_code) {
-    return json({ error: 'ไม่มีสิทธิ์บันทึกแปลงของจังหวัดอื่น' }, { status: 403 });
+  if (!canUserEditDistrict(user, plot.province_code, plot.district)) {
+    return json({ error: 'ไม่มีสิทธิ์บันทึกข้อมูลนอกเขตพื้นที่รับผิดชอบของท่าน' }, { status: 403 });
   }
 
   // Deduplicate entries by bunch_no (1 bunch only belongs to 1 month per tree, last-write-wins)
@@ -226,6 +210,19 @@ async function saveForecast(request, env, user) {
       item.fruitCount
     ).run();
   }
+
+  await recordSystemAuditLog(env.DB, {
+    action: 'update',
+    targetType: 'forecast',
+    targetId: plotId,
+    targetLabel: `${plot.plot_label} (${pointLabel} ต้นที่ ${treeNo})`,
+    provinceCode: plot.province_code,
+    districtName: plot.district,
+    user,
+    summary: `บันทึกคาดการณ์ผลผลิต ${plot.plot_label} ${pointLabel} ต้นที่ ${treeNo} (${treePos}) รวม ${bunchMap.size} ทะลาย`,
+    beforeData: null,
+    afterData: { pointLabel, treeNo, treePos, bunchCount: bunchMap.size },
+  });
 
   return json({ success: true, message: 'บันทึกข้อมูลคาดการณ์ผลผลิตเรียบร้อยแล้ว' });
 }

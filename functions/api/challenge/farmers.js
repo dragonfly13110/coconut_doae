@@ -1,5 +1,6 @@
 import { authErrorResponse, json, methodNotAllowed, readJson, requireUser } from '../../../src/pages-api.js';
 import { ensureChallengeDb } from '../../../src/challenge-db.js';
+import { canUserEditDistrict, recordSystemAuditLog } from '../../../src/user-accounts.js';
 
 export async function onRequest({ request, env }) {
   try {
@@ -18,7 +19,7 @@ export async function onRequest({ request, env }) {
 async function listOrGetFarmers(request, env, user) {
   const url = new URL(request.url);
   const id = url.searchParams.get('id');
-  const targetProvince = user.role === 'admin' ? url.searchParams.get('province_code') : user.province_code;
+  const targetProvince = url.searchParams.get('province_code');
 
   if (id) {
     const plot = await env.DB.prepare(`
@@ -29,10 +30,7 @@ async function listOrGetFarmers(request, env, user) {
       return json({ error: 'ไม่พบข้อมูลแปลงที่ระบุ' }, { status: 404 });
     }
 
-    if (user.role !== 'admin' && plot.province_code !== user.province_code) {
-      return json({ error: 'ไม่มีสิทธิ์เข้าถึงแปลงของจังหวัดอื่น' }, { status: 403 });
-    }
-
+    // Read access is open across all districts/provinces so users can inspect and compare
     // Get harvest counts summary
     const harvestStats = await env.DB.prepare(`
       SELECT 
@@ -52,7 +50,7 @@ async function listOrGetFarmers(request, env, user) {
   let query = 'SELECT * FROM farmer_plots';
   const bindings = [];
 
-  if (targetProvince) {
+  if (targetProvince && targetProvince !== 'all') {
     query += ' WHERE province_code = ?';
     bindings.push(targetProvince);
   }
@@ -67,7 +65,13 @@ async function listOrGetFarmers(request, env, user) {
 async function saveFarmer(request, env, user) {
   const body = await readJson(request);
   const id = body.id ? Number(body.id) : null;
-  const provinceCode = user.role === 'admin' ? (body.province_code || 'ratchaburi') : user.province_code;
+
+  let provinceCode = body.province_code || user.province_code || 'ratchaburi';
+  if (['admin', 'central', 'region'].includes(user.role)) {
+    provinceCode = body.province_code || 'ratchaburi';
+  } else if (user.role === 'province') {
+    provinceCode = user.province_code;
+  }
 
   const farmerNo = body.farmer_no ? Number(body.farmer_no) : null;
   const plotLabel = String(body.plot_label || 'แปลงใหม่').trim();
@@ -79,9 +83,6 @@ async function saveFarmer(request, env, user) {
   if (firstName) {
     fullName = `${title ? title + ' ' : ''}${firstName} ${lastName}`.trim();
   }
-  if (!fullName && !firstName) {
-    return json({ error: 'กรุณาระบุชื่อ - สกุล เกษตรกร' }, { status: 400 });
-  }
 
   const addressNo = String(body.address_no || '').trim();
   const street = String(body.street || '').trim();
@@ -91,54 +92,62 @@ async function saveFarmer(request, env, user) {
   const provinceName = String(body.province_name || '').trim();
 
   let address = String(body.address || '').trim();
-  if (addressNo || moo || street || subdistrict || district) {
-    const parts = [];
-    if (addressNo) parts.push(`เลขที่ ${addressNo}`);
-    if (street) parts.push(`ถนน ${street}`);
-    if (moo) parts.push(`หมู่ ${moo}`);
-    if (subdistrict) parts.push(`ตำบล ${subdistrict}`);
-    if (district) parts.push(`อำเภอ ${district}`);
-    if (provinceName) parts.push(`จังหวัด ${provinceName}`);
-    address = parts.join(' ');
+  if (!address && (subdistrict || district)) {
+    address = [
+      addressNo,
+      street ? `ถ.${street}` : '',
+      moo ? `ม.${moo}` : '',
+      subdistrict ? `ต.${subdistrict}` : '',
+      district ? `อ.${district}` : '',
+      provinceName ? `จ.${provinceName}` : ''
+    ].filter(Boolean).join(' ');
   }
 
   const age = body.age ? Number(body.age) : null;
   const phone = String(body.phone || '').trim();
-  const totalArea = Number(body.total_area_rai || 0);
-  const productiveArea = Number(body.productive_area_rai || 0);
-  const plantAge = Number(body.plant_age_years || 0);
-  const treesPerRai = Number(body.trees_per_rai || 0);
-  const coordZone = String(body.coord_zone || '47').trim();
+  const totalArea = Number(body.total_area_rai) || 0;
+  const productiveArea = Number(body.productive_area_rai) || 0;
+  const plantAge = Number(body.plant_age_years) || 0;
+  const treesPerRai = Number(body.trees_per_rai) || 0;
 
-  const coordX1 = body.coord_x1 !== undefined && body.coord_x1 !== '' ? Number(body.coord_x1) : (body.coord_x ? Number(body.coord_x) : null);
-  const coordY1 = body.coord_y1 !== undefined && body.coord_y1 !== '' ? Number(body.coord_y1) : (body.coord_y ? Number(body.coord_y) : null);
-  const coordX2 = body.coord_x2 !== undefined && body.coord_x2 !== '' ? Number(body.coord_x2) : null;
-  const coordY2 = body.coord_y2 !== undefined && body.coord_y2 !== '' ? Number(body.coord_y2) : null;
-  const coordX3 = body.coord_x3 !== undefined && body.coord_x3 !== '' ? Number(body.coord_x3) : null;
-  const coordY3 = body.coord_y3 !== undefined && body.coord_y3 !== '' ? Number(body.coord_y3) : null;
-  const coordX4 = body.coord_x4 !== undefined && body.coord_x4 !== '' ? Number(body.coord_x4) : null;
-  const coordY4 = body.coord_y4 !== undefined && body.coord_y4 !== '' ? Number(body.coord_y4) : null;
-  const coordX = coordX1;
-  const coordY = coordY1;
+  const coordZone = String(body.coord_zone || '47').trim();
+  const coordX = body.coord_x ? Number(body.coord_x) : null;
+  const coordY = body.coord_y ? Number(body.coord_y) : null;
+  const coordX1 = body.coord_x1 ? Number(body.coord_x1) : null;
+  const coordY1 = body.coord_y1 ? Number(body.coord_y1) : null;
+  const coordX2 = body.coord_x2 ? Number(body.coord_x2) : null;
+  const coordY2 = body.coord_y2 ? Number(body.coord_y2) : null;
+  const coordX3 = body.coord_x3 ? Number(body.coord_x3) : null;
+  const coordY3 = body.coord_y3 ? Number(body.coord_y3) : null;
+  const coordX4 = body.coord_x4 ? Number(body.coord_x4) : null;
+  const coordY4 = body.coord_y4 ? Number(body.coord_y4) : null;
 
   const standard = String(body.production_standard || 'GAP').trim();
   const soilSeries = String(body.soil_series || '').trim();
-  const productionCost = body.production_cost_per_rai !== undefined && body.production_cost_per_rai !== '' ? Number(body.production_cost_per_rai) : 0;
-  const avgIncome = body.avg_income_per_rai !== undefined && body.avg_income_per_rai !== '' ? Number(body.avg_income_per_rai) : 0;
+  const productionCost = Number(body.production_cost_per_rai) || 0;
+  const avgIncome = Number(body.avg_income_per_rai) || 0;
+
+  // Enforce Permission Check: District officers can only edit their own district!
+  if (!canUserEditDistrict(user, provinceCode, district)) {
+    return json({
+      error: `ท่านไม่มีสิทธิ์บันทึก/แก้ไขแปลงนอกเขตพื้นที่รับผิดชอบ (เฉพาะอำเภอ ${user.district_name || user.province_label})`,
+    }, { status: 403 });
+  }
 
   if (id) {
-    // Check permission
-    const existing = await env.DB.prepare('SELECT province_code FROM farmer_plots WHERE id = ?').bind(id).first();
-    if (!existing) {
+    const beforePlot = await env.DB.prepare('SELECT * FROM farmer_plots WHERE id = ?').bind(id).first();
+    if (!beforePlot) {
       return json({ error: 'ไม่พบข้อมูลแปลงที่ต้องการแก้ไข' }, { status: 404 });
     }
-    if (user.role !== 'admin' && existing.province_code !== user.province_code) {
-      return json({ error: 'ไม่มีสิทธิ์แก้ไขแปลงของจังหวัดอื่น' }, { status: 403 });
+
+    if (!canUserEditDistrict(user, beforePlot.province_code, beforePlot.district)) {
+      return json({
+        error: `ท่านไม่มีสิทธิ์แก้ไขแปลงนี้ (อยู่นอกพื้นที่รับผิดชอบของท่าน)`,
+      }, { status: 403 });
     }
 
     await env.DB.prepare(`
-      UPDATE farmer_plots
-      SET 
+      UPDATE farmer_plots SET
         farmer_no = ?,
         plot_label = ?,
         title = ?,
@@ -185,6 +194,19 @@ async function saveFarmer(request, env, user) {
       id
     ).run();
 
+    await recordSystemAuditLog(env.DB, {
+      action: 'update',
+      targetType: 'plot',
+      targetId: id,
+      targetLabel: `${plotLabel} (${fullName})`,
+      provinceCode: beforePlot.province_code,
+      districtName: district || beforePlot.district,
+      user,
+      summary: `แก้ไขข้อมูลแปลง ${plotLabel} (${fullName}) อ.${district || beforePlot.district || '-'}`,
+      beforeData: beforePlot,
+      afterData: body,
+    });
+
     return json({ success: true, id, message: 'บันทึกการแก้ไขข้อมูลแปลงสำเร็จ' });
   }
 
@@ -209,6 +231,20 @@ async function saveFarmer(request, env, user) {
   ).run();
 
   const newId = result.meta?.last_row_id;
+
+  await recordSystemAuditLog(env.DB, {
+    action: 'create',
+    targetType: 'plot',
+    targetId: newId,
+    targetLabel: `${plotLabel} (${fullName})`,
+    provinceCode,
+    districtName: district,
+    user,
+    summary: `เพิ่มแปลงเกษตรกรใหม่ ${plotLabel} (${fullName}) อ.${district || '-'}`,
+    beforeData: null,
+    afterData: body,
+  });
+
   return json({ success: true, id: newId, message: 'เพิ่มข้อมูลเกษตรกรและแปลงใหม่สำเร็จ' });
 }
 
@@ -219,13 +255,27 @@ async function deleteFarmer(request, env, user) {
     return json({ error: 'ระบุรหัสแปลงที่ต้องการลบ' }, { status: 400 });
   }
 
-  const existing = await env.DB.prepare('SELECT province_code FROM farmer_plots WHERE id = ?').bind(id).first();
+  const existing = await env.DB.prepare('SELECT * FROM farmer_plots WHERE id = ?').bind(id).first();
   if (!existing) {
     return json({ error: 'ไม่พบข้อมูลแปลง' }, { status: 404 });
   }
-  if (user.role !== 'admin' && existing.province_code !== user.province_code) {
-    return json({ error: 'ไม่มีสิทธิ์ลบแปลงของจังหวัดอื่น' }, { status: 403 });
+
+  if (!canUserEditDistrict(user, existing.province_code, existing.district)) {
+    return json({ error: 'ไม่มีสิทธิ์ลบแปลงนอกเขตพื้นที่รับผิดชอบของท่าน' }, { status: 403 });
   }
+
+  await recordSystemAuditLog(env.DB, {
+    action: 'delete',
+    targetType: 'plot',
+    targetId: id,
+    targetLabel: `${existing.plot_label} (${existing.full_name})`,
+    provinceCode: existing.province_code,
+    districtName: existing.district,
+    user,
+    summary: `ลบแปลงเกษตรกร ${existing.plot_label} (${existing.full_name}) อ.${existing.district || '-'}`,
+    beforeData: existing,
+    afterData: null,
+  });
 
   // Cascade delete
   await env.DB.prepare('DELETE FROM yield_forecasts WHERE plot_id = ?').bind(id).run();

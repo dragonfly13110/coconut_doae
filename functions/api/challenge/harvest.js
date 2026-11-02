@@ -1,5 +1,6 @@
 import { authErrorResponse, json, methodNotAllowed, readJson, requireUser } from '../../../src/pages-api.js';
 import { ensureChallengeDb } from '../../../src/challenge-db.js';
+import { canUserEditDistrict, recordSystemAuditLog } from '../../../src/user-accounts.js';
 
 export async function onRequest({ request, env }) {
   try {
@@ -18,7 +19,7 @@ export async function onRequest({ request, env }) {
 async function listHarvestCuts(request, env, user) {
   const url = new URL(request.url);
   const plotId = url.searchParams.get('plot_id');
-  const targetProvince = user.role === 'admin' ? url.searchParams.get('province_code') : user.province_code;
+  const targetProvince = url.searchParams.get('province_code');
 
   let query = `
     SELECT 
@@ -37,7 +38,7 @@ async function listHarvestCuts(request, env, user) {
     conditions.push('hc.plot_id = ?');
     bindings.push(Number(plotId));
   }
-  if (targetProvince) {
+  if (targetProvince && targetProvince !== 'all') {
     conditions.push('hc.province_code = ?');
     bindings.push(targetProvince);
   }
@@ -102,13 +103,13 @@ async function saveHarvestCut(request, env, user) {
     return json({ error: 'กรุณาเลือกแปลงเกษตรกร' }, { status: 400 });
   }
 
-  const plot = await env.DB.prepare('SELECT id, province_code, full_name, productive_area_rai, trees_per_rai FROM farmer_plots WHERE id = ?').bind(plotId).first();
+  const plot = await env.DB.prepare('SELECT id, province_code, district, full_name, productive_area_rai, trees_per_rai, plot_label FROM farmer_plots WHERE id = ?').bind(plotId).first();
   if (!plot) {
     return json({ error: 'ไม่พบข้อมูลแปลง' }, { status: 404 });
   }
 
-  if (user.role !== 'admin' && plot.province_code !== user.province_code) {
-    return json({ error: 'ไม่มีสิทธิ์บันทึกข้อมูลแปลงของจังหวัดอื่น' }, { status: 403 });
+  if (!canUserEditDistrict(user, plot.province_code, plot.district)) {
+    return json({ error: 'ไม่มีสิทธิ์บันทึกข้อมูลนอกเขตพื้นที่รับผิดชอบของท่าน' }, { status: 403 });
   }
 
   const cutRound = Number(body.cut_round || 1);
@@ -140,8 +141,7 @@ async function saveHarvestCut(request, env, user) {
     yieldPerTree = Math.round((yieldPerRai / treesPerRai) * 10) / 10;
   }
 
-  // Requirement 2: Last-Write-Wins / UPSERT
-  // If target cut exists (by id OR by plot_id + cut_round), update it with latest submitted values.
+  // Requirement: Last-Write-Wins / UPSERT
   let targetId = id;
   if (!targetId) {
     const existing = await env.DB.prepare(
@@ -169,6 +169,19 @@ async function saveHarvestCut(request, env, user) {
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).bind(cutRound, cutDate, totalYield, yieldPerRai, treesPerRai, yieldPerTree, price, twin, damaged, notes, targetId).run();
+
+    await recordSystemAuditLog(env.DB, {
+      action: 'update',
+      targetType: 'harvest',
+      targetId,
+      targetLabel: `${plot.plot_label} (รอบตัดที่ ${cutRound})`,
+      provinceCode: plot.province_code,
+      districtName: plot.district,
+      user,
+      summary: `อัปเดตข้อมูลการตัดผล ${plot.plot_label} รอบตัดที่ ${cutRound} ผลผลิต ${totalYield} ผล`,
+      beforeData: null,
+      afterData: body,
+    });
 
     return json({
       success: true,
@@ -198,9 +211,24 @@ async function saveHarvestCut(request, env, user) {
     notes
   ).run();
 
+  const newId = result.meta?.last_row_id;
+
+  await recordSystemAuditLog(env.DB, {
+    action: 'create',
+    targetType: 'harvest',
+    targetId: newId,
+    targetLabel: `${plot.plot_label} (รอบตัดที่ ${cutRound})`,
+    provinceCode: plot.province_code,
+    districtName: plot.district,
+    user,
+    summary: `บันทึกข้อมูลการตัดผล ${plot.plot_label} รอบตัดที่ ${cutRound} ผลผลิต ${totalYield} ผล`,
+    beforeData: null,
+    afterData: body,
+  });
+
   return json({
     success: true,
-    id: result.meta?.last_row_id,
+    id: newId,
     message: 'บันทึกข้อมูลรอบการตัดสำเร็จ',
     isUpdated: false,
   });
@@ -213,14 +241,33 @@ async function deleteHarvestCut(request, env, user) {
     return json({ error: 'ระบุรหัสข้อมูลรอบการตัดที่ต้องการลบ' }, { status: 400 });
   }
 
-  const existing = await env.DB.prepare('SELECT province_code FROM harvest_cuts WHERE id = ?').bind(id).first();
+  const existing = await env.DB.prepare(`
+    SELECT hc.*, fp.district, fp.plot_label
+    FROM harvest_cuts hc
+    JOIN farmer_plots fp ON hc.plot_id = fp.id
+    WHERE hc.id = ?
+  `).bind(id).first();
+
   if (!existing) {
     return json({ error: 'ไม่พบรายการที่ต้องการลบ' }, { status: 404 });
   }
 
-  if (user.role !== 'admin' && existing.province_code !== user.province_code) {
-    return json({ error: 'ไม่มีสิทธิ์ลบข้อมูลของจังหวัดอื่น' }, { status: 403 });
+  if (!canUserEditDistrict(user, existing.province_code, existing.district)) {
+    return json({ error: 'ไม่มีสิทธิ์ลบข้อมูลนอกเขตพื้นที่รับผิดชอบของท่าน' }, { status: 403 });
   }
+
+  await recordSystemAuditLog(env.DB, {
+    action: 'delete',
+    targetType: 'harvest',
+    targetId: id,
+    targetLabel: `${existing.plot_label || ''} (รอบตัดที่ ${existing.cut_round})`,
+    provinceCode: existing.province_code,
+    districtName: existing.district,
+    user,
+    summary: `ลบข้อมูลรอบการตัด ${existing.plot_label || ''} รอบที่ ${existing.cut_round}`,
+    beforeData: existing,
+    afterData: null,
+  });
 
   await env.DB.prepare('DELETE FROM harvest_cuts WHERE id = ?').bind(id).run();
   return json({ success: true, message: 'ลบรายการรอบการตัดเรียบร้อยแล้ว' });

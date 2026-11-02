@@ -1,5 +1,6 @@
 import { clearSessionCookie, parseCookies } from './auth.js';
 import { ensureChallengeDb } from './challenge-db.js';
+import { SYSTEM_ACCOUNTS, ensureSystemAuditDb } from './user-accounts.js';
 
 export async function ensureDbInitialized(db) {
   if (!db || typeof db.exec !== 'function' || typeof db.prepare !== 'function') return;
@@ -80,13 +81,18 @@ export async function ensureDbInitialized(db) {
       } catch (alterError) {}
     }
     await ensureChallengeDb(db);
+    await ensureSystemAuditDb(db);
+    await seedSystemUsers(db);
   } catch (error) {
     if (error.message.includes('no such table') || error.message.includes('SQLITE_ERROR')) {
       const schemaSql = `
         CREATE TABLE IF NOT EXISTS users (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          province_code TEXT NOT NULL UNIQUE,
+          username TEXT NOT NULL UNIQUE,
+          province_code TEXT NOT NULL,
           province_label TEXT NOT NULL,
+          district_code TEXT,
+          district_name TEXT,
           pin_hash TEXT NOT NULL,
           role TEXT NOT NULL DEFAULT 'province',
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -137,16 +143,6 @@ export async function ensureDbInitialized(db) {
         CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
       `;
 
-      const seedSql = `
-        INSERT INTO users (province_code, province_label, pin_hash, role) VALUES 
-        ('nakhon_pathom', 'นครปฐม', 'f7d5151bda88c2ba61d3519f89dd69874fef4e9f01935767f5815c7f217a1b67', 'province'),
-        ('ratchaburi', 'ราชบุรี', 'f7d5151bda88c2ba61d3519f89dd69874fef4e9f01935767f5815c7f217a1b67', 'province'),
-        ('samut_sakhon', 'สมุทรสาคร', 'f7d5151bda88c2ba61d3519f89dd69874fef4e9f01935767f5815c7f217a1b67', 'province'),
-        ('samut_songkhram', 'สมุทรสงคราม', 'f7d5151bda88c2ba61d3519f89dd69874fef4e9f01935767f5815c7f217a1b67', 'province'),
-        ('doae', 'กรมส่งเสริมการเกษตร (ส่วนกลาง)', 'f7d5151bda88c2ba61d3519f89dd69874fef4e9f01935767f5815c7f217a1b67', 'admin')
-        ON CONFLICT(province_code) DO UPDATE SET pin_hash = excluded.pin_hash;
-      `;
-
       const runSql = async (sql) => {
         const statements = sql
           .split(';')
@@ -157,9 +153,73 @@ export async function ensureDbInitialized(db) {
         }
       };
       await runSql(schemaSql);
-      await runSql(seedSql);
+      await ensureSystemAuditDb(db);
+      await seedSystemUsers(db);
     } else {
       throw error;
+    }
+  }
+}
+
+export async function seedSystemUsers(db) {
+  if (!db || typeof db.prepare !== 'function') return;
+
+  // Self-heal: ensure users table columns exist
+  try {
+    await db.prepare('SELECT username FROM users LIMIT 1').first();
+  } catch {
+    try {
+      await db.prepare('ALTER TABLE users ADD COLUMN username TEXT').run();
+    } catch {}
+  }
+  try {
+    await db.prepare('SELECT district_code FROM users LIMIT 1').first();
+  } catch {
+    try {
+      await db.prepare('ALTER TABLE users ADD COLUMN district_code TEXT').run();
+      await db.prepare('ALTER TABLE users ADD COLUMN district_name TEXT').run();
+    } catch {}
+  }
+
+
+
+  // Seed / update all system accounts
+  for (const acc of SYSTEM_ACCOUNTS) {
+    try {
+      const existing = await db.prepare('SELECT id FROM users WHERE username = ?').bind(acc.username).first();
+      if (existing) {
+        await db.prepare(`
+          UPDATE users SET
+            province_code = ?,
+            province_label = ?,
+            district_code = ?,
+            district_name = ?,
+            role = ?
+          WHERE id = ?
+        `).bind(
+          acc.province_code,
+          acc.province_label,
+          acc.district_code,
+          acc.district_name,
+          acc.role,
+          existing.id,
+        ).run();
+      } else {
+        await db.prepare(`
+          INSERT INTO users (username, province_code, province_label, district_code, district_name, pin_hash, role)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          acc.username,
+          acc.province_code,
+          acc.province_label,
+          acc.district_code,
+          acc.district_name,
+          acc.pin_hash,
+          acc.role,
+        ).run();
+      }
+    } catch (e) {
+      console.error('Failed to seed user account', acc.username, e);
     }
   }
 }
@@ -187,14 +247,25 @@ export async function requireUser(request, env) {
   const cookies = parseCookies(request.headers.get('cookie') || '');
   if (!cookies.sid) throw unauthorized();
 
-  const row = await env.DB.prepare(`
-    SELECT s.id AS session_id, u.id, u.province_code, u.province_label, u.role
-    FROM sessions s
-    JOIN users u ON u.id = s.user_id
-    WHERE s.id = ? AND s.expires_at > CURRENT_TIMESTAMP
-  `).bind(cookies.sid).first();
+  let row = null;
+  try {
+    row = await env.DB.prepare(`
+      SELECT s.id AS session_id, u.id, u.username, u.province_code, u.province_label, u.district_code, u.district_name, u.role
+      FROM sessions s
+      JOIN users u ON u.id = s.user_id
+      WHERE s.id = ? AND s.expires_at > CURRENT_TIMESTAMP
+    `).bind(cookies.sid).first();
+  } catch {
+    row = await env.DB.prepare(`
+      SELECT s.id AS session_id, u.id, u.province_code, u.province_label, u.role
+      FROM sessions s
+      JOIN users u ON u.id = s.user_id
+      WHERE s.id = ? AND s.expires_at > CURRENT_TIMESTAMP
+    `).bind(cookies.sid).first();
+  }
 
   if (!row) throw unauthorized();
+  if (!row.username) row.username = row.province_code;
   return row;
 }
 

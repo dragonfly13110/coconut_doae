@@ -9,11 +9,20 @@ export async function onRequest({ request, env }) {
   try {
     await ensureDbInitialized(env.DB);
     const body = await readJson(request);
-    const provinceCode = String(body.province_code || '').trim();
-    const pin = String(body.pin || '');
-    const user = await env.DB.prepare(
-      'SELECT id, province_code, province_label, role, pin_hash FROM users WHERE province_code = ?',
-    ).bind(provinceCode).first();
+    const identifier = String(body.username || body.province_code || '').trim();
+    const pin = String(body.pin || body.password || '');
+
+    let user = null;
+    try {
+      user = await env.DB.prepare(
+        'SELECT id, username, province_code, province_label, district_code, district_name, role, pin_hash FROM users WHERE username = ? OR province_code = ?',
+      ).bind(identifier, identifier).first();
+    } catch {
+      // Fallback in case of mock environments with older single-column signatures
+      user = await env.DB.prepare(
+        'SELECT id, province_code, province_label, role, pin_hash FROM users WHERE province_code = ?',
+      ).bind(identifier).first();
+    }
 
     if (!user) {
       return json({ error: 'invalid province code or PIN' }, { status: 401 });
@@ -32,8 +41,12 @@ export async function onRequest({ request, env }) {
     return json(
       {
         user: {
+          id: user.id,
+          username: user.username || user.province_code,
           province_code: user.province_code,
           province_label: user.province_label,
+          district_code: user.district_code || null,
+          district_name: user.district_name || null,
           role: user.role,
         },
       },

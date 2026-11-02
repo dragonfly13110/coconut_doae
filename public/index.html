@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ระบบติดตามคุณภาพมะพร้าวน้ำหอม DOAE</title>
+  <title>ระบบติดตามสถานการณ์การผลิตมะพร้าวน้ำหอม - Aromatic Coconut Production Monitoring System</title>
   <link rel="stylesheet" href="/styles.css?v=2.5">
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="/vendor/leaflet/MarkerCluster.css">
@@ -15,8 +15,8 @@
       <div class="brand-mark">DOAE</div>
       <div>
         <p class="agency-line">กรมส่งเสริมการเกษตร</p>
-        <h1>ระบบติดตามคุณภาพมะพร้าว DOAE</h1>
-        <p>ติดตามคุณภาพมะพร้าวน้ำหอม 4 จังหวัด 6 รอบการเก็บข้อมูล</p>
+        <h1>ระบบติดตามสถานการณ์การผลิตมะพร้าวน้ำหอม</h1>
+        <p>Aromatic Coconut Production Monitoring System</p>
       </div>
     </div>
     <div class="header-right-group">
@@ -69,15 +69,20 @@
           </div>
         </div>
         <p class="eyebrow">เข้าใช้งานระบบ</p>
-        <h2>เข้าสู่ระบบจังหวัด</h2>
+        <h2>เข้าสู่ระบบเจ้าหน้าที่</h2>
         <form id="loginForm" class="form-stack">
           <label>
-            หน่วยงาน / จังหวัด
-            <select id="loginProvince" required></select>
+            ชื่อผู้ใช้งาน (Username) หรือเลือกรหัสหน่วยงาน
+            <div style="display:flex; gap:8px;">
+              <input id="loginUsername" type="text" autocomplete="username" placeholder="เช่น 7001, prov70, doae_hq, admin" required style="flex:1;">
+              <select id="loginProvince" style="max-width:140px; font-size:12px;" title="เลือกจากรายการ">
+                <option value="">-- หรือเลือกด่วน --</option>
+              </select>
+            </div>
           </label>
           <label>
-            PIN
-            <input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="กรอก PIN" required>
+            รหัสผ่าน (Password / PIN)
+            <input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="กรอกรหัสผ่าน (เช่น pass7001)" required>
           </label>
           <button class="button primary" type="submit">เข้าสู่ระบบ</button>
         </form>
@@ -2108,10 +2113,20 @@
           <div class="footer-meta-left">
             <span class="footer-emblem">🥥 กรมส่งเสริมการเกษตร (DOAE)</span>
             <span class="footer-dot">•</span>
-            <span>ระบบติดตามคุณภาพและคาดการณ์ผลผลิตมะพร้าวน้ำหอม 4 จังหวัด (ราชบุรี นครปฐม สมุทรสงคราม สมุทรสาคร)</span>
+            <span>ระบบติดตามสถานการณ์การผลิตมะพร้าวน้ำหอม - Aromatic Coconut Production Monitoring System (ราชบุรี นครปฐม สมุทรสงคราม สมุทรสาคร)</span>
           </div>
           <div class="footer-meta-right">
             <span>สำนักส่งเสริมและจัดการสินค้าเกษตร © 2569</span>
+          </div>
+        </div>
+        <!-- Hidden Admin / Central Audit Log Entry Point -->
+        <div id="footerAdminLogsSection" class="footer-admin-logs-row" hidden style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.18); display: flex; justify-content: flex-end; align-items: center;">
+          <button type="button" id="btnOpenSystemLogsModal" class="button ghost small footer-audit-btn" style="color: #ecfdf5; border-color: #34d39966; background: rgba(6, 78, 59, 0.5); font-size: 11px; padding: 4px 12px; border-radius: 6px; cursor: pointer;">
+            <span>📜 บันทึกประวัติการแก้ไขระบบ (System Audit Log)</span>
+            <span style="font-size: 10px; background: #059669; color: #fff; padding: 1px 6px; border-radius: 4px; margin-left: 6px;">เฉพาะกรม & Admin</span>
+          </button>
+        </div>
+
           </div>
         </div>
       </div>
@@ -2217,7 +2232,7 @@
 
           <div class="modal-actions">
             <button id="chalBtnCancelPlot" type="button" class="button ghost">ยกเลิก</button>
-            <button type="submit" class="button primary">💾 บันทึกข้อมูลแปลง</button>
+            <button type="submit" class="button primary" id="chalPlotSubmitBtn">💾 บันทึกข้อมูลแปลง</button>
           </div>
         </form>
       </div>
@@ -2254,11 +2269,11 @@
               ตั้งค่า PIN ใหม่สำหรับเข้าใช้งานระบบส่งข้อมูลของจังหวัดนี้ (ตัวเลข 4-12 หลัก)
             </p>
             <label style="display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:600;">
-              PIN เดิมในปัจจุบัน:
+              รหัสผ่าน (Password / PIN) เดิมในปัจจุบัน:
               <input type="password" id="currentPin" inputmode="numeric" placeholder="กรอก PIN เดิม" required style="padding:8px 12px; border-radius:6px; border:1px solid var(--line); font-size:14px;">
             </label>
             <label style="display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:600;">
-              PIN ใหม่ (ตัวเลข 4-12 หลัก):
+              รหัสผ่าน (Password / PIN) ใหม่ (ตัวเลข 4-12 หลัก):
               <input type="password" id="newPin" inputmode="numeric" placeholder="เช่น 2568" required minlength="4" maxlength="12" style="padding:8px 12px; border-radius:6px; border:1px solid var(--line); font-size:14px;">
             </label>
             <label style="display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:600;">
@@ -2520,6 +2535,70 @@
         <div class="modal-body" style="padding: 0; flex: 1; overflow: hidden; background: #071813;">
           <iframe id="quick3DIframe" src="" style="width: 100%; height: 100%; border: 0;" title="3D Coconut Quick Visualizer"></iframe>
         </div>
+      </div>
+    </div>
+
+    <!-- System Audit Logs Modal (Hidden for Central DOAE & Admin) -->
+    <div id="systemLogsModal" class="modal-backdrop" hidden>
+      <div class="modal-box system-logs-modal" style="max-width: 1100px; width: 95vw; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-head" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); padding:16px 20px;">
+          <div>
+            <h3 style="margin:0; font-size:18px; color:var(--primary-strong);">📜 บันทึกประวัติการแก้ไขระบบ (System Audit Trail)</h3>
+            <p style="margin:2px 0 0; font-size:12px; color:var(--muted);">ตรวจสอบประวัติการเพิ่ม แก้ไข ลบ ข้อมูลรายแปลงและผลผลิตจากเจ้าหน้าที่ทุกระดับ</p>
+          </div>
+          <button type="button" id="btnCloseSystemLogsModal" class="btn-icon" style="font-size:20px;">✕</button>
+        </div>
+        <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1;">
+          <!-- Filters -->
+          <div class="logs-filter-bar" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; align-items:center; background:#f8fafc; padding:12px; border-radius:8px;">
+            <input type="text" id="logSearchInput" placeholder="🔍 ค้นหา (ผู้ใช้, แปลง, อำเภอ...)" style="flex:1; min-width:180px; padding:6px 10px; font-size:13px; border:1px solid var(--line); border-radius:6px;">
+            <select id="logActionFilter" style="padding:6px 10px; font-size:13px; border:1px solid var(--line); border-radius:6px;">
+              <option value="all">การกระทำทั้งหมด</option>
+              <option value="create">➕ เพิ่มข้อมูล (Create)</option>
+              <option value="update">✏️ แก้ไขข้อมูล (Update)</option>
+              <option value="delete">🗑️ ลบข้อมูล (Delete)</option>
+            </select>
+            <select id="logTypeFilter" style="padding:6px 10px; font-size:13px; border:1px solid var(--line); border-radius:6px;">
+              <option value="all">ประเภทข้อมูลทั้งหมด</option>
+              <option value="plot">🌾 แปลงเกษตรกร (แบบที่ 1)</option>
+              <option value="forecast">🌴 คาดการณ์ผลผลิต (แบบที่ 2)</option>
+              <option value="harvest">🥥 สถิติการตัดผล (แบบที่ 3)</option>
+            </select>
+            <button type="button" id="btnRefreshLogs" class="button ghost small">🔄 รีเฟรช</button>
+            <span id="logTotalCount" style="font-size:12px; color:var(--muted); margin-left:auto;">0 รายการ</span>
+          </div>
+          
+          <!-- Table of Logs -->
+          <div style="overflow-x:auto;">
+            <table class="data-table" id="systemLogsTable" style="width:100%; font-size:12px;">
+              <thead>
+                <tr>
+                  <th style="width:130px;">วัน-เวลา</th>
+                  <th style="width:160px;">ผู้ใช้งาน / หน่วยงาน</th>
+                  <th style="width:130px;">พื้นที่</th>
+                  <th style="width:80px;">กิจกรรม</th>
+                  <th style="width:150px;">รายการ</th>
+                  <th>รายละเอียดการเปลี่ยนแปลง</th>
+                  <th style="width:80px; text-align:center;">ก่อน-หลัง</th>
+                </tr>
+              </thead>
+              <tbody id="systemLogsTbody">
+                <tr><td colspan="7" style="text-align:center; padding:24px; color:var(--muted);">กำลังโหลดข้อมูล...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log Before/After Diff Modal -->
+    <div id="logDiffModal" class="modal-backdrop" hidden style="z-index:10000;">
+      <div class="modal-box" style="max-width:750px; width:90vw;">
+        <div class="modal-head" style="display:flex; justify-content:space-between; align-items:center;">
+          <h4 id="logDiffTitle" style="margin:0; font-size:16px;">เปรียบเทียบข้อมูลก่อน - หลังการแก้ไข</h4>
+          <button type="button" id="btnCloseLogDiffModal" class="btn-icon">✕</button>
+        </div>
+        <div id="logDiffContent" style="padding:16px; max-height:70vh; overflow-y:auto; font-size:13px;"></div>
       </div>
     </div>
 
