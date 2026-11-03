@@ -220,7 +220,7 @@ function bindEvents() {
 
   ['round', 'province', 'plot', 'bunch'].forEach((id) => el(id).addEventListener('change', loadEntry));
 
-  document.querySelectorAll('.tab').forEach((button) => {
+  document.querySelectorAll('.tab[data-tab]').forEach((button) => {
     button.addEventListener('click', () => showTab(button.dataset.tab));
   });
 
@@ -1170,6 +1170,7 @@ function switchSystemMode(mode) {
   el('btnModeChallenge')?.classList.toggle('active', !isQuality);
 
   el('appView').hidden = !isQuality;
+  if (el('headerChallengeTabs')) el('headerChallengeTabs').hidden = isQuality;
   const chalView = el('appViewChallenge');
   if (chalView) {
     chalView.hidden = isQuality;
@@ -1186,6 +1187,7 @@ function showLogin() {
   el('loginView').hidden = false;
   el('appView').hidden = true;
   if (el('appViewChallenge')) el('appViewChallenge').hidden = true;
+  if (el('headerChallengeTabs')) el('headerChallengeTabs').hidden = true;
   if (el('modeNavBar')) el('modeNavBar').hidden = true;
   if (el('appFooter')) el('appFooter').hidden = true;
   el('logoutBtn').hidden = true;
@@ -1203,7 +1205,7 @@ function showTab(tab) {
   el('statsTab').hidden = tab !== 'stats';
   el('auditTab').hidden = tab !== 'audit';
   if (el('knowledgeTab')) el('knowledgeTab').hidden = tab !== 'knowledge';
-  document.querySelectorAll('.tab').forEach((button) => {
+  document.querySelectorAll('.tab[data-tab]').forEach((button) => {
     button.classList.toggle('active', button.dataset.tab === tab);
   });
   if (tab === 'stats' && state.data) loadStats();

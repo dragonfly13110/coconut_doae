@@ -4,47 +4,58 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ระบบติดตามสถานการณ์การผลิตมะพร้าวน้ำหอม กรมส่งเสริมการเกษตร - DOAE</title>
-  <link rel="stylesheet" href="/styles.css?v=2.8">
+  <link rel="stylesheet" href="/styles.css?v=2.9">
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="/vendor/leaflet/MarkerCluster.css">
   <link rel="stylesheet" href="/vendor/leaflet/MarkerCluster.Default.css">
 </head>
 <body>
   <header class="shell-header">
-    <div class="brand-block">
-      <div class="brand-mark">DOAE</div>
-      <div>
-        <p class="agency-line">กรมส่งเสริมการเกษตร</p>
-        <h1>ระบบติดตามสถานการณ์การผลิตมะพร้าวน้ำหอม</h1>
-        <p>Aromatic Coconut Production Monitoring System</p>
-      </div>
-    </div>
-    <div class="header-right-group">
-      <div class="mode-navigation-bar" id="modeNavBar" hidden>
-        <div class="mode-switcher-pill">
-          <button type="button" id="btnModeQuality" class="mode-btn active" data-mode="quality">
-            <span class="mode-icon">📊</span>
-            <span class="mode-info">
-              <span class="mode-name">โหมดติดตามคุณภาพ 6 รอบ</span>
-              <span class="mode-desc">ประเมินคุณภาพ & ขนาด 4 เกรด (เดิม)</span>
-            </span>
-          </button>
-          <button type="button" id="btnModeChallenge" class="mode-btn" data-mode="challenge">
-            <span class="mode-icon">🌴</span>
-            <span class="mode-info">
-              <span class="mode-name">โหมดแปลงและคาดการณ์</span>
-              <span class="mode-desc">Challenge / สถิติ 2569</span>
-            </span>
-            <span class="badge-new-mode">โหมดใหม่</span>
-          </button>
+    <div class="header-top-row">
+      <div class="brand-block">
+        <div class="brand-mark">DOAE</div>
+        <div>
+          <p class="agency-line">กรมส่งเสริมการเกษตร</p>
+          <h1>ระบบติดตามสถานการณ์การผลิตมะพร้าวน้ำหอม</h1>
+          <p>Aromatic Coconut Production Monitoring System</p>
         </div>
       </div>
-      <div class="session-block">
-        <span id="userLine">กำลังตรวจสอบสถานะ...</span>
-        <button id="changePinBtn" class="button ghost small" type="button" hidden>🔑 เปลี่ยน PIN</button>
-        <button id="logoutBtn" class="button ghost small" hidden>ออกจากระบบ</button>
+      <div class="header-right-group">
+        <div class="mode-navigation-bar" id="modeNavBar" hidden>
+          <div class="mode-switcher-pill">
+            <button type="button" id="btnModeQuality" class="mode-btn active" data-mode="quality">
+              <span class="mode-icon">📊</span>
+              <span class="mode-info">
+                <span class="mode-name">โหมดติดตามคุณภาพ 6 รอบ</span>
+                <span class="mode-desc">ประเมินคุณภาพ & ขนาด 4 เกรด (เดิม)</span>
+              </span>
+            </button>
+            <button type="button" id="btnModeChallenge" class="mode-btn" data-mode="challenge">
+              <span class="mode-icon">🌴</span>
+              <span class="mode-info">
+                <span class="mode-name">โหมดแปลงและคาดการณ์</span>
+                <span class="mode-desc">Challenge / สถิติ 2569</span>
+              </span>
+              <span class="badge-new-mode">โหมดใหม่</span>
+            </button>
+          </div>
+        </div>
+        <div class="session-block">
+          <span id="userLine">กำลังตรวจสอบสถานะ...</span>
+          <button id="changePinBtn" class="button ghost small" type="button" hidden>🔑 เปลี่ยน PIN</button>
+          <button id="logoutBtn" class="button ghost small" hidden>ออกจากระบบ</button>
+        </div>
       </div>
     </div>
+    <nav id="headerChallengeTabs" class="tabs header-chal-tabs" aria-label="เมนูระบบข้อมูลแปลง" hidden>
+      <button class="tab active" data-chal-tab="farmers">📋 ข้อมูลแปลง & เกษตรกร (แบบที่ 1)</button>
+      <button class="tab" data-chal-tab="forecast">🎯 คาดการณ์ผลผลิต 20 ทะลาย (แบบที่ 2)</button>
+      <button class="tab" data-chal-tab="harvest">🥥 ผลผลิตในรอบการตัด (แบบที่ 3)</button>
+      <button class="tab" data-chal-tab="board2d">🗺️ กระดาน 2D ตรวจสอบแปลง</button>
+      <button class="tab" data-chal-tab="macro">🗺️ สถิติพื้นที่ & ผลผลิต 2569 (แบบที่ 4)</button>
+      <button class="tab" data-chal-tab="dashboard">📈 ภาพรวม & วิเคราะห์</button>
+      <button class="tab" data-chal-tab="io">📥 นำเข้า / ส่งออก Excel</button>
+    </nav>
   </header>
 
 
@@ -959,16 +970,6 @@
   
     <!-- CHALLENGE / NEW MODE WORKSPACE -->
     <section id="appViewChallenge" class="workspace" hidden>
-      <nav class="tabs" aria-label="เมนูระบบข้อมูลแปลง">
-        <button class="tab active" data-chal-tab="farmers">📋 ข้อมูลแปลง & เกษตรกร (แบบที่ 1)</button>
-        <button class="tab" data-chal-tab="forecast">🎯 คาดการณ์ผลผลิต 20 ทะลาย (แบบที่ 2)</button>
-        <button class="tab" data-chal-tab="harvest">🥥 ผลผลิตในรอบการตัด (แบบที่ 3)</button>
-        <button class="tab" data-chal-tab="board2d">🗺️ กระดาน 2D ตรวจสอบแปลง</button>
-        <button class="tab" data-chal-tab="macro">🗺️ สถิติพื้นที่ & ผลผลิต 2569 (แบบที่ 4)</button>
-        <button class="tab" data-chal-tab="dashboard">📈 ภาพรวม & วิเคราะห์</button>
-        <button class="tab" data-chal-tab="io">📥 นำเข้า / ส่งออก Excel</button>
-      </nav>
-
       <!-- Tab 1: Farmers & Plots (แบบที่ 1) -->
       <section id="chalTab_farmers" class="panel">
         <div class="section-head">

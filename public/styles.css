@@ -43,13 +43,60 @@ body {
   top: 0;
   z-index: 20;
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px 28px;
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+}
+
+.header-top-row {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 28px;
-  background: rgba(255, 255, 255, 0.92);
-  border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(12px);
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.header-chal-tabs {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  gap: 6px !important;
+  padding: 4px 6px !important;
+  margin: 0 !important;
+  border: 1px solid #d5e5dc !important;
+  border-radius: 10px !important;
+  background: #f4faf7 !important;
+  overflow-x: auto !important;
+  scrollbar-width: thin;
+}
+
+.header-chal-tabs[hidden] {
+  display: none !important;
+}
+
+.header-chal-tabs .tab {
+  flex: 1 1 auto !important;
+  min-width: max-content !important;
+  min-height: 36px !important;
+  padding: 6px 12px !important;
+  font-size: 12.5px !important;
+  white-space: nowrap !important;
+  border-radius: 8px !important;
+  text-align: center !important;
+  transition: all 0.15s ease !important;
+}
+
+.header-chal-tabs .tab:hover:not(.active) {
+  background: rgba(22, 122, 85, 0.08) !important;
+  color: var(--primary-strong) !important;
 }
 
 .brand-block,
