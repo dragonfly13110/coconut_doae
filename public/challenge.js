@@ -67,6 +67,7 @@ const chalState = {
   macroData: null,
   filterProvince: 'all',
   forecastViewMode: 'matrix',
+  forecastYear: 2570,
   cycleStartDate: DEFAULT_CYCLE_START,
   cycleInterval: 21,
   cycleAvgFruits: 12,
@@ -851,8 +852,17 @@ async function loadForecastMatrix() {
   renderTreeTabs(chalState.forecastData);
 
   try {
+    const yearSelect = cel('chalForecastYearSelect');
+    if (yearSelect && chalState.forecastYear) {
+      yearSelect.value = String(chalState.forecastYear);
+    }
+    const noticeEl = cel('chalYear2569Notice');
+    if (noticeEl) {
+      noticeEl.style.display = chalState.forecastYear === 2569 ? 'block' : 'none';
+    }
+
     const pointParam = encodeURIComponent(chalState.selectedPointLabel || 'จุดที่ 1');
-    let url = `/api/challenge/forecast?plot_id=${plotId}&point_label=${pointParam}&pos=${chalState.selectedTreePos}`;
+    let url = `/api/challenge/forecast?plot_id=${plotId}&point_label=${pointParam}&pos=${chalState.selectedTreePos}&year=${chalState.forecastYear || 2570}`;
     if (chalState.selectedDistrict) {
       url += `&district=${encodeURIComponent(chalState.selectedDistrict)}`;
     }
@@ -900,6 +910,26 @@ function renderPointTabs(data) {
     progressBadge.innerHTML = `ความคืบหน้าภาพรวม: <strong>${s.activeTreesCount || 0}/${s.totalTrees || 35} ต้น</strong> (${s.activePointsCompleted || 0}/7 จุดครบ 100%)`;
   }
 }
+
+
+window.chalOnForecastYearChange = (year) => {
+  chalState.forecastYear = Number(year) || 2570;
+  const noticeEl = cel('chalYear2569Notice');
+  if (noticeEl) {
+    noticeEl.style.display = chalState.forecastYear === 2569 ? 'block' : 'none';
+  }
+  const dateInput = cel('chalCycleStartDate');
+  if (dateInput) {
+    if (chalState.forecastYear === 2569) {
+      dateInput.value = '2026-11-01';
+      chalState.cycleStartDate = '2026-11-01';
+    } else {
+      dateInput.value = '2027-01-01';
+      chalState.cycleStartDate = '2027-01-01';
+    }
+  }
+  loadForecastMatrix();
+};
 
 window.chalSelectPoint = (pointLabel) => {
   chalState.selectedPointLabel = pointLabel;
@@ -990,7 +1020,21 @@ function getMatrixMonthBunchMapping(matrixMap = {}) {
   }
 
   // Standard sequential mapping across the 12 calendar months of the survey year
-  const defaultMapping = {
+  const isYear2569 = (chalState.forecastYear === 2569);
+  const defaultMapping = isYear2569 ? {
+    1: [],
+    2: [],
+    3: [],
+    4: [],
+    5: [],
+    6: [],
+    7: [],
+    8: [],
+    9: [],
+    10: [],
+    11: [16, 17],
+    12: [18, 19, 20],
+  } : {
     1: [1, 2],
     2: [3],
     3: [4, 5],
@@ -1082,47 +1126,83 @@ function renderMatrixGrid(data) {
   headerHtml += '</tr>';
 
   // 12 rows for months
+  const isYear2569 = (chalState.forecastYear === 2569);
   let rowsHtml = '';
   for (let m = 1; m <= 12; m++) {
+    const isMonthDisabled = isYear2569 && (m < 11);
     const hasDouble = monthBunchCount[m] >= 2;
-    const badgeHtml = hasDouble ? `<span class="badge-double-month" title="มี 2 ทะลายในรอบ 21 วัน">2 ทะลาย</span>` : '';
+    let badgeHtml = '';
+    if (isYear2569) {
+      if (isMonthDisabled) {
+        badgeHtml = '<span class="badge-disabled-month" style="font-size:9px; background:#e2e8f0; color:#64748b; padding:1px 4px; border-radius:3px; font-weight:600;">ปิดกรอก</span>';
+      } else if (m === 11) {
+        badgeHtml = '<span class="badge-double-month" style="background:#dbeafe; color:#1e40af; font-size:8.5px; padding:1px 4px; border-radius:3px; font-weight:700;">เปิดบันทึก</span>';
+      } else {
+        badgeHtml = '<span class="badge-double-month" style="background:#dcfce7; color:#065f46; font-size:8.5px; padding:1px 4px; border-radius:3px; font-weight:700;">ทะลาย 18-20 ⭐</span>';
+      }
+    } else {
+      badgeHtml = hasDouble ? `<span class="badge-double-month" title="มี 2 ทะลายในรอบ 21 วัน">2 ทะลาย</span>` : '';
+    }
+
     let rowSum = 0;
     let bunchCells = '';
 
     for (let b = 1; b <= 20; b++) {
       const key = `${b}_${m}`;
       const val = matrixMap[key] !== undefined && matrixMap[key] !== null ? matrixMap[key] : '';
-      if (val !== '') rowSum += Number(val);
-      const isSpotlight = bunchScheduledMonth[b] === m;
-      bunchCells += `
-        <td class="matrix-cell ${isSpotlight ? 'cycle-spotlight' : ''}" data-bunch="${b}" data-month="${m}" title="${isSpotlight ? `รอบ 21 วัน: ทะลาย ${b} ตกเดือน ${MONTH_NAMES[m - 1]}` : ''}">
-          <input 
-            type="text" 
-            inputmode="numeric"
-            pattern="[0-9]*"
-            class="matrix-input ${val ? 'has-val' : ''}" 
-            data-bunch="${b}" 
-            data-month="${m}" 
-            value="${val}" 
-            placeholder="${isSpotlight ? '•' : '-'}"
-            autocomplete="off"
-            onfocus="this.select()"
-            oninput="window.chalOnMatrixInput(this)"
-          />
-        </td>
-      `;
+      if (val !== '' && !isMonthDisabled) rowSum += Number(val);
+      const isSpotlight = isYear2569
+        ? (m === 11 ? (b === 16 || b === 17 || b === 18) : (b >= 18 && b <= 20))
+        : (bunchScheduledMonth[b] === m);
+
+      if (isMonthDisabled) {
+        bunchCells += `
+          <td class="matrix-cell cell-disabled-2569" data-bunch="${b}" data-month="${m}" style="background:#f1f5f9 !important; cursor:not-allowed;" title="ปี 2569: ไม่เปิดให้กรอกเดือน ม.ค. - ต.ค. (เริ่มเก็บ พ.ย. - ธ.ค.)">
+            <input 
+              type="text" 
+              class="matrix-input matrix-input-disabled" 
+              data-bunch="${b}" 
+              data-month="${m}" 
+              value="" 
+              placeholder="—"
+              disabled
+              readonly
+              tabindex="-1"
+              style="background:#e2e8f0 !important; border-color:#cbd5e1 !important; color:#94a3b8 !important; cursor:not-allowed !important; pointer-events:none !important; opacity:0.6 !important;"
+            />
+          </td>
+        `;
+      } else {
+        bunchCells += `
+          <td class="matrix-cell ${isSpotlight ? 'cycle-spotlight' : ''}" data-bunch="${b}" data-month="${m}" title="${isSpotlight ? `รอบเก็บเกี่ยว: ทะลาย ${b} ตกเดือน ${MONTH_NAMES[m - 1]}` : ''}">
+            <input 
+              type="text" 
+              inputmode="numeric"
+              pattern="[0-9]*"
+              class="matrix-input ${val ? 'has-val' : ''}" 
+              data-bunch="${b}" 
+              data-month="${m}" 
+              value="${val}" 
+              placeholder="${isSpotlight ? '•' : '-'}"
+              autocomplete="off"
+              onfocus="this.select()"
+              oninput="window.chalOnMatrixInput(this)"
+            />
+          </td>
+        `;
+      }
     }
 
     const rowCells = `
-      <td class="matrix-sticky-col matrix-month-label" data-month="${m}">
+      <td class="matrix-sticky-col matrix-month-label ${isMonthDisabled ? 'month-disabled-label' : ''}" data-month="${m}" style="${isMonthDisabled ? 'background:#f1f5f9; color:#94a3b8;' : ''}">
         <div class="month-title-group">
-          <strong>${MONTH_NAMES[m - 1]}</strong>
+          <strong style="${isMonthDisabled ? 'color:#94a3b8;' : ''}">${MONTH_NAMES[m - 1]}</strong>
           ${badgeHtml}
         </div>
       </td>
       ${bunchCells}
     `;
-    rowsHtml += `<tr class="matrix-row-month" data-month="${m}">${rowCells}</tr>`;
+    rowsHtml += `<tr class="matrix-row-month ${isMonthDisabled ? 'month-row-disabled' : ''}" data-month="${m}" style="${isMonthDisabled ? 'background:#f8fafc;' : ''}">${rowCells}</tr>`;
   }
 
   // Pre-calculate bunch sums
@@ -1256,10 +1336,17 @@ function renderTimelineSchedule(data, schedule) {
     runningTotal += numVal;
     const isDouble = item.isDoubleMonth;
     const isCrossYear = item.year > (schedule[0]?.year ?? item.year);
+    const isMonthDisabled = (chalState.forecastYear === 2569) && actualMonth < 11;
     const pct = grandTotal > 0 && numVal > 0 ? ((numVal / grandTotal) * 100).toFixed(1) : 0;
 
     let cycleBadge = '';
-    if (isDouble && item.occurrenceInMonth === 2) {
+    if (chalState.forecastYear === 2569) {
+      if (actualMonth >= 11) {
+        cycleBadge = `<span class="badge-double-month" style="background:#dcfce7; color:#065f46;">เก็บปลายปี 69 ⭐</span>`;
+      } else {
+        cycleBadge = `<span class="badge-cycle-single" style="background:#f1f5f9; color:#94a3b8;">นอกช่วงปี 69</span>`;
+      }
+    } else if (isDouble && item.occurrenceInMonth === 2) {
       cycleBadge = `<span class="badge-double-month" title="มี 2 ทะลายในเดือนนี้">รอบที่ 2 (2 ทะลาย/เดือน ⭐)</span>`;
     } else if (isDouble && item.occurrenceInMonth === 1) {
       cycleBadge = `<span class="badge-cycle-single">รอบที่ 1</span>`;
@@ -1267,9 +1354,11 @@ function renderTimelineSchedule(data, schedule) {
       cycleBadge = `<span class="badge-cycle-single">รอบปกติ</span>`;
     }
 
-    const statusBadge = isCrossYear
-      ? `<span class="badge-status-cross">⏩ ข้ามปี ${startYearBE + 1}</span>`
-      : `<span class="badge-status-inyear">🌿 ในรอบปี ${startYearBE}</span>`;
+    const statusBadge = (chalState.forecastYear === 2569)
+      ? (actualMonth >= 11 ? `<span class="badge-status-inyear" style="background:#ecfdf5; color:#065f46;">🍂 บันทึกปลายปี 69</span>` : `<span class="badge-status-cross" style="background:#f1f5f9; color:#94a3b8; border-color:#cbd5e1;">🔒 ม.ค.-ต.ค. ปิด</span>`)
+      : (isCrossYear
+        ? `<span class="badge-status-cross">⏩ ข้ามปี ${startYearBE + 1}</span>`
+        : `<span class="badge-status-inyear">🌿 ในรอบปี ${startYearBE}</span>`);
 
     return `
       <tr class="${isDouble ? 'is-double-row' : ''} ${isCrossYear ? 'is-cross-year-row' : ''}" data-bunch="${item.bunch_no}" data-month="${actualMonth}">
@@ -1290,20 +1379,33 @@ function renderTimelineSchedule(data, schedule) {
           <span class="badge-interval">+${chalState.cycleInterval || 21} วัน</span>
         </td>
         <td class="text-center">
-          <input 
-            type="text" 
-            inputmode="numeric" 
-            pattern="[0-9]*" 
-            class="matrix-input timeline-fruit-input ${val ? 'has-val' : ''}" 
-            data-bunch="${item.bunch_no}" 
-            data-month="${actualMonth}" 
-            value="${val}" 
-            placeholder="-" 
-            autocomplete="off" 
-            onfocus="this.select()" 
-            onkeydown="if(event.key==='Enter'||event.key==='ArrowDown'){event.preventDefault();const n=document.querySelector(\`.timeline-fruit-input[data-bunch='\${Number(this.dataset.bunch)+1}']\`);if(n){n.focus();n.select();}}else if(event.key==='ArrowUp'){event.preventDefault();const p=document.querySelector(\`.timeline-fruit-input[data-bunch='\${Number(this.dataset.bunch)-1}']\`);if(p){p.focus();p.select();}}"
-            oninput="window.chalOnTimelineInput(this)" 
-          />
+          ${isMonthDisabled ? `
+            <input 
+              type="text" 
+              class="matrix-input timeline-fruit-input" 
+              disabled 
+              readonly 
+              tabindex="-1" 
+              value="" 
+              placeholder="—" 
+              style="background:#e2e8f0; color:#94a3b8; cursor:not-allowed; opacity:0.6;" 
+            />
+          ` : `
+            <input 
+              type="text" 
+              inputmode="numeric" 
+              pattern="[0-9]*" 
+              class="matrix-input timeline-fruit-input ${val ? 'has-val' : ''}" 
+              data-bunch="${item.bunch_no}" 
+              data-month="${actualMonth}" 
+              value="${val}" 
+              placeholder="-" 
+              autocomplete="off" 
+              onfocus="this.select()" 
+              onkeydown="if(event.key==='Enter'||event.key==='ArrowDown'){event.preventDefault();const n=document.querySelector(\`.timeline-fruit-input[data-bunch='\${Number(this.dataset.bunch)+1}']\`);if(n){n.focus();n.select();}}else if(event.key==='ArrowUp'){event.preventDefault();const p=document.querySelector(\`.timeline-fruit-input[data-bunch='\${Number(this.dataset.bunch)-1}']\`);if(p){p.focus();p.select();}}"
+              oninput="window.chalOnTimelineInput(this)" 
+            />
+          `}
         </td>
         <td class="text-right">
           <strong class="timeline-cumul-val text-success">${runningTotal > 0 ? runningTotal.toLocaleString() : '-'}</strong> <small class="text-muted">ผล</small>
@@ -1423,10 +1525,15 @@ function updateTimelineTableCalculations() {
 }
 
 window.chalOnMatrixInput = (input) => {
+  const isYear2569 = (chalState.forecastYear === 2569);
+  const month = Number(input.dataset.month);
+  if (isYear2569 && month < 11) {
+    input.value = '';
+    return;
+  }
   input.value = input.value.replace(/[^0-9]/g, '');
   const val = input.value;
   const bunch = Number(input.dataset.bunch);
-  const month = Number(input.dataset.month);
 
   input.classList.toggle('has-val', Number(val) > 0);
 
@@ -1463,10 +1570,15 @@ window.chalOnMatrixInput = (input) => {
 };
 
 window.chalOnTimelineInput = (input) => {
+  const isYear2569 = (chalState.forecastYear === 2569);
+  const month = Number(input.dataset.month);
+  if (isYear2569 && month < 11) {
+    input.value = '';
+    return;
+  }
   input.value = input.value.replace(/[^0-9]/g, '');
   const val = input.value;
   const bunch = Number(input.dataset.bunch);
-  const month = Number(input.dataset.month);
 
   input.classList.toggle('has-val', Number(val) > 0);
 
@@ -1527,16 +1639,25 @@ function recalculateAllForecastSums() {
 
   refreshMonthChart(matrixMap);
 
+  const isYear2569 = (chalState.forecastYear === 2569);
   const grandEl = cel('chalMatrixGrandTotal');
-  if (grandEl) grandEl.textContent = total > 0 ? `(${total.toLocaleString()} ผล)` : '';
+  if (grandEl) {
+    grandEl.textContent = total > 0 
+      ? (isYear2569 ? `(${total.toLocaleString()} ผล ปลายปี 69)` : `(${total.toLocaleString()} ผล)`) 
+      : '';
+  }
 
   // Update KPI cards
   const treeTotalValEl = cel('chalTreeTotalVal');
-  if (treeTotalValEl) treeTotalValEl.textContent = `${total.toLocaleString()} ผล/ปี`;
+  if (treeTotalValEl) {
+    treeTotalValEl.textContent = isYear2569 ? `${total.toLocaleString()} ผล (ปลายปี 2569)` : `${total.toLocaleString()} ผล/ปี`;
+  }
 
   const avgBunchEl = cel('chalTreeAvgBunchVal');
   if (avgBunchEl) {
-    avgBunchEl.textContent = total > 0 ? `${(total / 20).toFixed(1)} ผล/ทะลาย` : '-';
+    const activeBunches = bunchSums.filter((s, idx) => idx > 0 && s > 0).length;
+    const divisor = isYear2569 ? Math.max(1, activeBunches) : 20;
+    avgBunchEl.textContent = total > 0 ? `${(total / divisor).toFixed(1)} ผล/ทะลาย` : '-';
   }
 
   const plot = chalState.plots.find((p) => p.id === chalState.selectedPlotId);
@@ -1545,7 +1666,9 @@ function recalculateAllForecastSums() {
   const estPlotTotal = Math.round(total * treesPerRai * prodArea);
   const plotEstEl = cel('chalPlotEstimatedYield');
   if (plotEstEl) {
-    plotEstEl.textContent = `${estPlotTotal.toLocaleString()} ผล/แปลง/ปี`;
+    plotEstEl.textContent = isYear2569 
+      ? `${estPlotTotal.toLocaleString()} ผล (ปลายปี 2569)` 
+      : `${estPlotTotal.toLocaleString()} ผล/แปลง/ปี`;
   }
 
   if (chalState.forecastData) {
@@ -1653,6 +1776,28 @@ window.chalAutoProject21Days = () => {
   if (!chalState.forecastData) chalState.forecastData = {};
   chalState.forecastData.matrixMap = {};
 
+  // Check if year 2569
+  if (chalState.forecastYear === 2569) {
+    // In Year 2569: Start recording in late year (พ.ย. - ธ.ค.) for late bunches (18-20)
+    const lateBunches = [
+      { bunch: 18, month: 11, fruits: avgFruits },
+      { bunch: 19, month: 12, fruits: avgFruits },
+      { bunch: 20, month: 12, fruits: avgFruits },
+    ];
+    for (const item of lateBunches) {
+      chalState.forecastData.matrixMap[`${item.bunch}_${item.month}`] = item.fruits;
+      const inp = document.querySelector(`#chalMatrixTableWrap .matrix-input[data-bunch="${item.bunch}"][data-month="${item.month}"]`);
+      if (inp) {
+        inp.value = item.fruits;
+        inp.classList.add('has-val');
+      }
+    }
+    recalculateAllForecastSums();
+    renderTimelineSchedule(chalState.forecastData, schedule);
+    alert(`⚡ จัดรอบตัดปี 2569 สำเร็จ!\n\n• บันทึกเฉพาะช่วงปลายปี: เดือน พ.ย. และ ธ.ค. (ทะลายที่ 18, 19, 20 รวม 3 ทะลาย เฉลี่ย ${avgFruits} ผล/ทะลาย)\n• เดือน ม.ค. - ต.ค. ปิดไม่ให้กรอก\n• ยอดรวมบันทึกปลายปี: ${(avgFruits * 3).toLocaleString()} ผล\n• กด "💾 บันทึกข้อมูลคาดการณ์" เพื่อบันทึกข้อมูล`);
+    return;
+  }
+
   // Fill in according to 21-day schedule
   for (const s of schedule) {
     chalState.forecastData.matrixMap[`${s.bunch_no}_${s.month}`] = avgFruits;
@@ -1697,10 +1842,19 @@ window.chalSwitchForecastView = (mode) => {
 function renderForecastKPIs(data) {
   const plot = data.plot;
   const summary = data.plotSummary || {};
+  const isYear2569 = (chalState.forecastYear === 2569);
 
-  cel('chalTreeTotalVal').textContent = `${(data.treeTotal || 0).toLocaleString()} ผล/ปี`;
-  cel('chalTreeAvgBunchVal').textContent = data.treeTotal > 0 ? `${(data.treeTotal / 20).toFixed(1)} ผล/ทะลาย` : '-';
-  cel('chalPlotEstimatedYield').textContent = `${(summary.estimatedPlotYieldPerYear || 0).toLocaleString()} ผล/แปลง/ปี`;
+  cel('chalTreeTotalVal').textContent = isYear2569
+    ? `${(data.treeTotal || 0).toLocaleString()} ผล (ปลายปี 2569)`
+    : `${(data.treeTotal || 0).toLocaleString()} ผล/ปี`;
+
+  cel('chalTreeAvgBunchVal').textContent = data.treeTotal > 0
+    ? (isYear2569 ? `${(data.treeTotal / 3).toFixed(1)} ผล/ทะลาย (ปลายปี)` : `${(data.treeTotal / 20).toFixed(1)} ผล/ทะลาย`)
+    : '-';
+
+  cel('chalPlotEstimatedYield').textContent = isYear2569
+    ? `${(summary.estimatedPlotYieldPerYear || 0).toLocaleString()} ผล (ปลายปี 2569)`
+    : `${(summary.estimatedPlotYieldPerYear || 0).toLocaleString()} ผล/แปลง/ปี`;
   cel('chalActiveTreesVal').textContent = `${summary.activeTreesCount || 0} จาก ${summary.totalTrees || 35} ต้น`;
 
   const activePointsSub = cel('chalActivePointsSub');
@@ -1838,6 +1992,7 @@ async function onSaveForecastMatrix() {
   const currentTree = SAMPLE_TREES.find((t) => t.pos === chalState.selectedTreePos) || SAMPLE_TREES[0];
   const pointLabel = chalState.selectedPointLabel || 'จุดที่ 1';
 
+  const harvestYear = Number(chalState.forecastYear || 2570);
   try {
     await chalApi('/api/challenge/forecast', {
       method: 'POST',
@@ -1846,10 +2001,11 @@ async function onSaveForecastMatrix() {
         tree_no: currentTree.no,
         tree_position: currentTree.pos,
         point_label: pointLabel,
+        harvest_year: harvestYear,
         entries,
       }),
     });
-    alert(`✅ บันทึกคาดการณ์ผลผลิตสำหรับ "${pointLabel} - ${currentTree.label}" สำเร็จ!\n(อัปเดตตัวเลขล่าสุดเรียบร้อยแล้ว ไม่มีการทับซ้อนหรือบวกซ้ำ)`);
+    alert(`✅ บันทึกคาดการณ์ผลผลิตปี ${harvestYear} สำหรับ "${pointLabel} - ${currentTree.label}" สำเร็จ!\n(อัปเดตตัวเลขล่าสุดเรียบร้อยแล้ว ไม่มีการทับซ้อนหรือบวกซ้ำ)`);
     loadForecastMatrix();
   } catch (err) {
     alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message);

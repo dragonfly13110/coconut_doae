@@ -23,6 +23,7 @@ async function getForecast(request, env, user) {
   const districtParam = url.searchParams.get('district') ? String(url.searchParams.get('district')).trim() : null;
   const sampleTree = SAMPLE_TREES.find((t) => t.pos === treePos);
   const treeNo = Number(url.searchParams.get('tree_no') || sampleTree?.no || 1);
+  const harvestYear = Number(url.searchParams.get('year') || url.searchParams.get('harvest_year') || 2570);
 
   if (!plotId) {
     return json({ error: 'กรุณาระบุรหัสแปลง (plot_id)' }, { status: 400 });
@@ -33,13 +34,13 @@ async function getForecast(request, env, user) {
     return json({ error: 'ไม่พบข้อมูลแปลง' }, { status: 404 });
   }
 
-  // Load forecast entries for this point and tree position (latest per bunch)
+  // Load forecast entries for this point and tree position (latest per bunch) scoped to harvestYear
   const { results: entries } = await env.DB.prepare(`
-    SELECT bunch_no, harvest_month, fruit_count, id
+    SELECT bunch_no, harvest_month, fruit_count, id, harvest_year
     FROM yield_forecasts
-    WHERE plot_id = ? AND point_label = ? AND tree_position = ?
+    WHERE plot_id = ? AND point_label = ? AND tree_position = ? AND (harvest_year = ? OR (harvest_year IS NULL AND ? = 2570))
     ORDER BY id DESC
-  `).bind(plotId, pointLabel, treePos).all();
+  `).bind(plotId, pointLabel, treePos, harvestYear, harvestYear).all();
 
   // Matrix: 20 bunches x 12 months
   const monthlyTotals = new Array(12).fill(0);
@@ -60,13 +61,13 @@ async function getForecast(request, env, user) {
     }
   });
 
-  // Calculate sampling summary across all points and sample trees in this plot
+  // Calculate sampling summary across all points and sample trees in this plot for selected harvestYear
   const { results: allPlotEntries } = await env.DB.prepare(`
-    SELECT point_label, tree_position, bunch_no, harvest_month, fruit_count
+    SELECT point_label, tree_position, bunch_no, harvest_month, fruit_count, harvest_year
     FROM yield_forecasts
-    WHERE plot_id = ?
+    WHERE plot_id = ? AND (harvest_year = ? OR (harvest_year IS NULL AND ? = 2570))
     ORDER BY id DESC
-  `).bind(plotId).all();
+  `).bind(plotId, harvestYear, harvestYear).all();
 
   const plotMonthlyTotals = new Array(12).fill(0);
   let grandTotalFruits = 0;
@@ -132,6 +133,7 @@ async function getForecast(request, env, user) {
     pointLabel,
     treePos,
     treeNo,
+    harvestYear,
     samplePoints: SAMPLE_POINTS,
     sampleTrees: SAMPLE_TREES,
     matrixMap,
@@ -159,6 +161,7 @@ async function saveForecast(request, env, user) {
   const treeNo = Number(body.tree_no || 1);
   const treePos = String(body.tree_position || 'C').trim();
   const pointLabel = String(body.point_label || 'จุดที่ 1').trim();
+  const harvestYear = Number(body.harvest_year || body.year || 2570);
   const entries = body.entries || [];
 
   if (!plotId) {
@@ -180,6 +183,12 @@ async function saveForecast(request, env, user) {
     const bunchNo = Number(item.bunch_no);
     const harvestMonth = Number(item.harvest_month);
     const fruitCount = Math.max(0, Number(item.fruit_count || 0));
+
+    // Year 2569: Only late year months 11 (พ.ย.) and 12 (ธ.ค.) are open for entry
+    if (harvestYear === 2569 && (harvestMonth < 11 || harvestMonth > 12)) {
+      continue;
+    }
+
     if (bunchNo >= 1 && bunchNo <= 20 && harvestMonth >= 1 && harvestMonth <= 12) {
       if (fruitCount > 0) {
         bunchMap.set(bunchNo, { bunchNo, harvestMonth, fruitCount });
@@ -189,18 +198,18 @@ async function saveForecast(request, env, user) {
     }
   }
 
-  // Cleanly clear existing rows for this specific tree so updated/reduced counts never accumulate
+  // Cleanly clear existing rows for this specific tree and year so other years are safely preserved
   await env.DB.prepare(`
     DELETE FROM yield_forecasts
-    WHERE plot_id = ? AND point_label = ? AND tree_position = ?
-  `).bind(plotId, pointLabel, treePos).run();
+    WHERE plot_id = ? AND point_label = ? AND tree_position = ? AND (harvest_year = ? OR (harvest_year IS NULL AND ? = 2570))
+  `).bind(plotId, pointLabel, treePos, harvestYear, harvestYear).run();
 
   // Insert fresh entries
   for (const item of bunchMap.values()) {
     await env.DB.prepare(`
       INSERT INTO yield_forecasts
-      (plot_id, province_code, tree_no, tree_position, point_label, bunch_no, harvest_month, fruit_count, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      (plot_id, province_code, tree_no, tree_position, point_label, bunch_no, harvest_month, fruit_count, updated_at, harvest_year)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
     `).bind(
       plotId,
       plot.province_code,
@@ -209,7 +218,8 @@ async function saveForecast(request, env, user) {
       pointLabel,
       item.bunchNo,
       item.harvestMonth,
-      item.fruitCount
+      item.fruitCount,
+      harvestYear
     ).run();
   }
 
@@ -217,14 +227,14 @@ async function saveForecast(request, env, user) {
     action: 'update',
     targetType: 'forecast',
     targetId: plotId,
-    targetLabel: `${plot.plot_label} (${pointLabel} ต้นที่ ${treeNo})`,
+    targetLabel: `${plot.plot_label} (${pointLabel} ต้นที่ ${treeNo} ปี ${harvestYear})`,
     provinceCode: plot.province_code,
     districtName: plot.district,
     user,
-    summary: `บันทึกคาดการณ์ผลผลิต ${plot.plot_label} ${pointLabel} ต้นที่ ${treeNo} (${treePos}) รวม ${bunchMap.size} ทะลาย`,
+    summary: `บันทึกคาดการณ์ผลผลิตปี ${harvestYear} ${plot.plot_label} ${pointLabel} ต้นที่ ${treeNo} (${treePos}) รวม ${bunchMap.size} ทะลาย`,
     beforeData: null,
-    afterData: { pointLabel, treeNo, treePos, bunchCount: bunchMap.size },
+    afterData: { harvestYear, pointLabel, treeNo, treePos, bunchCount: bunchMap.size },
   });
 
-  return json({ success: true, message: 'บันทึกข้อมูลคาดการณ์ผลผลิตเรียบร้อยแล้ว' });
+  return json({ success: true, message: `บันทึกข้อมูลคาดการณ์ผลผลิตปี ${harvestYear} เรียบร้อยแล้ว`, harvestYear });
 }

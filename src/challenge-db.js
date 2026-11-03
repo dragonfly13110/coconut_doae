@@ -251,20 +251,22 @@ export async function ensureChallengeDb(db) {
       point_label TEXT NOT NULL DEFAULT 'จุดที่ 1',
       bunch_no INTEGER NOT NULL,
       harvest_month INTEGER NOT NULL,
+      harvest_year INTEGER NOT NULL DEFAULT 2570,
       fruit_count INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (plot_id) REFERENCES farmer_plots(id) ON DELETE CASCADE,
-      UNIQUE (plot_id, point_label, tree_position, bunch_no, harvest_month)
+      UNIQUE (plot_id, point_label, tree_position, bunch_no, harvest_month, harvest_year)
     );
   `).run();
 
-  // Ensure migration if existing table lacks point_label in UNIQUE constraint
+  // Ensure migration if existing table lacks harvest_year or point_label in UNIQUE constraint
   try {
     const tableInfo = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='yield_forecasts'").first();
-    if (tableInfo && tableInfo.sql && !tableInfo.sql.includes('point_label, tree_position')) {
+    if (tableInfo && tableInfo.sql && (!tableInfo.sql.includes('harvest_year') || !tableInfo.sql.includes('point_label, tree_position'))) {
+      await db.prepare('PRAGMA foreign_keys = OFF;').run();
       await db.prepare(`
-        CREATE TABLE yield_forecasts_v2 (
+        CREATE TABLE IF NOT EXISTS yield_forecasts_v3 (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           plot_id INTEGER NOT NULL,
           province_code TEXT NOT NULL,
@@ -273,23 +275,33 @@ export async function ensureChallengeDb(db) {
           point_label TEXT NOT NULL DEFAULT 'จุดที่ 1',
           bunch_no INTEGER NOT NULL,
           harvest_month INTEGER NOT NULL,
+          harvest_year INTEGER NOT NULL DEFAULT 2570,
           fruit_count INTEGER NOT NULL DEFAULT 0,
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (plot_id) REFERENCES farmer_plots(id) ON DELETE CASCADE,
-          UNIQUE (plot_id, point_label, tree_position, bunch_no, harvest_month)
+          UNIQUE (plot_id, point_label, tree_position, bunch_no, harvest_month, harvest_year)
         );
       `).run();
-      await db.prepare(`INSERT OR IGNORE INTO yield_forecasts_v2 SELECT * FROM yield_forecasts;`).run();
+      let hasYear = false;
+      try {
+        const pragmaCols = await db.prepare("PRAGMA table_info(yield_forecasts)").all();
+        const colNames = (pragmaCols?.results || pragmaCols || []).map((c) => c.name);
+        hasYear = colNames.includes('harvest_year');
+      } catch (e) {}
+
+      const yearCol = hasYear ? 'COALESCE(harvest_year, 2570)' : '2570';
+      await db.prepare(`INSERT OR IGNORE INTO yield_forecasts_v3 (id, plot_id, province_code, tree_no, tree_position, point_label, bunch_no, harvest_month, harvest_year, fruit_count, created_at, updated_at) SELECT id, plot_id, province_code, tree_no, tree_position, point_label, bunch_no, harvest_month, ${yearCol}, fruit_count, created_at, updated_at FROM yield_forecasts;`).run();
       await db.prepare(`DROP TABLE yield_forecasts;`).run();
-      await db.prepare(`ALTER TABLE yield_forecasts_v2 RENAME TO yield_forecasts;`).run();
+      await db.prepare(`ALTER TABLE yield_forecasts_v3 RENAME TO yield_forecasts;`).run();
+      await db.prepare('PRAGMA foreign_keys = ON;').run();
     }
   } catch (err) {
     // Silently continue if already migrated or sqlite_master unavailable in mock
   }
 
   await db.prepare(`
-    CREATE INDEX IF NOT EXISTS idx_yield_forecasts_lookup ON yield_forecasts(plot_id, point_label, tree_position, bunch_no);
+    CREATE INDEX IF NOT EXISTS idx_yield_forecasts_lookup ON yield_forecasts(plot_id, point_label, tree_position, bunch_no, harvest_year);
   `).run();
 
   // 3. Harvest cuts (Sheet 3)

@@ -138,14 +138,15 @@ CREATE TABLE IF NOT EXISTS yield_forecasts (
   point_label TEXT NOT NULL DEFAULT 'จุดที่ 1',
   bunch_no INTEGER NOT NULL,
   harvest_month INTEGER NOT NULL,
+  harvest_year INTEGER NOT NULL DEFAULT 2570,
   fruit_count INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (plot_id) REFERENCES farmer_plots(id) ON DELETE CASCADE,
-  UNIQUE (plot_id, point_label, tree_position, bunch_no, harvest_month)
+  UNIQUE (plot_id, point_label, tree_position, bunch_no, harvest_month, harvest_year)
 );
 
-CREATE INDEX IF NOT EXISTS idx_yield_forecasts_lookup ON yield_forecasts(plot_id, point_label, tree_position, bunch_no);
+CREATE INDEX IF NOT EXISTS idx_yield_forecasts_lookup ON yield_forecasts(plot_id, point_label, tree_position, bunch_no, harvest_year);
 
 -- 3. Harvest cuts (Sheet 3)
 CREATE TABLE IF NOT EXISTS harvest_cuts (

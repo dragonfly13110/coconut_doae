@@ -6950,3 +6950,46 @@ th {
     overflow-x: auto !important;
   }
 }
+
+/* ==========================================
+   Year 2569 / Year-switching Matrix Styles
+   ========================================== */
+.matrix-row-month.month-row-disabled {
+  background: #f8fafc !important;
+}
+
+.matrix-sticky-col.month-disabled-label {
+  background: #f1f5f9 !important;
+  color: #94a3b8 !important;
+}
+
+.matrix-cell.cell-disabled-2569 {
+  background: #f1f5f9 !important;
+  cursor: not-allowed !important;
+}
+
+.matrix-input.matrix-input-disabled,
+.matrix-input:disabled {
+  background: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  opacity: 0.65 !important;
+  box-shadow: none !important;
+}
+
+.f-year-select:focus {
+  outline: none;
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+
+.year-notice-banner {
+  animation: fadeInNotice 0.3s ease;
+}
+
+@keyframes fadeInNotice {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

@@ -726,3 +726,135 @@ test('Sheet 3: chalCutRound dropdown in index.html contains rounds 1 to 20', asy
 
 
 
+
+test('Year 2569 Forecast: only months 11 and 12 (Nov-Dec) are saved, months 1-10 are ignored, and Year 2570 is isolated', async () => {
+  const { onRequest: onForecastRequest } = await import('../functions/api/challenge/forecast.js');
+
+  const storedRows = [
+    // Pre-existing Year 2570 data
+    {
+      plot_id: 1,
+      province_code: 'ratchaburi',
+      tree_no: 1,
+      tree_position: 'C',
+      point_label: 'จุดที่ 1',
+      bunch_no: 1,
+      harvest_month: 1,
+      fruit_count: 12,
+      harvest_year: 2570,
+    },
+    {
+      plot_id: 1,
+      province_code: 'ratchaburi',
+      tree_no: 1,
+      tree_position: 'C',
+      point_label: 'จุดที่ 1',
+      bunch_no: 18,
+      harvest_month: 12,
+      fruit_count: 15,
+      harvest_year: 2570,
+    },
+  ];
+
+  const mockDb = {
+    prepare(sql) {
+      return {
+        sql,
+        params: [],
+        bind(...params) {
+          this.params = params;
+          return this;
+        },
+        async run() {
+          if (sql.includes('DELETE FROM yield_forecasts')) {
+            const yr = this.params[3]; // harvest_year bound parameter
+            // Only delete rows matching this year!
+            for (let i = storedRows.length - 1; i >= 0; i--) {
+              if (storedRows[i].harvest_year === yr) {
+                storedRows.splice(i, 1);
+              }
+            }
+            return { success: true };
+          }
+          if (sql.includes('INSERT INTO yield_forecasts')) {
+            storedRows.push({
+              plot_id: this.params[0],
+              province_code: this.params[1],
+              tree_no: this.params[2],
+              tree_position: this.params[3],
+              point_label: this.params[4],
+              bunch_no: this.params[5],
+              harvest_month: this.params[6],
+              fruit_count: this.params[7],
+              harvest_year: this.params[8],
+            });
+            return { success: true };
+          }
+          return { success: true };
+        },
+        async first() {
+          const s = sql.replace(/\s+/g, ' ');
+          if (s.includes('FROM sessions') || s.includes('FROM users')) {
+            return { id: 1, province_code: 'ratchaburi', province_label: 'ราชบุรี', role: 'province' };
+          }
+          if (s.includes('FROM farmer_plots')) {
+            return { id: 1, province_code: 'ratchaburi', district: 'ดำเนินสะดวก', productive_area_rai: 10, trees_per_rai: 40 };
+          }
+          return null;
+        },
+        async all() {
+          const yr = this.params[3] || 2570;
+          const filtered = storedRows.filter((r) => r.harvest_year === yr);
+          return { results: filtered };
+        },
+      };
+    },
+  };
+
+  // Attempt to submit entries for Year 2569 with forbidden months 1-10 plus valid months 11-12
+  const attempted2569Entries = [
+    { bunch_no: 1, harvest_month: 1, fruit_count: 10 }, // Month 1: MUST BE BLOCKED
+    { bunch_no: 5, harvest_month: 5, fruit_count: 14 }, // Month 5: MUST BE BLOCKED
+    { bunch_no: 10, harvest_month: 10, fruit_count: 12 }, // Month 10: MUST BE BLOCKED
+    { bunch_no: 18, harvest_month: 11, fruit_count: 11 }, // Month 11 (Nov): ALLOWED
+    { bunch_no: 19, harvest_month: 12, fruit_count: 13 }, // Month 12 (Dec): ALLOWED
+    { bunch_no: 20, harvest_month: 12, fruit_count: 14 }, // Month 12 (Dec): ALLOWED
+  ];
+
+  const req = new Request('https://coconut-doae.internal/api/challenge/forecast', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', cookie: 'sid=valid-session-token' },
+    body: JSON.stringify({
+      plot_id: 1,
+      tree_no: 1,
+      tree_position: 'C',
+      point_label: 'จุดที่ 1',
+      harvest_year: 2569,
+      entries: attempted2569Entries,
+    }),
+  });
+
+  const res = await onForecastRequest({ request: req, env: { DB: mockDb } });
+  assert.equal(res.status, 200);
+
+  // Year 2570 data must still be intact (2 rows)
+  const rows2570 = storedRows.filter((r) => r.harvest_year === 2570);
+  assert.equal(rows2570.length, 2);
+
+  // Year 2569 data must ONLY contain months 11 and 12 (3 rows: bunches 18, 19, 20)
+  const rows2569 = storedRows.filter((r) => r.harvest_year === 2569);
+  assert.equal(rows2569.length, 3);
+  assert.ok(rows2569.every((r) => r.harvest_month >= 11));
+  assert.deepEqual(rows2569.map((r) => r.bunch_no).sort(), [18, 19, 20]);
+});
+
+test('UI: Year selector dropdown exists in index.html with 2570 and 2569 options', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const html = fs.readFileSync(path.join(process.cwd(), 'public', 'index.html'), 'utf-8');
+
+  assert.ok(html.includes('id="chalForecastYearSelect"'), 'Missing chalForecastYearSelect');
+  assert.ok(html.includes('value="2570"'), 'Missing year 2570 option');
+  assert.ok(html.includes('value="2569"'), 'Missing year 2569 option');
+  assert.ok(html.includes('id="chalYear2569Notice"'), 'Missing year 2569 notice banner');
+});

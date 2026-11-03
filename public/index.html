@@ -1251,14 +1251,37 @@
           </div>
         </div>
 
-        <!-- View Switcher: Matrix View vs 21-Day Timeline View -->
-        <div class="forecast-view-switcher">
-          <button type="button" id="chalViewBtnMatrix" class="f-view-btn active" onclick="window.chalSwitchForecastView('matrix')">
-            <span>📊 มุมมองตาราง 12 เดือน (แบบที่ 2)</span>
-          </button>
-          <button type="button" id="chalViewBtnTimeline" class="f-view-btn" onclick="window.chalSwitchForecastView('timeline')">
-            <span>📅 มุมมองไทม์ไลน์รอบตัด 21 วัน (Timeline 20 ทะลาย)</span>
-          </button>
+        <!-- View Switcher & Year Selector -->
+        <div class="forecast-view-switcher" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+          <div class="f-view-switcher-left" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button type="button" id="chalViewBtnMatrix" class="f-view-btn active" onclick="window.chalSwitchForecastView('matrix')">
+              <span>📊 มุมมองตาราง 12 เดือน (แบบที่ 2)</span>
+            </button>
+            <button type="button" id="chalViewBtnTimeline" class="f-view-btn" onclick="window.chalSwitchForecastView('timeline')">
+              <span>📅 มุมมองไทม์ไลน์รอบตัด 21 วัน (Timeline 20 ทะลาย)</span>
+            </button>
+          </div>
+          <div class="f-view-switcher-right" style="display:flex; align-items:center; gap:8px; margin-left:auto;">
+            <label for="chalForecastYearSelect" style="font-weight:700; font-size:13px; color:#1e293b; display:flex; align-items:center; gap:4px; white-space:nowrap;">
+              <span>📅</span> <span>เลือกปีบันทึก:</span>
+            </label>
+            <select id="chalForecastYearSelect" class="f-year-select" style="font-weight:700; font-size:13.5px; padding:6px 14px; border-radius:8px; border:1.5px solid #059669; background:#ecfdf5; color:#065f46; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.06);" onchange="window.chalOnForecastYearChange(this.value)">
+              <option value="2570" selected>ปี 2570 (ปีประเมินหลัก - ทั้ง 12 เดือน)</option>
+              <option value="2569">ปี 2569 (เริ่มเก็บล่วงหน้า - พ.ย. ถึง ธ.ค.)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Year 2569 Notice Banner -->
+        <div id="chalYear2569Notice" class="year-notice-banner" style="display:none; margin: 0 0 14px 0; padding: 12px 16px; background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px; color: #92400e; font-size: 13px; line-height: 1.5; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="display:flex; align-items:flex-start; gap:10px;">
+            <span style="font-size:20px; line-height:1;">🍂</span>
+            <div>
+              <strong style="color:#b45309; font-size:13.5px;">ตารางคาดการณ์ปี 2569 (สำหรับอำเภอที่เริ่มเก็บข้อมูลล่วงหน้าปลายปี):</strong><br>
+              ระบบเปิดให้บันทึกเฉพาะ <strong>เดือน พ.ย. และ ธ.ค. (เน้นทะลายที่ 18, 19, 20)</strong> 
+              <span style="color:#b45309;">• ส่วนเดือน ม.ค. - ต.ค. ถูกถมเป็นแถบสีเทาและปิดการกรอกข้อมูลอัตโนมัติ</span>
+            </div>
+          </div>
         </div>
 
         <!-- View 1: 12-Month Matrix -->
