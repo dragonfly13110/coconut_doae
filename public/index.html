@@ -1588,7 +1588,7 @@
           </div>
 
           <div style="display:flex; justify-content:flex-end; margin-top:16px;">
-            <button type="submit" class="button primary" style="padding:10px 24px;">➕ บันทึกข้อมูลรอบตัด</button>
+            <button type="submit" class="button primary" id="chalHarvestSubmitBtn" style="padding:10px 24px;">➕ บันทึกข้อมูลรอบตัด</button>
           </div>
         </form>
 
@@ -2235,7 +2235,7 @@
         <form id="chalPlotForm">
           <input type="hidden" id="chalPlotId" />
           
-          <div class="form-grid-3">
+          <div class="form-grid-4" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:12px;">
             <label>
               จังหวัด:
               <select id="chalPlotProvince" required style="padding:8px;">
@@ -2244,6 +2244,10 @@
                 <option value="samut_sakhon">สมุทรสาคร</option>
                 <option value="samut_songkhram">สมุทรสงคราม</option>
               </select>
+            </label>
+            <label id="chalPlotDistrictWrap">
+              อำเภอ:
+              <select id="chalPlotDistrict" required style="padding:8px; font-weight:bold;"></select>
             </label>
             <label>
               ลำดับที่:

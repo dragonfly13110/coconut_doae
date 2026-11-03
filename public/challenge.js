@@ -11,7 +11,10 @@ export function canUserEditPlot(user, plot) {
   if (role === 'district') {
     if (user.province_code !== plot.province_code) return false;
     const uDist = (user.district_name || '').replace(/^(อำเภอ|อ\.)\s*/, '').trim().toLowerCase();
-    const pDist = (plot.district || '').replace(/^(อำเภอ|อ\.)\s*/, '').trim().toLowerCase();
+    let pDist = (plot.district || '').replace(/^(อำเภอ|อ\.)\s*/, '').trim().toLowerCase();
+    if (!pDist && plot.address) {
+      pDist = plot.address.toLowerCase();
+    }
     return uDist === pDist || (uDist && pDist.includes(uDist)) || (pDist && uDist.includes(pDist));
   }
   return false;
@@ -26,6 +29,32 @@ const CHAL_PROVINCES = [
   { code: 'samut_sakhon', label: 'สมุทรสาคร' },
   { code: 'samut_songkhram', label: 'สมุทรสงคราม' },
 ];
+
+export const DISTRICTS_BY_PROVINCE = {
+  ratchaburi: [
+    'เมืองราชบุรี', 'จอมบึง', 'สวนผึ้ง', 'ดำเนินสะดวก', 'บ้านโป่ง',
+    'บางแพ', 'โพธาราม', 'ปากท่อ', 'วัดเพลง', 'บ้านคา'
+  ],
+  nakhon_pathom: [
+    'เมืองนครปฐม', 'กำแพงแสน', 'นครชัยศรี', 'ดอนตูม', 'บางเลน', 'สามพราน', 'พุทธมณฑล'
+  ],
+  samut_sakhon: [
+    'เมืองสมุทรสาคร', 'กระทุ่มแบน', 'บ้านแพ้ว'
+  ],
+  samut_songkhram: [
+    'เมืองสมุทรสงคราม', 'บางคนที', 'อัมพวา'
+  ]
+};
+
+export function updatePlotDistrictOptions(provinceCode, selectedDistrict) {
+  const select = cel('chalPlotDistrict');
+  if (!select) return;
+  const list = DISTRICTS_BY_PROVINCE[provinceCode] || [];
+  select.innerHTML = list.map((d) => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+  if (selectedDistrict && list.includes(selectedDistrict)) {
+    select.value = selectedDistrict;
+  }
+}
 
 const SAMPLE_POINTS = [
   { no: 1, label: 'จุดที่ 1' },
@@ -116,6 +145,7 @@ function bindChalEvents() {
     cel(id)?.addEventListener('input', updatePlotCalcSummary);
   });
   cel('chalPlotProvince')?.addEventListener('change', (e) => {
+    updatePlotDistrictOptions(e.target.value);
     const prov = CHAL_PROVINCES.find((p) => p.code === e.target.value);
     if (prov && cel('chalPlotProvinceName') && (!cel('chalPlotProvinceName').value || CHAL_PROVINCES.some((x) => x.label === cel('chalPlotProvinceName').value))) {
       cel('chalPlotProvinceName').value = prov.label;
@@ -287,8 +317,13 @@ async function loadAllChalData() {
     loadMacroData(),
   ]);
   if (chalState.plots.length > 0) {
-    const plot1 = chalState.plots.find((p) => p.id === 1);
-    chalState.selectedPlotId = plot1 ? plot1.id : chalState.plots[0].id;
+    const myPlot = chalState.plots.find((p) => canUserEditPlot(chalState.user, p));
+    if (myPlot) {
+      chalState.selectedPlotId = myPlot.id;
+    } else {
+      const plot1 = chalState.plots.find((p) => p.id === 1);
+      chalState.selectedPlotId = plot1 ? plot1.id : chalState.plots[0].id;
+    }
   }
   populatePlotDropdowns();
   renderFarmersTable();
@@ -485,28 +520,45 @@ function renderFarmersTable() {
 
 function onOpenNewPlotModal() {
   cel('chalPlotForm')?.reset();
-  cel('chalPlotId').value = '';
-  cel('chalPlotFullName').value = '';
-  cel('chalPlotAddress').value = '';
-  cel('chalPlotTitle').value = 'นาย';
-  cel('chalPlotCoordZone').value = '47';
-  cel('chalPlotStandard').value = 'GAP';
-  cel('chalPlotModalTitle').textContent = '📋 บันทึกข้อมูลพื้นฐานแปลงใหม่ (แบบฟอร์มที่ 1)';
+  if (cel('chalPlotId')) cel('chalPlotId').value = '';
+  if (cel('chalPlotFullName')) cel('chalPlotFullName').value = '';
+  if (cel('chalPlotAddress')) cel('chalPlotAddress').value = '';
+  if (cel('chalPlotTitle')) cel('chalPlotTitle').value = 'นาย';
+  if (cel('chalPlotCoordZone')) cel('chalPlotCoordZone').value = '47';
+  if (cel('chalPlotStandard')) cel('chalPlotStandard').value = 'GAP';
+  if (cel('chalPlotModalTitle')) cel('chalPlotModalTitle').textContent = '📋 บันทึกข้อมูลพื้นฐานแปลงใหม่ (แบบฟอร์มที่ 1)';
 
-  const activeProvCode = chalState.user.role !== 'admin' ? chalState.user.province_code : cel('chalPlotProvince').value;
+  const user = chalState.user || {};
+  const isDistrict = user.role === 'district';
+  const isAdmin = ['admin', 'central', 'region'].includes(user.role);
+
+  const activeProvCode = (!isAdmin && user.province_code) ? user.province_code : (cel('chalPlotProvince')?.value || 'ratchaburi');
+
+  if (cel('chalPlotProvince')) {
+    cel('chalPlotProvince').value = activeProvCode;
+    cel('chalPlotProvince').disabled = !isAdmin;
+  }
+
+  // Update District options
+  const targetDistrict = isDistrict ? user.district_name : '';
+  updatePlotDistrictOptions(activeProvCode, targetDistrict);
+  if (cel('chalPlotDistrict')) {
+    if (isDistrict) {
+      cel('chalPlotDistrict').value = user.district_name || '';
+      cel('chalPlotDistrict').disabled = true;
+      cel('chalPlotDistrict').title = 'พื้นที่รับผิดชอบของท่าน: ' + (user.district_name || '');
+    } else {
+      cel('chalPlotDistrict').disabled = false;
+    }
+  }
+
   const provObj = CHAL_PROVINCES.find((pr) => pr.code === activeProvCode);
   if (provObj && cel('chalPlotProvinceName')) {
     cel('chalPlotProvinceName').value = provObj.label;
   }
 
-  if (chalState.user.role !== 'admin') {
-    cel('chalPlotProvince').value = chalState.user.province_code;
-    cel('chalPlotProvince').disabled = true;
-  } else {
-    cel('chalPlotProvince').disabled = false;
-  }
   updatePlotCalcSummary();
-  cel('chalPlotModal').hidden = false;
+  if (cel('chalPlotModal')) cel('chalPlotModal').hidden = false;
 }
 
 function onClosePlotModal() {
@@ -548,11 +600,22 @@ window.chalEditPlot = (id) => {
   const plot = chalState.plots.find((p) => p.id === id);
   if (!plot) return;
 
-  cel('chalPlotId').value = plot.id;
-  cel('chalPlotProvince').value = plot.province_code;
-  if (chalState.user.role !== 'admin') cel('chalPlotProvince').disabled = true;
-  cel('chalPlotFarmerNo').value = plot.farmer_no || '';
-  cel('chalPlotLabel').value = plot.plot_label || '';
+  const user = chalState.user || {};
+  const isAdmin = ['admin', 'central', 'region'].includes(user.role);
+  const isDistrict = user.role === 'district';
+
+  if (cel('chalPlotId')) cel('chalPlotId').value = plot.id;
+  if (cel('chalPlotProvince')) {
+    cel('chalPlotProvince').value = plot.province_code;
+    cel('chalPlotProvince').disabled = !isAdmin;
+  }
+  updatePlotDistrictOptions(plot.province_code, plot.district);
+  if (cel('chalPlotDistrict')) {
+    cel('chalPlotDistrict').value = plot.district || '';
+    cel('chalPlotDistrict').disabled = isDistrict;
+  }
+  if (cel('chalPlotFarmerNo')) cel('chalPlotFarmerNo').value = plot.farmer_no || '';
+  if (cel('chalPlotLabel')) cel('chalPlotLabel').value = plot.plot_label || '';
 
   let title = plot.title || 'นาย';
   let firstName = plot.first_name || '';
@@ -587,46 +650,50 @@ window.chalEditPlot = (id) => {
     }
   }
 
-  cel('chalPlotTitle').value = title;
-  cel('chalPlotFirstName').value = firstName;
-  cel('chalPlotLastName').value = lastName;
-  cel('chalPlotAge').value = plot.age || '';
-  cel('chalPlotPhone').value = plot.phone || '';
+  if (cel('chalPlotTitle')) cel('chalPlotTitle').value = title;
+  if (cel('chalPlotFirstName')) cel('chalPlotFirstName').value = firstName;
+  if (cel('chalPlotLastName')) cel('chalPlotLastName').value = lastName;
+  if (cel('chalPlotFullName')) cel('chalPlotFullName').value = plot.full_name || `${title} ${firstName} ${lastName}`.trim();
+  if (cel('chalPlotAge')) cel('chalPlotAge').value = plot.age || '';
+  if (cel('chalPlotPhone')) cel('chalPlotPhone').value = plot.phone || '';
 
-  cel('chalPlotAddressNo').value = plot.address_no || '';
-  cel('chalPlotStreet').value = plot.street || '';
-  cel('chalPlotMoo').value = plot.moo || '';
-  cel('chalPlotSubdistrict').value = plot.subdistrict || '';
-  cel('chalPlotDistrict').value = plot.district || '';
+  if (cel('chalPlotAddressNo')) cel('chalPlotAddressNo').value = plot.address_no || '';
+  if (cel('chalPlotStreet')) cel('chalPlotStreet').value = plot.street || '';
+  if (cel('chalPlotMoo')) cel('chalPlotMoo').value = plot.moo || '';
+  if (cel('chalPlotSubdistrict')) cel('chalPlotSubdistrict').value = plot.subdistrict || '';
 
   const provObj = CHAL_PROVINCES.find((pr) => pr.code === plot.province_code);
-  cel('chalPlotProvinceName').value = plot.province_name || (provObj ? provObj.label : '');
-  cel('chalPlotAddress').value = plot.address || '';
+  if (cel('chalPlotProvinceName')) cel('chalPlotProvinceName').value = plot.province_name || (provObj ? provObj.label : '');
+  if (cel('chalPlotAddress')) cel('chalPlotAddress').value = plot.address || '';
 
-  cel('chalPlotCoordZone').value = plot.coord_zone || '47';
-  cel('chalPlotCoordX1').value = plot.coord_x1 ?? plot.coord_x ?? '';
-  cel('chalPlotCoordY1').value = plot.coord_y1 ?? plot.coord_y ?? '';
-  cel('chalPlotCoordX2').value = plot.coord_x2 ?? '';
-  cel('chalPlotCoordY2').value = plot.coord_y2 ?? '';
-  cel('chalPlotCoordX3').value = plot.coord_x3 ?? '';
-  cel('chalPlotCoordY3').value = plot.coord_y3 ?? '';
-  cel('chalPlotCoordX4').value = plot.coord_x4 ?? '';
-  cel('chalPlotCoordY4').value = plot.coord_y4 ?? '';
+  if (cel('chalPlotCoordZone')) cel('chalPlotCoordZone').value = plot.coord_zone || '47';
+  if (cel('chalPlotCoordX')) cel('chalPlotCoordX').value = plot.coord_x1 ?? plot.coord_x ?? '';
+  if (cel('chalPlotCoordY')) cel('chalPlotCoordY').value = plot.coord_y1 ?? plot.coord_y ?? '';
+  if (cel('chalPlotCoordX1')) cel('chalPlotCoordX1').value = plot.coord_x1 ?? plot.coord_x ?? '';
+  if (cel('chalPlotCoordY1')) cel('chalPlotCoordY1').value = plot.coord_y1 ?? plot.coord_y ?? '';
+  if (cel('chalPlotCoordX2')) cel('chalPlotCoordX2').value = plot.coord_x2 ?? '';
+  if (cel('chalPlotCoordY2')) cel('chalPlotCoordY2').value = plot.coord_y2 ?? '';
+  if (cel('chalPlotCoordX3')) cel('chalPlotCoordX3').value = plot.coord_x3 ?? '';
+  if (cel('chalPlotCoordY3')) cel('chalPlotCoordY3').value = plot.coord_y3 ?? '';
+  if (cel('chalPlotCoordX4')) cel('chalPlotCoordX4').value = plot.coord_x4 ?? '';
+  if (cel('chalPlotCoordY4')) cel('chalPlotCoordY4').value = plot.coord_y4 ?? '';
 
-  cel('chalPlotTotalArea').value = plot.total_area_rai || '';
-  cel('chalPlotProductiveArea').value = plot.productive_area_rai || '';
-  cel('chalPlotPlantAge').value = plot.plant_age_years || '';
-  cel('chalPlotTreesPerRai').value = plot.trees_per_rai || '';
+  if (cel('chalPlotTotalArea')) cel('chalPlotTotalArea').value = plot.total_area_rai || '';
+  if (cel('chalPlotProductiveArea')) cel('chalPlotProductiveArea').value = plot.productive_area_rai || '';
+  if (cel('chalPlotPlantAge')) cel('chalPlotPlantAge').value = plot.plant_age_years || '';
+  if (cel('chalPlotTreesPerRai')) cel('chalPlotTreesPerRai').value = plot.trees_per_rai || '';
 
-  cel('chalPlotStandard').value = plot.production_standard || 'GAP';
-  cel('chalPlotSoilSeries').value = plot.soil_series || '';
-  cel('chalPlotCostPerRai').value = plot.production_cost_per_rai || '';
-  cel('chalPlotIncomePerRai').value = plot.avg_income_per_rai || '';
+  if (cel('chalPlotStandard')) cel('chalPlotStandard').value = plot.production_standard || 'GAP';
+  if (cel('chalPlotSoilSeries')) cel('chalPlotSoilSeries').value = plot.soil_series || '';
+  if (cel('chalPlotCostPerRai')) cel('chalPlotCostPerRai').value = plot.production_cost_per_rai || '';
+  if (cel('chalPlotIncomePerRai')) cel('chalPlotIncomePerRai').value = plot.avg_income_per_rai || '';
 
   updatePlotCalcSummary();
   const displayName = plot.full_name || `${title} ${firstName} ${lastName}`.trim();
-  cel('chalPlotModalTitle').textContent = `✏️ แก้ไขข้อมูลพื้นฐานแปลง: ${plot.plot_label} (${displayName})`;
-  cel('chalPlotModal').hidden = false;
+  if (cel('chalPlotModalTitle')) {
+    cel('chalPlotModalTitle').textContent = `✏️ แก้ไขข้อมูลพื้นฐานแปลง: ${plot.plot_label} (${displayName})`;
+  }
+  if (cel('chalPlotModal')) cel('chalPlotModal').hidden = false;
 };
 
 window.chalViewOfficialForm = (id) => {
@@ -742,38 +809,70 @@ window.chalGoHarvest = (id) => {
 
 async function onSaveFarmerPlot(e) {
   e.preventDefault();
-  const id = cel('chalPlotId').value;
-  const title = cel('chalPlotTitle')?.value || '';
-  const firstName = cel('chalPlotFirstName')?.value || '';
-  const lastName = cel('chalPlotLastName')?.value || '';
-  const fullName = `${title ? title + ' ' : ''}${firstName} ${lastName}`.trim();
+  const id = cel('chalPlotId')?.value;
+  const user = chalState.user || {};
+  const isDistrict = user.role === 'district';
+  const isAdmin = ['admin', 'central', 'region'].includes(user.role);
 
-  const x1 = cel('chalPlotCoordX1')?.value;
-  const y1 = cel('chalPlotCoordY1')?.value;
+  const provinceCode = (!isAdmin && user.province_code)
+    ? user.province_code
+    : (cel('chalPlotProvince')?.value || 'ratchaburi');
+
+  const district = isDistrict
+    ? (user.district_name || '')
+    : (cel('chalPlotDistrict')?.value?.trim() || '');
+
+  let fullName = cel('chalPlotFullName')?.value?.trim() || '';
+  let title = cel('chalPlotTitle')?.value || '';
+  let firstName = cel('chalPlotFirstName')?.value || '';
+  let lastName = cel('chalPlotLastName')?.value || '';
+
+  if (fullName && (!firstName || !lastName)) {
+    let clean = fullName;
+    if (clean.startsWith('นางสาว')) {
+      title = 'นางสาว';
+      clean = clean.slice(6).trim();
+    } else if (clean.startsWith('ว่าที่ ร.ต.')) {
+      title = 'ว่าที่ ร.ต.';
+      clean = clean.slice(11).trim();
+    } else if (clean.startsWith('นาง')) {
+      title = 'นาง';
+      clean = clean.slice(3).trim();
+    } else if (clean.startsWith('นาย')) {
+      title = 'นาย';
+      clean = clean.slice(3).trim();
+    }
+    const parts = clean.split(/\s+/);
+    firstName = parts[0] || '';
+    lastName = parts.slice(1).join(' ') || '';
+  }
+
+  const x1 = cel('chalPlotCoordX')?.value || cel('chalPlotCoordX1')?.value || null;
+  const y1 = cel('chalPlotCoordY')?.value || cel('chalPlotCoordY1')?.value || null;
 
   const payload = {
     id: id ? Number(id) : null,
-    province_code: cel('chalPlotProvince').value,
-    farmer_no: cel('chalPlotFarmerNo').value,
-    plot_label: cel('chalPlotLabel').value,
+    province_code: provinceCode,
+    farmer_no: cel('chalPlotFarmerNo')?.value || null,
+    plot_label: cel('chalPlotLabel')?.value || 'แปลงใหม่',
     title,
     first_name: firstName,
     last_name: lastName,
-    full_name: fullName,
+    full_name: fullName || `${title ? title + ' ' : ''}${firstName} ${lastName}`.trim(),
     address_no: cel('chalPlotAddressNo')?.value || '',
     street: cel('chalPlotStreet')?.value || '',
     moo: cel('chalPlotMoo')?.value || '',
     subdistrict: cel('chalPlotSubdistrict')?.value || '',
-    district: cel('chalPlotDistrict')?.value || '',
+    district: district,
     province_name: cel('chalPlotProvinceName')?.value || '',
     address: cel('chalPlotAddress')?.value || '',
-    age: cel('chalPlotAge').value,
-    phone: cel('chalPlotPhone').value,
-    total_area_rai: cel('chalPlotTotalArea').value,
-    productive_area_rai: cel('chalPlotProductiveArea').value,
-    plant_age_years: cel('chalPlotPlantAge').value,
-    trees_per_rai: cel('chalPlotTreesPerRai').value,
-    coord_zone: cel('chalPlotCoordZone').value || '47',
+    age: cel('chalPlotAge')?.value || null,
+    phone: cel('chalPlotPhone')?.value || '',
+    total_area_rai: cel('chalPlotTotalArea')?.value || 0,
+    productive_area_rai: cel('chalPlotProductiveArea')?.value || 0,
+    plant_age_years: cel('chalPlotPlantAge')?.value || 0,
+    trees_per_rai: cel('chalPlotTreesPerRai')?.value || 0,
+    coord_zone: cel('chalPlotCoordZone')?.value || '47',
     coord_x: x1,
     coord_y: y1,
     coord_x1: x1,
@@ -784,38 +883,54 @@ async function onSaveFarmerPlot(e) {
     coord_y3: cel('chalPlotCoordY3')?.value || null,
     coord_x4: cel('chalPlotCoordX4')?.value || null,
     coord_y4: cel('chalPlotCoordY4')?.value || null,
-    production_standard: cel('chalPlotStandard').value,
-    soil_series: cel('chalPlotSoilSeries').value,
+    production_standard: cel('chalPlotStandard')?.value || 'GAP',
+    soil_series: cel('chalPlotSoilSeries')?.value || '',
     production_cost_per_rai: cel('chalPlotCostPerRai')?.value || 0,
     avg_income_per_rai: cel('chalPlotIncomePerRai')?.value || 0,
   };
 
   try {
-    await chalApi('/api/challenge/farmers', {
+    const res = await chalApi('/api/challenge/farmers', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
     onClosePlotModal();
     await loadPlots();
+    if (res?.id || res?.plot?.id) {
+      chalState.selectedPlotId = res.id || res.plot.id;
+    }
     populatePlotDropdowns();
     renderFarmersTable();
-  if (chalState.activeTab === 'forecast') {
-    loadForecastMatrix();
-  } else if (chalState.activeTab === 'harvest') {
-    loadHarvestCuts();
-  } else if (chalState.activeTab === 'board2d') {
-    loadBoard2D();
-  }
-    alert(id ? 'บันทึกการแก้ไขข้อมูลพื้นฐานแปลงเรียบร้อยแล้ว' : 'บันทึกข้อมูลแปลงใหม่สำเร็จ (แบบฟอร์มที่ 1)');
+    if (chalState.activeTab === 'forecast') {
+      loadForecastMatrix();
+    } else if (chalState.activeTab === 'harvest') {
+      loadHarvestCuts();
+    } else if (chalState.activeTab === 'board2d') {
+      loadBoard2D();
+    }
+    showToastNotification(id ? 'บันทึกการแก้ไขข้อมูลแปลงเรียบร้อยแล้ว' : 'บันทึกข้อมูลแปลงใหม่สำเร็จ (แบบฟอร์มที่ 1)', 'success');
   } catch (err) {
     alert('เกิดข้อผิดพลาด: ' + err.message);
   }
 }
 
 function populatePlotDropdowns() {
+  if (chalState.plots.length > 0) {
+    const currentSelected = chalState.plots.find((p) => p.id === chalState.selectedPlotId);
+    if (!currentSelected || !canUserEditPlot(chalState.user, currentSelected)) {
+      const myPlot = chalState.plots.find((p) => canUserEditPlot(chalState.user, p));
+      if (myPlot) {
+        chalState.selectedPlotId = myPlot.id;
+      }
+    }
+  }
+
   const options = chalState.plots.map((p) => {
     const prov = CHAL_PROVINCES.find((pr) => pr.code === p.province_code);
-    return `<option value="${p.id}">${escapeHtml(p.plot_label)} - ${escapeHtml(p.full_name)} (${prov ? prov.label : p.province_code})</option>`;
+    const canEdit = canUserEditPlot(chalState.user, p);
+    const badge = canEdit ? ' [พื้นที่รับผิดชอบ - บันทึกได้]' : ' [ต่างพื้นที่ - ดูอย่างเดียว]';
+    const distText = p.district ? `อ.${p.district}, ` : '';
+    return `<option value="${p.id}">${escapeHtml(p.plot_label)} - ${escapeHtml(p.full_name)} (${distText}${prov ? prov.label : p.province_code})${badge}</option>`;
   }).join('');
 
   ['chalForecastPlotSelect', 'chalHarvestPlotSelect', 'chalBenchmarkPlotSelect'].forEach((id) => {
@@ -1335,6 +1450,9 @@ function renderMatrixGrid(data) {
   const container = cel('chalMatrixTableWrap');
   if (!container) return;
 
+  const currentPlot = (chalState.plots || []).find((p) => p.id === chalState.selectedPlotId);
+  const canEditPlot = canUserEditPlot(chalState.user, currentPlot);
+
   const matrixMap = data.matrixMap || {};
   const monthlyTotals = data.monthlyTotals || new Array(12).fill(0);
 
@@ -1406,14 +1524,14 @@ function renderMatrixGrid(data) {
               type="text" 
               inputmode="numeric"
               pattern="[0-9]*"
-              class="matrix-input ${val ? 'has-val' : ''}" 
+              class="matrix-input ${val ? 'has-val' : ''} ${!canEditPlot ? 'matrix-input-readonly' : ''}" 
               data-bunch="${b}" 
               data-month="${m}" 
               value="${val}" 
               placeholder="${isSpotlight ? '•' : '-'}"
               autocomplete="off"
-              onfocus="this.select()"
-              oninput="window.chalOnMatrixInput(this)"
+              ${!canEditPlot ? 'disabled readonly tabindex="-1" style="cursor:not-allowed !important; background:#f8fafc;"' : 'onfocus="this.select()" oninput="window.chalOnMatrixInput(this)"'}
+              title="${!canEditPlot ? 'โหมดดูอย่างเดียว (แปลงนี้อยู่นอกพื้นที่รับผิดชอบ)' : (isSpotlight ? `รอบเก็บเกี่ยว: ทะลาย ${b} ตกเดือน ${MONTH_NAMES[m - 1]}` : '')}"
             />
           </td>
         `;
@@ -1493,6 +1611,23 @@ function renderMatrixGrid(data) {
 
   // Render timeline schedule
   renderTimelineSchedule(data, schedule);
+
+  // Update Save / Action Buttons based on plot permissions
+  ['chalBtnSaveTop', 'chalBtnSaveBottom', 'chalBtnSaveTimelineBottom', 'chalBtnAutoProject', 'chalBtnApplyBaseline2569'].forEach((btnId) => {
+    const btn = cel(btnId);
+    if (btn) {
+      btn.disabled = !canEditPlot;
+      btn.style.opacity = canEditPlot ? '1' : '0.55';
+      btn.style.cursor = canEditPlot ? 'pointer' : 'not-allowed';
+    }
+  });
+
+  if (!canEditPlot && currentPlot) {
+    const statusText = cel('chalSaveStatusText');
+    if (statusText) {
+      statusText.innerHTML = `<span style="color:#b45309;">🔒 โหมดดูอย่างเดียว (แปลงนี้อยู่นอกเขตรับผิดชอบ — ท่านมีสิทธิ์บันทึกเฉพาะ ${escapeHtml(chalState.user?.district_name || chalState.user?.province_label)})</span>`;
+    }
+  }
 }
 
 // 12 month bars: height = month total, chips = bunches that fall in that month. Rebuilt on every input.
@@ -2395,6 +2530,16 @@ function updateHarvestPlotInfo() {
   }
 
   recalcHarvestYields();
+
+  // Enforce District write permissions on Harvest Form
+  const canEditHarvest = canUserEditPlot(chalState.user, plot);
+  const submitBtn = cel('chalHarvestSubmitBtn');
+  if (submitBtn) {
+    submitBtn.disabled = !canEditHarvest;
+    submitBtn.style.opacity = canEditHarvest ? '1' : '0.55';
+    submitBtn.style.cursor = canEditHarvest ? 'pointer' : 'not-allowed';
+    submitBtn.innerHTML = canEditHarvest ? '➕ บันทึกข้อมูลรอบตัด' : '🔒 โหมดดูอย่างเดียว (แปลงนอกเขตรับผิดชอบ)';
+  }
 }
 
 function recalcHarvestYields() {

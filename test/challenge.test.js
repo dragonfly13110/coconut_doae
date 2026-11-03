@@ -858,3 +858,169 @@ test('UI: Year selector dropdown exists in index.html with 2570 and 2569 options
   assert.ok(html.includes('value="2569"'), 'Missing year 2569 option');
   assert.ok(html.includes('id="chalYear2569Notice"'), 'Missing year 2569 notice banner');
 });
+
+
+test('District Account: can add new plot in their district and auto-defaults district', async () => {
+  const { onRequest: onFarmersRequest } = await import('../functions/api/challenge/farmers.js');
+
+  let insertedPlot = null;
+  const mockDistrictUser = {
+    id: 10,
+    username: '7001',
+    role: 'district',
+    province_code: 'ratchaburi',
+    province_label: 'ราชบุรี',
+    district_code: '7001',
+    district_name: 'เมืองราชบุรี',
+  };
+
+  const mockDb = {
+    prepare(sql) {
+      return {
+        sql,
+        params: [],
+        bind(...params) {
+          this.params = params;
+          return this;
+        },
+        async run() {
+          if (sql.includes('INSERT INTO farmer_plots')) {
+            insertedPlot = this.params;
+            return { meta: { last_row_id: 101 } };
+          }
+          return { success: true };
+        },
+        async first() {
+          const s = sql.replace(/\s+/g, ' ');
+          if (s.includes('FROM sessions') || s.includes('FROM users')) {
+            return mockDistrictUser;
+          }
+          return null;
+        },
+        async all() {
+          return { results: [] };
+        },
+      };
+    },
+  };
+
+  // 1. District officer submits new plot with empty district (auto-defaults to user.district_name)
+  const req1 = new Request('https://coconut-doae.internal/api/challenge/farmers', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', cookie: 'sid=valid-session-token' },
+    body: JSON.stringify({
+      plot_label: 'แปลงใหม่ อ.เมือง',
+      full_name: 'นายสมปอง เมืองราช',
+      district: '',
+    }),
+  });
+
+  const res1 = await onFarmersRequest({ request: req1, env: { DB: mockDb } });
+  assert.equal(res1.status, 200);
+  const body1 = await res1.json();
+  assert.equal(body1.success, true);
+  assert.equal(body1.id, 101);
+
+  // 2. District officer tries to create a plot in another district -> 403 Forbidden
+  const req2 = new Request('https://coconut-doae.internal/api/challenge/farmers', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', cookie: 'sid=valid-session-token' },
+    body: JSON.stringify({
+      plot_label: 'แปลงต่างอำเภอ',
+      province_code: 'ratchaburi',
+      district: 'ดำเนินสะดวก', // Not their district!
+    }),
+  });
+
+  const res2 = await onFarmersRequest({ request: req2, env: { DB: mockDb } });
+  assert.equal(res2.status, 403);
+});
+
+test('District Account: can save forecast for plot in their district, rejected on other districts', async () => {
+  const { onRequest: onForecastRequest } = await import('../functions/api/challenge/forecast.js');
+
+  const mockDistrictUser = {
+    id: 10,
+    username: '7001',
+    role: 'district',
+    province_code: 'ratchaburi',
+    province_label: 'ราชบุรี',
+    district_code: '7001',
+    district_name: 'เมืองราชบุรี',
+  };
+
+  const plots = {
+    101: { id: 101, province_code: 'ratchaburi', district: 'เมืองราชบุรี', plot_label: 'แปลงเมือง' },
+    1: { id: 1, province_code: 'ratchaburi', district: 'ดำเนินสะดวก', plot_label: 'แปลงดำเนิน' },
+  };
+
+  const mockDb = {
+    prepare(sql) {
+      return {
+        sql,
+        params: [],
+        bind(...params) {
+          this.params = params;
+          return this;
+        },
+        async run() {
+          return { success: true };
+        },
+        async first() {
+          const s = sql.replace(/\s+/g, ' ');
+          if (s.includes('FROM sessions') || s.includes('FROM users')) {
+            return mockDistrictUser;
+          }
+          if (s.includes('FROM farmer_plots WHERE id = ?')) {
+            return plots[this.params[0]] || null;
+          }
+          return null;
+        },
+        async all() {
+          return { results: [] };
+        },
+      };
+    },
+  };
+
+  // 1. Save forecast on their own district plot -> 200 OK
+  const reqAllowed = new Request('https://coconut-doae.internal/api/challenge/forecast', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', cookie: 'sid=valid-session-token' },
+    body: JSON.stringify({
+      plot_id: 101,
+      tree_no: 1,
+      tree_position: 'C',
+      point_label: 'จุดที่ 1',
+      entries: [{ bunch_no: 1, harvest_month: 1, fruit_count: 12 }],
+    }),
+  });
+
+  const resAllowed = await onForecastRequest({ request: reqAllowed, env: { DB: mockDb } });
+  assert.equal(resAllowed.status, 200);
+
+  // 2. Save forecast on foreign district plot -> 403 Forbidden
+  const reqDenied = new Request('https://coconut-doae.internal/api/challenge/forecast', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', cookie: 'sid=valid-session-token' },
+    body: JSON.stringify({
+      plot_id: 1, // Damnoen Saduak (foreign to 7001)
+      tree_no: 1,
+      tree_position: 'C',
+      point_label: 'จุดที่ 1',
+      entries: [{ bunch_no: 1, harvest_month: 1, fruit_count: 12 }],
+    }),
+  });
+
+  const resDenied = await onForecastRequest({ request: reqDenied, env: { DB: mockDb } });
+  assert.equal(resDenied.status, 403);
+});
+
+test('UI: chalPlotDistrict select exists in chalPlotForm in index.html', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const html = fs.readFileSync(path.join(process.cwd(), 'public', 'index.html'), 'utf-8');
+
+  assert.ok(html.includes('id="chalPlotDistrict"'), 'Missing chalPlotDistrict select element in index.html');
+  assert.ok(html.includes('id="chalHarvestSubmitBtn"'), 'Missing chalHarvestSubmitBtn in index.html');
+});

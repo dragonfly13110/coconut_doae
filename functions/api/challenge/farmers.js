@@ -71,6 +71,8 @@ async function saveFarmer(request, env, user) {
     provinceCode = body.province_code || 'ratchaburi';
   } else if (user.role === 'province') {
     provinceCode = user.province_code;
+  } else if (user.role === 'district') {
+    provinceCode = user.province_code;
   }
 
   const farmerNo = body.farmer_no ? Number(body.farmer_no) : null;
@@ -88,7 +90,10 @@ async function saveFarmer(request, env, user) {
   const street = String(body.street || '').trim();
   const moo = String(body.moo || '').trim();
   const subdistrict = String(body.subdistrict || '').trim();
-  const district = String(body.district || '').trim();
+  let district = String(body.district || '').trim();
+  if (user.role === 'district' && (!district || district === '')) {
+    district = user.district_name || '';
+  }
   const provinceName = String(body.province_name || '').trim();
 
   let address = String(body.address || '').trim();
@@ -207,7 +212,7 @@ async function saveFarmer(request, env, user) {
       afterData: body,
     });
 
-    return json({ success: true, id, message: 'บันทึกการแก้ไขข้อมูลแปลงสำเร็จ' });
+    return json({ success: true, id, plot: { id }, message: 'บันทึกการแก้ไขข้อมูลแปลงสำเร็จ' });
   }
 
   // Insert new
@@ -245,7 +250,7 @@ async function saveFarmer(request, env, user) {
     afterData: body,
   });
 
-  return json({ success: true, id: newId, message: 'เพิ่มข้อมูลเกษตรกรและแปลงใหม่สำเร็จ' });
+  return json({ success: true, id: newId, plot: { id: newId }, message: 'เพิ่มข้อมูลเกษตรกรและแปลงใหม่สำเร็จ' });
 }
 
 async function deleteFarmer(request, env, user) {
