@@ -1284,10 +1284,56 @@
           </div>
         </div>
 
+        <!-- Live Save Status & Action Bar (ระดับสายตา ไม่ต้องเลื่อนหา) -->
+        <div class="forecast-action-bar" id="chalForecastActionBar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:12px 18px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; margin-bottom:14px; box-shadow:0 2px 8px rgba(16,185,129,0.08);">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:38px; height:38px; border-radius:50%; background:#dcfce7; display:flex; align-items:center; justify-content:center; font-size:20px; border:1px solid #86efac; flex-shrink:0;">
+              🌴
+            </div>
+            <div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <strong id="chalActionBarTreeTitle" style="font-size:14.5px; color:#065f46;">จุดที่ 1 — ต้นที่ 1 (C)</strong>
+                <span id="chalActionBarYearBadge" class="badge-plot" style="background:#e0f2fe; color:#0369a1; font-size:11.5px; font-weight:700; padding:2px 8px;">ปี 2570</span>
+              </div>
+              <div id="chalSaveStatusBadge" style="font-size:12.5px; font-weight:600; color:#15803d; display:flex; align-items:center; gap:6px; margin-top:3px;">
+                <span class="status-pulse-dot" style="width:9px; height:9px; border-radius:50%; background:#22c55e; display:inline-block;"></span>
+                <span id="chalSaveStatusText">🟢 บันทึกข้อมูลลงฐานข้อมูลแล้ว (พร้อมใช้งาน)</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+            <button type="button" class="button ghost small" onclick="window.chalClearForecastMatrix()" style="color:#64748b; border-color:#cbd5e1; background:#ffffff;">
+              ล้างค่าต้นนี้
+            </button>
+            <button type="button" id="chalBtnSaveTop" class="button primary" onclick="window.chalSaveForecastMatrix()" style="padding:10px 24px; font-size:14.5px; font-weight:700; display:flex; align-items:center; gap:8px; background:#059669; border-color:#059669; box-shadow:0 3px 12px rgba(5,150,105,0.25); cursor:pointer;">
+              <span id="chalBtnSaveTopIcon" style="font-size:16px;">💾</span>
+              <span id="chalBtnSaveTopText">บันทึกข้อมูลต้นนี้เข้าระบบ</span>
+            </button>
+          </div>
+        </div>
+
         <!-- View 1: 12-Month Matrix -->
         <div id="chalMatrixViewWrap">
           <div class="matrix-table-wrap" id="chalMatrixTableWrap">
             <p class="text-center py-4 text-muted">กำลังสร้างตารางเมทริกซ์ 20 ทะลาย...</p>
+          </div>
+
+          <!-- Bottom Save Confirmation Bar -->
+          <div class="matrix-bottom-save-bar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; padding:16px 22px; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:10px; margin-top:16px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+            <div>
+              <div style="font-size:14.5px; font-weight:700; color:#1e293b;">
+                ยอดรวมผลผลิตต้นนี้: <span id="chalBottomGrandTotal" class="text-success" style="font-size:18px; font-weight:800;">0 ผล</span>
+              </div>
+              <div id="chalBottomSaveStatus" style="font-size:12.5px; color:#64748b; margin-top:3px;">
+                กดปุ่มด้านขวาเพื่อบันทึกข้อมูลลงฐานข้อมูลระบบ (มั่นใจได้ 100% ว่าข้อมูลไม่สูญหาย)
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <button type="button" id="chalBtnSaveBottom" class="button primary large" onclick="window.chalSaveForecastMatrix()" style="padding:11px 28px; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; background:#059669; border-color:#059669; box-shadow:0 4px 14px rgba(5,150,105,0.3); cursor:pointer;">
+                <span style="font-size:18px;">💾</span>
+                <span id="chalBtnSaveBottomText">บันทึกข้อมูลต้นนี้เข้าระบบ</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1305,6 +1351,24 @@
           </div>
           <div class="table-wrap timeline-table-wrap" id="chalTimelineSchedule">
             <p class="text-center py-4 text-muted">กำลังสร้างตารางไทม์ไลน์ 20 ทะลาย...</p>
+          </div>
+
+          <!-- Bottom Save Confirmation Bar for Timeline -->
+          <div class="timeline-bottom-save-bar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; padding:16px 22px; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:10px; margin-top:16px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+            <div>
+              <div style="font-size:14.5px; font-weight:700; color:#1e293b;">
+                ยอดรวมผลผลิตรอบ 21 วัน: <span id="chalTimelineBottomGrandTotal" class="text-success" style="font-size:18px; font-weight:800;">0 ผล</span>
+              </div>
+              <div id="chalTimelineBottomSaveStatus" style="font-size:12.5px; color:#64748b; margin-top:3px;">
+                กดปุ่มด้านขวาเพื่อบันทึกข้อมูลลงฐานข้อมูลระบบ
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <button type="button" id="chalBtnSaveTimelineBottom" class="button primary large" onclick="window.chalSaveForecastMatrix()" style="padding:11px 28px; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; background:#059669; border-color:#059669; box-shadow:0 4px 14px rgba(5,150,105,0.3); cursor:pointer;">
+                <span style="font-size:18px;">💾</span>
+                <span>บันทึกข้อมูลต้นนี้เข้าระบบ</span>
+              </button>
+            </div>
           </div>
         </div>
           </div><!-- /.forecast-main-workspace -->
@@ -2642,5 +2706,7 @@
   <script src="/vendor/leaflet/leaflet.js"></script>
   <script src="/vendor/leaflet/leaflet.markercluster.js"></script>
   <script type="module" src="/app.js"></script>
+  <!-- Global Floating Toast Notification Container -->
+  <div id="chalToastContainer" style="position:fixed; top:24px; right:24px; z-index:999999; display:flex; flex-direction:column; gap:10px; pointer-events:none;"></div>
 </body>
 </html>

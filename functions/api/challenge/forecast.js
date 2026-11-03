@@ -78,8 +78,10 @@ async function getForecast(request, env, user) {
   SAMPLE_POINTS.forEach((p) => {
     pointsSummary[p.label] = {
       completedTrees: 0,
+      activeTrees: 0,
       totalTrees: SAMPLE_TREES.length,
       fruitCount: 0,
+      treeTotals: {},
     };
   });
 
@@ -99,6 +101,11 @@ async function getForecast(request, env, user) {
 
     if (pointsSummary[row.point_label]) {
       pointsSummary[row.point_label].fruitCount += row.fruit_count;
+      if (!pointsSummary[row.point_label].treeTotals) {
+        pointsSummary[row.point_label].treeTotals = {};
+      }
+      pointsSummary[row.point_label].treeTotals[row.tree_position] = 
+        (pointsSummary[row.point_label].treeTotals[row.tree_position] || 0) + row.fruit_count;
     }
   });
 
@@ -111,6 +118,7 @@ async function getForecast(request, env, user) {
     });
     if (pointsSummary[p.label]) {
       pointsSummary[p.label].completedTrees = treeCount;
+      pointsSummary[p.label].activeTrees = treeCount;
       if (treeCount === SAMPLE_TREES.length) {
         completedPointsSet.add(p.label);
       }

@@ -832,6 +832,205 @@ function populatePlotDropdowns() {
 // 2. แบบที่ 2: Yield Forecast Matrix (คาดการณ์ผลผลิต)
 // ==========================================
 
+
+// ==========================================
+// Save Status & Toast Notification System
+// ==========================================
+let autoSaveTimer = null;
+
+function updateSaveStatus(state, message) {
+  chalState.saveState = state;
+  const statusBadge = cel('chalSaveStatusBadge');
+  const textEl = cel('chalSaveStatusText');
+  const bottomStatus = cel('chalBottomSaveStatus');
+  const timelineBottomStatus = cel('chalTimelineBottomSaveStatus');
+  const btnTop = cel('chalBtnSaveTop');
+  const btnBottom = cel('chalBtnSaveBottom');
+  const btnTimelineBottom = cel('chalBtnSaveTimelineBottom');
+  const pulseDot = document.querySelector('.status-pulse-dot');
+
+  if (!statusBadge || !textEl) return;
+
+  if (state === 'saved') {
+    statusBadge.style.color = '#15803d';
+    if (pulseDot) pulseDot.classList.remove('dirty');
+    const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    textEl.innerHTML = `🟢 บันทึกข้อมูลลงฐานข้อมูลแล้ว (${message || `เมื่อ ${timeStr} น.`})`;
+    const bottomMsg = `✅ บันทึกเข้าระบบเรียบร้อยแล้ว (${timeStr} น.) — ข้อมูลปลอดภัยในฐานข้อมูลหลัก`;
+    if (bottomStatus) bottomStatus.textContent = bottomMsg;
+    if (timelineBottomStatus) timelineBottomStatus.textContent = bottomMsg;
+
+    if (btnTop) {
+      btnTop.style.background = '#059669';
+      btnTop.style.borderColor = '#059669';
+      const topText = cel('chalBtnSaveTopText');
+      if (topText) topText.textContent = 'บันทึกข้อมูลต้นนี้เข้าระบบ';
+      const topIcon = cel('chalBtnSaveTopIcon');
+      if (topIcon) topIcon.textContent = '💾';
+    }
+    if (btnBottom) {
+      btnBottom.style.background = '#059669';
+      btnBottom.style.borderColor = '#059669';
+      const botText = cel('chalBtnSaveBottomText');
+      if (botText) botText.textContent = 'บันทึกข้อมูลต้นนี้เข้าระบบ';
+    }
+    if (btnTimelineBottom) {
+      btnTimelineBottom.style.background = '#059669';
+      btnTimelineBottom.style.borderColor = '#059669';
+    }
+  } else if (state === 'dirty') {
+    statusBadge.style.color = '#b45309';
+    if (pulseDot) pulseDot.classList.add('dirty');
+    textEl.innerHTML = '🟡 มีข้อมูลแก้ไขใหม่ (ยังไม่ได้บันทึก — กรุณากดปุ่มบันทึก)';
+    const dirtyMsg = '⚠️ มีการแก้ไขตัวเลข กรุณากดปุ่มบันทึกเพื่อนำข้อมูลเข้าระบบ';
+    if (bottomStatus) bottomStatus.textContent = dirtyMsg;
+    if (timelineBottomStatus) timelineBottomStatus.textContent = dirtyMsg;
+
+    if (btnTop) {
+      btnTop.style.background = '#d97706';
+      btnTop.style.borderColor = '#b45309';
+      const topText = cel('chalBtnSaveTopText');
+      if (topText) topText.textContent = '⚠️ กดบันทึกข้อมูลต้นนี้';
+      const topIcon = cel('chalBtnSaveTopIcon');
+      if (topIcon) topIcon.textContent = '💾';
+    }
+    if (btnBottom) {
+      btnBottom.style.background = '#d97706';
+      btnBottom.style.borderColor = '#b45309';
+      const botText = cel('chalBtnSaveBottomText');
+      if (botText) botText.textContent = '⚠️ กดบันทึกข้อมูลต้นนี้';
+    }
+    if (btnTimelineBottom) {
+      btnTimelineBottom.style.background = '#d97706';
+      btnTimelineBottom.style.borderColor = '#b45309';
+    }
+  } else if (state === 'saving') {
+    statusBadge.style.color = '#0284c7';
+    textEl.innerHTML = '⏳ กำลังบันทึกข้อมูลลงตู้เอกสารหลัก (Database)...';
+    if (bottomStatus) bottomStatus.textContent = '⏳ กำลังส่งข้อมูลไปยัง Cloudflare D1...';
+    if (timelineBottomStatus) timelineBottomStatus.textContent = '⏳ กำลังส่งข้อมูลไปยัง Cloudflare D1...';
+
+    if (btnTop) {
+      btnTop.style.background = '#0284c7';
+      btnTop.style.borderColor = '#0284c7';
+      const topText = cel('chalBtnSaveTopText');
+      if (topText) topText.textContent = 'กำลังบันทึก...';
+      const topIcon = cel('chalBtnSaveTopIcon');
+      if (topIcon) topIcon.textContent = '⏳';
+    }
+    if (btnBottom) {
+      btnBottom.style.background = '#0284c7';
+      btnBottom.style.borderColor = '#0284c7';
+      const botText = cel('chalBtnSaveBottomText');
+      if (botText) botText.textContent = 'กำลังบันทึก...';
+    }
+  }
+}
+
+function showToastNotification(title, message, type = 'success') {
+  const container = cel('chalToastContainer');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = 'chal-save-toast';
+  toast.style.cssText = `
+    min-width: 320px;
+    max-width: 440px;
+    padding: 14px 18px;
+    background: #ffffff;
+    border-left: 5px solid ${type === 'success' ? '#10b981' : '#ef4444'};
+    border-radius: 10px;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.18), 0 8px 10px -6px rgba(0,0,0,0.12);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    pointer-events: auto;
+    animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.3s ease;
+  `;
+
+  const icon = type === 'success' ? '🎉' : '❌';
+  toast.innerHTML = `
+    <span style="font-size:24px; line-height:1;">${icon}</span>
+    <div style="flex:1;">
+      <div style="font-weight:700; font-size:14.5px; color:#111827;">${escapeHtml(title)}</div>
+      <div style="font-size:12.5px; color:#4b5563; margin-top:3px; line-height:1.45;">${escapeHtml(message)}</div>
+    </div>
+    <button type="button" style="background:none; border:none; font-size:18px; color:#9ca3af; cursor:pointer; padding:0 4px;" onclick="this.parentElement.remove()">✕</button>
+  `;
+
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-10px)';
+    setTimeout(() => toast.remove(), 350);
+  }, 4500);
+}
+
+function triggerDebouncedAutoSave() {
+  if (autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => {
+    saveForecastMatrixSilent();
+  }, 3000);
+}
+
+async function saveForecastMatrixSilent() {
+  const plotId = cel('chalForecastPlotSelect')?.value || cel('chalPlotSelect')?.value || chalState.selectedPlotId;
+  if (!plotId) return;
+
+  const entries = [];
+  const bunchMap = new Map();
+  const harvestYear = Number(chalState.forecastYear || 2570);
+  const isYear2569 = (harvestYear === 2569);
+
+  document.querySelectorAll('#chalMatrixTableWrap .matrix-input').forEach((inp) => {
+    if (inp.disabled) return;
+    const bunch_no = Number(inp.dataset.bunch);
+    const harvest_month = Number(inp.dataset.month);
+    const fruit_count = Number(inp.value) || 0;
+    if (isYear2569 && (harvest_month < 11 || harvest_month > 12)) return;
+    if (fruit_count > 0) {
+      bunchMap.set(bunch_no, { bunch_no, harvest_month, fruit_count });
+    }
+  });
+
+  if (bunchMap.size === 0) return;
+
+  for (const item of bunchMap.values()) {
+    entries.push(item);
+  }
+
+  const currentTree = SAMPLE_TREES.find((t) => t.pos === chalState.selectedTreePos) || SAMPLE_TREES[0];
+  const pointLabel = chalState.selectedPointLabel || 'จุดที่ 1';
+
+  try {
+    updateSaveStatus('saving');
+    await chalApi('/api/challenge/forecast', {
+      method: 'POST',
+      body: JSON.stringify({
+        plot_id: Number(plotId),
+        tree_no: currentTree.no,
+        tree_position: currentTree.pos,
+        point_label: pointLabel,
+        harvest_year: harvestYear,
+        entries,
+      }),
+    });
+    updateSaveStatus('saved', 'บันทึกอัตโนมัติแล้ว');
+    // Refresh point & tree tabs in background
+    const pointParam = encodeURIComponent(pointLabel);
+    const refreshed = await chalApi(`/api/challenge/forecast?plot_id=${plotId}&point_label=${pointParam}&pos=${chalState.selectedTreePos}&year=${harvestYear}`);
+    if (refreshed?.pointsSummary) {
+      chalState.forecastData = refreshed;
+      renderPointTabs(refreshed);
+      renderTreeTabs(refreshed);
+    }
+  } catch (err) {
+    console.warn('Auto-save skipped:', err.message);
+    updateSaveStatus('dirty');
+  }
+}
+
 async function loadForecastMatrix() {
   const plotSelect = cel('chalForecastPlotSelect');
   let plotId = plotSelect?.value || chalState.selectedPlotId;
@@ -872,6 +1071,26 @@ async function loadForecastMatrix() {
     renderTreeTabs(data);
     renderMatrixGrid(data);
     renderForecastKPIs(data);
+
+    // Update Action Bar Tree Title and Year
+    const currentTree = SAMPLE_TREES.find((t) => t.pos === chalState.selectedTreePos) || SAMPLE_TREES[0];
+    const pointLabel = chalState.selectedPointLabel || 'จุดที่ 1';
+    const titleEl = cel('chalActionBarTreeTitle');
+    if (titleEl) {
+      titleEl.textContent = `${pointLabel} — ${currentTree.label} (${currentTree.pos})`;
+    }
+    const yearBadgeEl = cel('chalActionBarYearBadge');
+    if (yearBadgeEl) {
+      yearBadgeEl.textContent = `ปี ${chalState.forecastYear || 2570}`;
+    }
+
+    const tTotal = data?.treeTotal || 0;
+    const bTotalEl = cel('chalBottomGrandTotal');
+    if (bTotalEl) bTotalEl.textContent = `${tTotal.toLocaleString()} ผล`;
+    const tTimelineTotalEl = cel('chalTimelineBottomGrandTotal');
+    if (tTimelineTotalEl) tTimelineTotalEl.textContent = `${tTotal.toLocaleString()} ผล`;
+
+    updateSaveStatus('saved');
   } catch (err) {
     console.error('Failed to load forecast matrix:', err);
     const container = cel('chalMatrixTableWrap');
@@ -891,7 +1110,7 @@ function renderPointTabs(data) {
   container.innerHTML = points.map((p) => {
     const isActive = p.label === chalState.selectedPointLabel;
     const ptInfo = pointsSummary[p.label];
-    const activeTrees = ptInfo ? ptInfo.activeTrees : 0;
+    const activeTrees = ptInfo ? (ptInfo.activeTrees ?? ptInfo.completedTrees ?? 0) : 0;
     const isComplete = activeTrees === 5;
     const badgeClass = isComplete ? 'complete' : '';
     const badgeText = `${activeTrees}/5`;
@@ -1567,6 +1786,8 @@ window.chalOnMatrixInput = (input) => {
   }
 
   recalculateAllForecastSums();
+  updateSaveStatus('dirty');
+  triggerDebouncedAutoSave();
 };
 
 window.chalOnTimelineInput = (input) => {
@@ -1670,6 +1891,11 @@ function recalculateAllForecastSums() {
       ? `${estPlotTotal.toLocaleString()} ผล (ปลายปี 2569)` 
       : `${estPlotTotal.toLocaleString()} ผล/แปลง/ปี`;
   }
+
+  const bTotalEl = cel('chalBottomGrandTotal');
+  if (bTotalEl) bTotalEl.textContent = `${total.toLocaleString()} ผล`;
+  const tTimelineTotalEl = cel('chalTimelineBottomGrandTotal');
+  if (tTimelineTotalEl) tTimelineTotalEl.textContent = `${total.toLocaleString()} ผล`;
 
   if (chalState.forecastData) {
     chalState.forecastData.treeTotal = total;
@@ -1793,6 +2019,7 @@ window.chalAutoProject21Days = () => {
       }
     }
     recalculateAllForecastSums();
+    updateSaveStatus('dirty');
     renderTimelineSchedule(chalState.forecastData, schedule);
     alert(`⚡ จัดรอบตัดปี 2569 สำเร็จ!\n\n• บันทึกเฉพาะช่วงปลายปี: เดือน พ.ย. และ ธ.ค. (ทะลายที่ 18, 19, 20 รวม 3 ทะลาย เฉลี่ย ${avgFruits} ผล/ทะลาย)\n• เดือน ม.ค. - ต.ค. ปิดไม่ให้กรอก\n• ยอดรวมบันทึกปลายปี: ${(avgFruits * 3).toLocaleString()} ผล\n• กด "💾 บันทึกข้อมูลคาดการณ์" เพื่อบันทึกข้อมูล`);
     return;
@@ -1809,6 +2036,7 @@ window.chalAutoProject21Days = () => {
   }
 
   recalculateAllForecastSums();
+  updateSaveStatus('dirty');
   renderTimelineSchedule(chalState.forecastData, schedule);
 
   const doubleMonths = [...new Set(schedule.filter(s => s.isDoubleMonth).map(s => MONTH_NAMES[s.month - 1]))];
@@ -1954,6 +2182,7 @@ function renderBaseline2569Section(data) {
 }
 
 async function onSaveForecastMatrix() {
+  if (autoSaveTimer) clearTimeout(autoSaveTimer);
   const plotId = cel('chalForecastPlotSelect')?.value || cel('chalPlotSelect')?.value || chalState.selectedPlotId;
   if (!plotId) {
     alert('กรุณาเลือกแปลงก่อนบันทึก');
@@ -1962,12 +2191,16 @@ async function onSaveForecastMatrix() {
 
   const entries = [];
   const bunchMap = new Map();
+  const harvestYear = Number(chalState.forecastYear || 2570);
+  const isYear2569 = (harvestYear === 2569);
 
   // Query ONLY inputs from the 12-month matrix table to prevent duplicates from timeline
   document.querySelectorAll('#chalMatrixTableWrap .matrix-input').forEach((inp) => {
+    if (inp.disabled) return;
     const bunch_no = Number(inp.dataset.bunch);
     const harvest_month = Number(inp.dataset.month);
     const fruit_count = Number(inp.value) || 0;
+    if (isYear2569 && (harvest_month < 11 || harvest_month > 12)) return;
     if (fruit_count > 0) {
       bunchMap.set(bunch_no, { bunch_no, harvest_month, fruit_count });
     }
@@ -1977,6 +2210,7 @@ async function onSaveForecastMatrix() {
   if (bunchMap.size === 0 && chalState.forecastData?.matrixMap) {
     for (let b = 1; b <= 20; b++) {
       for (let m = 1; m <= 12; m++) {
+        if (isYear2569 && (m < 11 || m > 12)) continue;
         const count = Number(chalState.forecastData.matrixMap[`${b}_${m}`]) || 0;
         if (count > 0) {
           bunchMap.set(b, { bunch_no: b, harvest_month: m, fruit_count: count });
@@ -1985,15 +2219,17 @@ async function onSaveForecastMatrix() {
     }
   }
 
+  let totalFruits = 0;
   for (const item of bunchMap.values()) {
     entries.push(item);
+    totalFruits += item.fruit_count;
   }
 
   const currentTree = SAMPLE_TREES.find((t) => t.pos === chalState.selectedTreePos) || SAMPLE_TREES[0];
   const pointLabel = chalState.selectedPointLabel || 'จุดที่ 1';
 
-  const harvestYear = Number(chalState.forecastYear || 2570);
   try {
+    updateSaveStatus('saving');
     await chalApi('/api/challenge/forecast', {
       method: 'POST',
       body: JSON.stringify({
@@ -2005,12 +2241,22 @@ async function onSaveForecastMatrix() {
         entries,
       }),
     });
-    alert(`✅ บันทึกคาดการณ์ผลผลิตปี ${harvestYear} สำหรับ "${pointLabel} - ${currentTree.label}" สำเร็จ!\n(อัปเดตตัวเลขล่าสุดเรียบร้อยแล้ว ไม่มีการทับซ้อนหรือบวกซ้ำ)`);
-    loadForecastMatrix();
+    updateSaveStatus('saved');
+    showToastNotification(
+      'บันทึกข้อมูลเข้าระบบเรียบร้อยแล้ว!',
+      `[${pointLabel} • ${currentTree.label} • ปี ${harvestYear}] รวม ${totalFruits.toLocaleString()} ผล เข้าตู้เอกสารฐานข้อมูลหลัก (Cloudflare D1) เรียบร้อยแล้ว`,
+      'success'
+    );
+    await loadForecastMatrix();
   } catch (err) {
+    updateSaveStatus('dirty');
+    showToastNotification('บันทึกไม่สำเร็จ', err.message, 'error');
     alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message);
   }
 }
+
+window.chalSaveForecastMatrix = onSaveForecastMatrix;
+window.chalClearForecastMatrix = onClearForecastMatrix;
 
 function onClearForecastMatrix() {
   if (!confirm('ต้องการล้างค่าตัวเลขในตารางทั้งหมดของต้นนี้หรือไม่?')) return;
