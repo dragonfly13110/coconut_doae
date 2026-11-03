@@ -159,8 +159,11 @@ export function calculatePlot2569BaselineForecast(plot, macroStats = macroBaseli
   };
 }
 
+let challengeDbInitialized = false;
+
 export async function ensureChallengeDb(db) {
   if (!db || typeof db.prepare !== 'function') return;
+  if (challengeDbInitialized) return;
 
   // 1. Farmer plots (Sheet 1)
   await db.prepare(`
@@ -420,12 +423,7 @@ export async function ensureChallengeDb(db) {
     // ignore
   }
 
-  // Ensure all 23 districts have starter plots for immediate logging
-  try {
-    await seedDistrictStarterPlots(db);
-  } catch (err) {
-    // ignore
-  }
+  challengeDbInitialized = true;
 }
 
 async function seedSampleData(db) {

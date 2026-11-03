@@ -346,7 +346,16 @@ async function chalApi(url, options = {}) {
     ...options,
     headers,
   });
-  const data = await res.json();
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    if (!res.ok) {
+      throw new Error(`เซิร์ฟเวอร์ขัดข้อง (${res.status} ${res.statusText})`);
+    }
+    throw new Error('รูปแบบข้อมูลตอบกลับไม่ถูกต้อง');
+  }
   if (!res.ok) throw new Error(data.error || 'API Error');
   return data;
 }
