@@ -1066,6 +1066,14 @@ async function loadForecastMatrix() {
       url += `&district=${encodeURIComponent(chalState.selectedDistrict)}`;
     }
     const data = await chalApi(url);
+    if (data && data.matrixMap) {
+      Object.keys(data.matrixMap).forEach((k) => {
+        const entry = data.matrixMap[k];
+        if (!k.includes('_') && entry && typeof entry === 'object' && entry.month && entry.fruitCount !== undefined) {
+          data.matrixMap[`${k}_${entry.month}`] = entry.fruitCount;
+        }
+      });
+    }
     chalState.forecastData = data;
     renderPointTabs(data);
     renderTreeTabs(data);

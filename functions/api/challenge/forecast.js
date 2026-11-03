@@ -51,6 +51,7 @@ async function getForecast(request, env, user) {
   (entries || []).forEach((row) => {
     if (seenBunches.has(row.bunch_no)) return;
     seenBunches.add(row.bunch_no);
+    matrixMap[`${row.bunch_no}_${row.harvest_month}`] = row.fruit_count;
     matrixMap[row.bunch_no] = {
       month: row.harvest_month,
       fruitCount: row.fruit_count,
