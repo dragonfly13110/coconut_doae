@@ -855,7 +855,7 @@ function updateSaveStatus(state, message) {
     statusBadge.style.color = '#15803d';
     if (pulseDot) pulseDot.classList.remove('dirty');
     const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    textEl.innerHTML = `🟢 บันทึกข้อมูลลงฐานข้อมูลแล้ว (${message || `เมื่อ ${timeStr} น.`})`;
+    textEl.innerHTML = `บันทึกข้อมูลลงฐานข้อมูลแล้ว (${message || `เมื่อ ${timeStr} น.`})`;
     const bottomMsg = `✅ บันทึกเข้าระบบเรียบร้อยแล้ว (${timeStr} น.) — ข้อมูลปลอดภัยในฐานข้อมูลหลัก`;
     if (bottomStatus) bottomStatus.textContent = bottomMsg;
     if (timelineBottomStatus) timelineBottomStatus.textContent = bottomMsg;
@@ -881,7 +881,7 @@ function updateSaveStatus(state, message) {
   } else if (state === 'dirty') {
     statusBadge.style.color = '#b45309';
     if (pulseDot) pulseDot.classList.add('dirty');
-    textEl.innerHTML = '🟡 มีข้อมูลแก้ไขใหม่ (ยังไม่ได้บันทึก — กรุณากดปุ่มบันทึก)';
+    textEl.innerHTML = 'มีข้อมูลแก้ไขใหม่ (ยังไม่ได้บันทึก — กดปุ่มบันทึกด้านขวา)';
     const dirtyMsg = '⚠️ มีการแก้ไขตัวเลข กรุณากดปุ่มบันทึกเพื่อนำข้อมูลเข้าระบบ';
     if (bottomStatus) bottomStatus.textContent = dirtyMsg;
     if (timelineBottomStatus) timelineBottomStatus.textContent = dirtyMsg;

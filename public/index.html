@@ -1218,54 +1218,52 @@
           </div>
         </div>
 
-        <!-- 21-Day Cycle Control & Helper Bar -->
-        <div class="cycle-helper-bar">
-          <div class="cycle-helper-left">
-            <div class="cycle-badge-icon">🥥</div>
-            <div>
-              <div class="cycle-helper-title">
-                <strong>วงจรการออกผลมะพร้าวน้ำหอม: ทุกๆ 21 วัน (~17-18 ทะลาย/ปี)</strong>
-                <span class="cycle-pill-tag">คำนวณอัตโนมัติ</span>
+        <!-- Compact 21-Day Cycle Bar (Single Line) -->
+        <div class="cycle-helper-bar" style="padding:10px 14px; margin-bottom:10px; gap:10px; align-items:center; justify-content:space-between;">
+          <div class="cycle-helper-left" style="gap:8px; max-width:none; flex:1 1 auto; min-width:240px;">
+            <div class="cycle-badge-icon" style="width:32px; height:32px; font-size:16px; border-radius:8px;">🥥</div>
+            <div style="min-width:0;">
+              <div class="cycle-helper-title" style="font-size:13px; gap:6px; flex-wrap:wrap;">
+                <strong>วงจรรอบตัด 21 วัน (~17-18 ทะลาย/ปี)</strong>
+                <span class="cycle-pill-tag" style="font-size:10px; padding:1px 7px;">คำนวณอัตโนมัติ</span>
+                <span style="font-size:11.5px; color:#64748b; font-weight:400;">— กำหนดวันตัดทะลายแรกเพื่อวางลงตารางทันที</span>
               </div>
-              <p class="cycle-helper-desc">
-                มะพร้าวน้ำหอมแทงจั่นและเก็บเกี่ยวรอบละ 21 วัน (ใน 1 ปี บางเดือนมี 2 ทะลาย บางเดือนมี 1 ทะลาย) กำหนดวันเริ่มนับเพื่อจัดรอบตัดอัตโนมัติได้ทันที
-              </p>
             </div>
           </div>
-          <div class="cycle-helper-controls">
-            <div class="cycle-control-group">
-              <label for="chalCycleStartDate">วันที่ตัดทะลายที่ 1:</label>
-              <input type="date" id="chalCycleStartDate" value="2027-01-01" class="cycle-date-input" />
+          <div class="cycle-helper-controls" style="gap:8px; align-items:center; flex-wrap:wrap;">
+            <div class="cycle-control-group" style="flex-direction:row; align-items:center; gap:5px;">
+              <label for="chalCycleStartDate" style="white-space:nowrap; font-size:11.5px;">เริ่มตัดทะลาย 1:</label>
+              <input type="date" id="chalCycleStartDate" value="2027-01-01" class="cycle-date-input" style="height:32px; min-height:32px; padding:0 8px; font-size:12px;" />
             </div>
-            <div class="cycle-control-group">
-              <label for="chalCycleInterval">รอบตัด (วัน):</label>
-              <input type="number" id="chalCycleInterval" value="21" min="15" max="30" class="cycle-num-input" />
+            <div class="cycle-control-group" style="flex-direction:row; align-items:center; gap:4px;">
+              <label for="chalCycleInterval" style="white-space:nowrap; font-size:11.5px;">รอบ(วัน):</label>
+              <input type="number" id="chalCycleInterval" value="21" min="15" max="30" class="cycle-num-input" style="width:52px; height:32px; min-height:32px; padding:0 4px; font-size:12px;" />
             </div>
-            <div class="cycle-control-group">
-              <label for="chalCycleAvgFruits">ผลเฉลี่ย (ลูก/ทะลาย):</label>
-              <input type="number" id="chalCycleAvgFruits" value="12" min="1" max="50" class="cycle-num-input" />
+            <div class="cycle-control-group" style="flex-direction:row; align-items:center; gap:4px;">
+              <label for="chalCycleAvgFruits" style="white-space:nowrap; font-size:11.5px;">เฉลี่ย(ผล):</label>
+              <input type="number" id="chalCycleAvgFruits" value="12" min="1" max="50" class="cycle-num-input" style="width:52px; height:32px; min-height:32px; padding:0 4px; font-size:12px;" />
             </div>
-            <button type="button" id="chalBtnAutoProject" class="button primary small" style="white-space:nowrap; display:flex; align-items:center; gap:6px;">
-              <span>⚡ จัดรอบตัด 21 วันอัตโนมัติ</span>
+            <button type="button" id="chalBtnAutoProject" class="button primary small" style="height:32px; padding:0 12px; font-size:12px; white-space:nowrap; display:flex; align-items:center; gap:4px;">
+              <span>⚡ จัดรอบตัด 21 วัน</span>
             </button>
           </div>
         </div>
 
         <!-- View Switcher & Year Selector -->
-        <div class="forecast-view-switcher" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-          <div class="f-view-switcher-left" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <button type="button" id="chalViewBtnMatrix" class="f-view-btn active" onclick="window.chalSwitchForecastView('matrix')">
+        <div class="forecast-view-switcher" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+          <div class="f-view-switcher-left" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <button type="button" id="chalViewBtnMatrix" class="f-view-btn active" onclick="window.chalSwitchForecastView('matrix')" style="padding:6px 13px; font-size:12.5px;">
               <span>📊 มุมมองตาราง 12 เดือน (แบบที่ 2)</span>
             </button>
-            <button type="button" id="chalViewBtnTimeline" class="f-view-btn" onclick="window.chalSwitchForecastView('timeline')">
+            <button type="button" id="chalViewBtnTimeline" class="f-view-btn" onclick="window.chalSwitchForecastView('timeline')" style="padding:6px 13px; font-size:12.5px;">
               <span>📅 มุมมองไทม์ไลน์รอบตัด 21 วัน (Timeline 20 ทะลาย)</span>
             </button>
           </div>
-          <div class="f-view-switcher-right" style="display:flex; align-items:center; gap:8px; margin-left:auto;">
-            <label for="chalForecastYearSelect" style="font-weight:700; font-size:13px; color:#1e293b; display:flex; align-items:center; gap:4px; white-space:nowrap;">
+          <div class="f-view-switcher-right" style="display:flex; align-items:center; gap:6px; margin-left:auto;">
+            <label for="chalForecastYearSelect" style="font-weight:700; font-size:12.5px; color:#1e293b; display:flex; align-items:center; gap:4px; white-space:nowrap;">
               <span>📅</span> <span>เลือกปีบันทึก:</span>
             </label>
-            <select id="chalForecastYearSelect" class="f-year-select" style="font-weight:700; font-size:13.5px; padding:6px 14px; border-radius:8px; border:1.5px solid #059669; background:#ecfdf5; color:#065f46; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.06);" onchange="window.chalOnForecastYearChange(this.value)">
+            <select id="chalForecastYearSelect" class="f-year-select" style="font-weight:700; font-size:12.5px; padding:5px 12px; border-radius:8px; border:1.5px solid #059669; background:#ecfdf5; color:#065f46; cursor:pointer;" onchange="window.chalOnForecastYearChange(this.value)">
               <option value="2570" selected>ปี 2570 (ปีประเมินหลัก - ทั้ง 12 เดือน)</option>
               <option value="2569">ปี 2569 (เริ่มเก็บล่วงหน้า - พ.ย. ถึง ธ.ค.)</option>
             </select>
@@ -1273,40 +1271,36 @@
         </div>
 
         <!-- Year 2569 Notice Banner -->
-        <div id="chalYear2569Notice" class="year-notice-banner" style="display:none; margin: 0 0 14px 0; padding: 12px 16px; background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px; color: #92400e; font-size: 13px; line-height: 1.5; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-          <div style="display:flex; align-items:flex-start; gap:10px;">
-            <span style="font-size:20px; line-height:1;">🍂</span>
+        <div id="chalYear2569Notice" class="year-notice-banner" style="display:none; margin: 0 0 10px 0; padding: 8px 14px; background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 8px; color: #92400e; font-size: 12px; line-height: 1.4;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:16px; line-height:1;">🍂</span>
             <div>
-              <strong style="color:#b45309; font-size:13.5px;">ตารางคาดการณ์ปี 2569 (สำหรับอำเภอที่เริ่มเก็บข้อมูลล่วงหน้าปลายปี):</strong><br>
-              ระบบเปิดให้บันทึกเฉพาะ <strong>เดือน พ.ย. และ ธ.ค. (เน้นทะลายที่ 18, 19, 20)</strong> 
-              <span style="color:#b45309;">• ส่วนเดือน ม.ค. - ต.ค. ถูกถมเป็นแถบสีเทาและปิดการกรอกข้อมูลอัตโนมัติ</span>
+              <strong style="color:#b45309;">ตารางปี 2569 (เก็บล่วงหน้าปลายปี):</strong> 
+              เปิดบันทึกเฉพาะ <strong>พ.ย. และ ธ.ค. (ทะลายที่ 18–20)</strong> • ม.ค. – ต.ค. ปิดแถบสีเทา
             </div>
           </div>
         </div>
 
-        <!-- Live Save Status & Action Bar (ระดับสายตา ไม่ต้องเลื่อนหา) -->
-        <div class="forecast-action-bar" id="chalForecastActionBar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:12px 18px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; margin-bottom:14px; box-shadow:0 2px 8px rgba(16,185,129,0.08);">
-          <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:38px; height:38px; border-radius:50%; background:#dcfce7; display:flex; align-items:center; justify-content:center; font-size:20px; border:1px solid #86efac; flex-shrink:0;">
-              🌴
+        <!-- Compact Single-Line Live Save Status & Action Bar -->
+        <div class="forecast-action-bar" id="chalForecastActionBar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding:8px 14px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; margin-bottom:10px;">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:16px; line-height:1;">🌴</span>
+              <strong id="chalActionBarTreeTitle" style="font-size:13.5px; color:#065f46; white-space:nowrap;">จุดที่ 1 — ต้นที่ 1 (C)</strong>
+              <span id="chalActionBarYearBadge" class="badge-plot" style="background:#e0f2fe; color:#0369a1; font-size:11px; font-weight:700; padding:1px 7px; border-radius:999px;">ปี 2570</span>
             </div>
-            <div>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <strong id="chalActionBarTreeTitle" style="font-size:14.5px; color:#065f46;">จุดที่ 1 — ต้นที่ 1 (C)</strong>
-                <span id="chalActionBarYearBadge" class="badge-plot" style="background:#e0f2fe; color:#0369a1; font-size:11.5px; font-weight:700; padding:2px 8px;">ปี 2570</span>
-              </div>
-              <div id="chalSaveStatusBadge" style="font-size:12.5px; font-weight:600; color:#15803d; display:flex; align-items:center; gap:6px; margin-top:3px;">
-                <span class="status-pulse-dot" style="width:9px; height:9px; border-radius:50%; background:#22c55e; display:inline-block;"></span>
-                <span id="chalSaveStatusText">🟢 บันทึกข้อมูลลงฐานข้อมูลแล้ว (พร้อมใช้งาน)</span>
-              </div>
+            <span style="color:#cbd5e1; font-size:13px;">|</span>
+            <div id="chalSaveStatusBadge" style="font-size:12px; font-weight:600; color:#15803d; display:flex; align-items:center; gap:6px;">
+              <span class="status-pulse-dot" style="width:8px; height:8px; border-radius:50%; background:#22c55e; display:inline-block; flex-shrink:0;"></span>
+              <span id="chalSaveStatusText">บันทึกข้อมูลลงฐานข้อมูลแล้ว (พร้อมใช้งาน)</span>
             </div>
           </div>
-          <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
-            <button type="button" class="button ghost small" onclick="window.chalClearForecastMatrix()" style="color:#64748b; border-color:#cbd5e1; background:#ffffff;">
+          <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
+            <button type="button" class="button ghost small" onclick="window.chalClearForecastMatrix()" style="height:32px; padding:0 12px; font-size:12px; color:#64748b; border-color:#cbd5e1; background:#ffffff;">
               ล้างค่าต้นนี้
             </button>
-            <button type="button" id="chalBtnSaveTop" class="button primary" onclick="window.chalSaveForecastMatrix()" style="padding:10px 24px; font-size:14.5px; font-weight:700; display:flex; align-items:center; gap:8px; background:#059669; border-color:#059669; box-shadow:0 3px 12px rgba(5,150,105,0.25); cursor:pointer;">
-              <span id="chalBtnSaveTopIcon" style="font-size:16px;">💾</span>
+            <button type="button" id="chalBtnSaveTop" class="button primary" onclick="window.chalSaveForecastMatrix()" style="height:34px; padding:0 16px; font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px; background:#059669; border-color:#059669; box-shadow:0 2px 8px rgba(5,150,105,0.2); cursor:pointer;">
+              <span id="chalBtnSaveTopIcon" style="font-size:14px;">💾</span>
               <span id="chalBtnSaveTopText">บันทึกข้อมูลต้นนี้เข้าระบบ</span>
             </button>
           </div>
