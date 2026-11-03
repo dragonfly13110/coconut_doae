@@ -413,15 +413,7 @@ export async function ensureChallengeDb(db) {
     // ignore
   }
 
-  // Pre-seed sample plots if empty
-  try {
-    const plotCount = await db.prepare('SELECT COUNT(*) as count FROM farmer_plots').first();
-    if (!plotCount || Number(plotCount.count) === 0) {
-      await seedSampleData(db);
-    }
-  } catch (err) {
-    // ignore
-  }
+  // No auto-seeding: keep database clean per user request
 
   challengeDbInitialized = true;
 }
@@ -648,121 +640,6 @@ async function seedSampleData(db) {
  * Compute 2D Board data for all plots across 7 sample points and 35 trees.
  * Determines completion status (complete, incomplete, not_started) and missing items.
  */
-
-export const ALL_DISTRICTS_STARTER = [
-  // Ratchaburi (10)
-  { province_code: 'ratchaburi', province_name: 'ราชบุรี', district: 'เมืองราชบุรี', label: 'แปลงตัวอย่าง อ.เมืองราชบุรี', farmer: 'นายวิชัย สวนมะพร้าวเมืองราช', phone: '081-111-7001', area: 12.0, prod: 10.0, soil: 'ชุดดินราชบุรี (Rb)' },
-  { province_code: 'ratchaburi', province_name: 'ราชบุรี', district: 'จอมบึง', label: 'แปลงตัวอย่าง อ.จอมบึง', farmer: 'นางประภา สวนจอมบึงเกษตร', phone: '081-111-7002', area: 10.0, prod: 8.5, soil: 'ชุดดินกำแพงแสน (Ks)' },
-  { province_code: 'ratchaburi', province_name: 'ราชบุรี', district: 'สวนผึ้ง', label: 'แปลงตัวอย่าง อ.สวนผึ้ง', farmer: 'นายสมเกียรติ สวนผึ้งพันธุ์ดี', phone: '081-111-7003', area: 15.0, prod: 12.0, soil: 'ชุดดินสบปราบ (Sp)' },
-  { province_code: 'ratchaburi', province_name: 'ราชบุรี', district: 'ดำเนินสะดวก', label: 'แปลงที่ 1', farmer: 'นายสมชาย มะพร้าวทอง', phone: '081-234-5678', area: 15.0, prod: 12.0, soil: 'ชุดดินดำเนินสะดวก (Ds)' },
-  { province_code: 'ratchaburi', province_name: 'ราชบุรี', district: 'บ้านโป่ง', label: 'แปลงตัวอย่าง อ.บ้านโป่ง', farmer: 'นายชูชาติ บ้านโป่งการเกษตร', phone: '081-111-7005', area: 14.0, prod: 11.5, soil: 'ชุดดินนครปฐม (Np)' },
-  { province_code: 'ratchaburi', province_name: 'ราชบุรี', district: 'บางแพ', label: 'แปลงตัวอย่าง อ.บางแพ', farmer: 'นางสาวกานดา สวนบางแพร่มเย็น', phone: '081-111-7006', area: 12.0, prod: 10.0, soil: 'ชุดดินดำเนินสะดวก (Ds)' },
-  { province_code: 'ratchaburi', province_name: 'ราชบุรี', district: 'โพธาราม', label: 'แปลงตัวอย่าง อ.โพธาราม', farmer: 'นายเกรียงไกร โพธารามมะพร้าวหอม', phone: '081-111-7007', area: 11.0, prod: 9.0, soil: 'ชุดดินราชบุรี (Rb)' },
-  { province_code: 'ratchaburi', province_name: 'ราชบุรี', district: 'ปากท่อ', label: 'แปลงตัวอย่าง อ.ปากท่อ', farmer: 'นายบุญเลิศ สวนปากท่อผลดี', phone: '081-111-7008', area: 13.0, prod: 11.0, soil: 'ชุดดินราชบุรี (Rb)' },
-  { province_code: 'ratchaburi', province_name: 'ราชบุรี', district: 'วัดเพลง', label: 'แปลงตัวอย่าง อ.วัดเพลง', farmer: 'นางรัตนา สวนวัดเพลงอุดมสุข', phone: '081-111-7009', area: 10.0, prod: 8.0, soil: 'ชุดดินดำเนินสะดวก (Ds)' },
-  { province_code: 'ratchaburi', province_name: 'ราชบุรี', district: 'บ้านคา', label: 'แปลงตัวอย่าง อ.บ้านคา', farmer: 'นายสมศักดิ์ บ้านคาธารทอง', phone: '081-111-7010', area: 16.0, prod: 13.0, soil: 'ชุดดินห้วยแถลง (Ht)' },
-
-  // Nakhon Pathom (7)
-  { province_code: 'nakhon_pathom', province_name: 'นครปฐม', district: 'เมืองนครปฐม', label: 'แปลงตัวอย่าง อ.เมืองนครปฐม', farmer: 'นายประเสริฐ สวนเมืองนครปฐม', phone: '089-111-7301', area: 12.0, prod: 10.0, soil: 'ชุดดินกำแพงแสน (Ks)' },
-  { province_code: 'nakhon_pathom', province_name: 'นครปฐม', district: 'กำแพงแสน', label: 'แปลงตัวอย่าง อ.กำแพงแสน', farmer: 'นายอำนวย สวนกำแพงแสน', phone: '089-111-7302', area: 14.0, prod: 11.5, soil: 'ชุดดินกำแพงแสน (Ks)' },
-  { province_code: 'nakhon_pathom', province_name: 'นครปฐม', district: 'นครชัยศรี', label: 'แปลงตัวอย่าง อ.นครชัยศรี', farmer: 'นายธนา สวนนครชัยศรีอินทรีย์', phone: '089-111-7303', area: 15.0, prod: 12.5, soil: 'ชุดดินนครปฐม (Np)' },
-  { province_code: 'nakhon_pathom', province_name: 'นครปฐม', district: 'ดอนตูม', label: 'แปลงตัวอย่าง อ.ดอนตูม', farmer: 'นางสุภาณี สวนดอนตูมรุ่งเรือง', phone: '089-111-7304', area: 10.0, prod: 8.5, soil: 'ชุดดินกำแพงแสน (Ks)' },
-  { province_code: 'nakhon_pathom', province_name: 'นครปฐม', district: 'บางเลน', label: 'แปลงตัวอย่าง อ.บางเลน', farmer: 'นายสุรชัย สวนบางเลนเขียวชอุ่ม', phone: '089-111-7305', area: 13.0, prod: 10.5, soil: 'ชุดดินบางเลน (Bl)' },
-  { province_code: 'nakhon_pathom', province_name: 'นครปฐม', district: 'สามพราน', label: 'แปลงที่ 2', farmer: 'นางสมศรี สวนน้ำหอม', phone: '089-876-5432', area: 10.0, prod: 8.5, soil: 'ชุดดินกำแพงแสน (Ks)' },
-  { province_code: 'nakhon_pathom', province_name: 'นครปฐม', district: 'พุทธมณฑล', label: 'แปลงตัวอย่าง อ.พุทธมณฑล', farmer: 'นายพิเชษฐ์ สวนพุทธมณฑล', phone: '089-111-7307', area: 9.0, prod: 7.5, soil: 'ชุดดินนครปฐม (Np)' },
-
-  // Samut Sakhon (3)
-  { province_code: 'samut_sakhon', province_name: 'สมุทรสาคร', district: 'เมืองสมุทรสาคร', label: 'แปลงตัวอย่าง อ.เมืองสมุทรสาคร', farmer: 'นายดำรงค์ สวนมหาชัยน้ำหอม', phone: '086-111-7401', area: 11.0, prod: 9.0, soil: 'ชุดดินสมุทรปราการ (Zp)' },
-  { province_code: 'samut_sakhon', province_name: 'สมุทรสาคร', district: 'กระทุ่มแบน', label: 'แปลงตัวอย่าง อ.กระทุ่มแบน', farmer: 'นางวันเพ็ญ สวนกระทุ่มแบน', phone: '086-111-7402', area: 10.0, prod: 8.0, soil: 'ชุดดินบางกอก (Bk)' },
-  { province_code: 'samut_sakhon', province_name: 'สมุทรสาคร', district: 'บ้านแพ้ว', label: 'แปลงที่ 3', farmer: 'นายสมพร บ้านแพ้วจีไอ', phone: '086-345-6789', area: 14.0, prod: 11.5, soil: 'ชุดดินดำเนินสะดวก (Ds)' },
-
-  // Samut Songkhram (3)
-  { province_code: 'samut_songkhram', province_name: 'สมุทรสงคราม', district: 'เมืองสมุทรสงคราม', label: 'แปลงตัวอย่าง อ.เมืองสมุทรสงคราม', farmer: 'นายศิริ สวนแม่กลองร่มเย็น', phone: '087-111-7501', area: 9.0, prod: 7.5, soil: 'ชุดดินสมุทรสงคราม (Sg)' },
-  { province_code: 'samut_songkhram', province_name: 'สมุทรสงคราม', district: 'บางคนที', label: 'แปลงตัวอย่าง อ.บางคนที', farmer: 'นายอนุชา สวนบางคนทีมะพร้าวหวาน', phone: '087-111-7502', area: 10.0, prod: 8.0, soil: 'ชุดดินดำเนินสะดวก (Ds)' },
-  { province_code: 'samut_songkhram', province_name: 'สมุทรสงคราม', district: 'อัมพวา', label: 'แปลงที่ 4', farmer: 'นางนฤมล สวนอัมพวาริมคลอง', phone: '087-456-7890', area: 12.0, prod: 9.5, soil: 'ชุดดินดำเนินสะดวก (Ds)' },
-];
-
-export async function seedDistrictStarterPlots(db) {
-  if (!db || typeof db.prepare !== 'function') return;
-
-  for (let i = 0; i < ALL_DISTRICTS_STARTER.length; i++) {
-    const d = ALL_DISTRICTS_STARTER[i];
-    try {
-      const existing = await db.prepare(
-        'SELECT id FROM farmer_plots WHERE province_code = ? AND (district = ? OR address LIKE ?)'
-      ).bind(d.province_code, d.district, `%${d.district}%`).first();
-
-      if (!existing) {
-        const res = await db.prepare(`
-          INSERT INTO farmer_plots 
-          (
-            province_code, farmer_no, plot_label, title, first_name, last_name, full_name,
-            address_no, street, moo, subdistrict, district, province_name, address,
-            age, phone, total_area_rai, productive_area_rai, plant_age_years, trees_per_rai,
-            coord_zone, coord_x, coord_y, coord_x1, coord_y1,
-            production_standard, soil_series, production_cost_per_rai, avg_income_per_rai
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          d.province_code,
-          10 + i,
-          d.label,
-          d.farmer.startsWith('นางสาว') ? 'นางสาว' : (d.farmer.startsWith('นาง') ? 'นาง' : 'นาย'),
-          d.farmer.replace(/^(นาย|นางสาว|นาง)\s*/, '').split(' ')[0] || '',
-          d.farmer.replace(/^(นาย|นางสาว|นาง)\s*/, '').split(' ').slice(1).join(' ') || '',
-          d.farmer,
-          `${10 + i}`,
-          '-',
-          '1',
-          d.district,
-          d.district,
-          d.province_name,
-          `ต.${d.district} อ.${d.district} จ.${d.province_name}`,
-          45,
-          d.phone,
-          d.area,
-          d.prod,
-          7.0,
-          40.0,
-          '47',
-          605000 + (i * 100),
-          1490000 + (i * 100),
-          605000 + (i * 100),
-          1490000 + (i * 100),
-          'GAP',
-          d.soil,
-          12000.0,
-          36000.0
-        ).run();
-
-        const newPlotId = res?.meta?.last_row_id;
-        if (newPlotId) {
-          try {
-            await db.prepare(`
-              INSERT INTO harvest_cuts
-              (plot_id, province_code, farmer_name, cut_round, cut_date, total_yield, yield_per_rai, price_per_fruit, twin_fruits, damaged_fruits, notes)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).bind(
-              newPlotId,
-              d.province_code,
-              d.farmer,
-              1,
-              '2026-11-01',
-              Math.round(d.prod * 200),
-              200.0,
-              16.0,
-              20,
-              10,
-              `บันทึกรอบตัดเริ่มต้น อ.${d.district}`
-            ).run();
-          } catch (e) {}
-        }
-      }
-    } catch (err) {
-      // ignore
-    }
-  }
-}
 
 export function computePlotBoard2D(plots = [], forecastRows = [], cutsRows = []) {
   const forecastMap = new Map();
