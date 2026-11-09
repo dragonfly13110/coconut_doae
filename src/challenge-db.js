@@ -1,4 +1,4 @@
-import macroBaseline from './macro-baseline.json' with { type: 'json' };
+import macroBaseline from './macro-baseline.json';
 
 export const CHALLENGE_PROVINCES = [
   { code: 'ratchaburi', label: 'ราชบุรี' },
