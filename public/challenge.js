@@ -2131,7 +2131,10 @@ window.chalApplyBaseline2569ToTimeline = () => {
     renderMatrixGrid(chalState.forecastData);
   }
 
-  alert(`⚡ นำฐานสถิติปี 2569 เป็นตัวตั้งต้นสำเร็จ!\n\n• อ้างอิงเกณฑ์ทางการ อ.${b.districtName}: ${b.yieldPerRai.toLocaleString()} ผล/ไร่/ปี\n• เฉลี่ยต้นนี้ประมาณ ${baseFruitPerBunch} ผล/ทะลาย (กระจายตามสัดส่วนฤดูกาลจริง 12 เดือน)\n• สามารถปรับแก้ตัวเลขตามการนับจริงหน้างาน แล้วกด "💾 บันทึกข้อมูลคาดการณ์" ได้เลย`);
+  const sampleMode = b.isDemo === true || window.COCONUT_DEMO_MODE === true;
+  const baselineLabel = sampleMode ? 'ข้อมูลจำลองสำหรับสาธิต' : `เกณฑ์ทางการ อ.${b.districtName}`;
+  const distributionLabel = sampleMode ? 'สัดส่วนตัวอย่าง 12 เดือน' : 'สัดส่วนฤดูกาล 12 เดือน';
+  alert(`⚡ นำฐานสถิติปี 2569 เป็นตัวตั้งต้นสำเร็จ!\n\n• อ้างอิง${baselineLabel}: ${b.yieldPerRai.toLocaleString()} ผล/ไร่/ปี\n• เฉลี่ยต้นนี้ประมาณ ${baseFruitPerBunch} ผล/ทะลาย (กระจายตาม${distributionLabel})\n• สามารถปรับแก้ตัวเลขตามการนับจริงหน้างาน แล้วกด "💾 บันทึกข้อมูลคาดการณ์" ได้เลย`);
 };
 
 window.chalAutoProject21Days = () => {
@@ -2258,7 +2261,9 @@ function renderBaseline2569Section(data) {
 
   const metaEl = cel('chalBaselinePlotMeta');
   if (metaEl) {
-    metaEl.textContent = `อ้างอิงสถิติผลผลิตทางการรายอำเภอ ปี 2569 ของกรมส่งเสริมการเกษตร (${b.districtName || 'อำเภอ'}, จ.${b.provinceName || 'จังหวัด'})`;
+    metaEl.textContent = b.isDemo === true
+      ? `${b.source} (${b.districtName || 'อำเภอ'}, จ.${b.provinceName || 'จังหวัด'})`
+      : `อ้างอิงสถิติผลผลิตทางการรายอำเภอ ปี 2569 ของกรมส่งเสริมการเกษตร (${b.districtName || 'อำเภอ'}, จ.${b.provinceName || 'จังหวัด'})`;
   }
 
   const yieldRaiEl = cel('chalBaselineYieldRaiVal');
@@ -2280,7 +2285,9 @@ function renderBaseline2569Section(data) {
 
   const dNameEl = cel('chalBaselineDistrictName');
   if (dNameEl) {
-    dNameEl.textContent = b.isDistrictLevel ? `เกณฑ์ทางการ อ.${b.districtName}` : `เกณฑ์ทางการ ${b.provinceName}`;
+    dNameEl.textContent = b.isDemo === true
+      ? `ข้อมูลจำลอง ${b.isDistrictLevel ? `อ.${b.districtName}` : b.provinceName}`
+      : b.isDistrictLevel ? `เกณฑ์ทางการ อ.${b.districtName}` : `เกณฑ์ทางการ ${b.provinceName}`;
   }
 
   const annualEl = cel('chalBaselineAnnualYieldVal');
@@ -2900,7 +2907,7 @@ function renderBenchmarkComparison() {
   resultBox.innerHTML = `
     <div class="benchmark-card ${isPositive ? 'benchmark-pos' : 'benchmark-neg'}">
       <div class="benchmark-head">
-        <h4>📊 ผลเปรียบเทียบกับเป้าหมายทางการปี 2569: ${escapeHtml(plot.plot_label)} (${escapeHtml(plot.full_name)})</h4>
+        <h4>📊 ${window.COCONUT_DEMO_MODE === true ? 'ผลเปรียบเทียบกับข้อมูลจำลอง' : 'ผลเปรียบเทียบกับเป้าหมายทางการปี 2569'}: ${escapeHtml(plot.plot_label)} (${escapeHtml(plot.full_name)})</h4>
         <span class="badge ${isPositive ? 'badge-success' : 'badge-warning'}">
           ${isPositive ? `+${diffPct}% สูงกว่าค่าเฉลี่ยจังหวัด` : `${diffPct}% ต่ำกว่าค่าเฉลี่ยจังหวัด`}
         </span>
@@ -2911,7 +2918,7 @@ function renderBenchmarkComparison() {
           <strong>${plotYieldEstimate.toLocaleString()} ผล/ไร่/ปี</strong>
         </div>
         <div>
-          <span class="text-muted">เกณฑ์เฉลี่ยทางการระดับจังหวัด (${provSum ? provSum.province_name : 'จังหวัด'}):</span>
+          <span class="text-muted">${window.COCONUT_DEMO_MODE === true ? 'ค่าเฉลี่ยตัวอย่างระดับจังหวัด' : 'เกณฑ์เฉลี่ยทางการระดับจังหวัด'} (${provSum ? provSum.province_name : 'จังหวัด'}):</span>
           <strong>${benchmarkYieldPerRai.toLocaleString()} ผล/ไร่/ปี</strong>
         </div>
         <div>

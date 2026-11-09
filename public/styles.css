@@ -61,6 +61,20 @@ body {
   flex-wrap: wrap;
 }
 
+.demo-notice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding: 9px 12px;
+  border: 1px solid #eadb9c;
+  border-radius: 10px;
+  background: #fff9df;
+  color: #64551d;
+  font-size: 13px;
+}
+
+.demo-notice[hidden] { display: none; }
+
 .header-chal-tabs {
   display: flex !important;
   flex-direction: row !important;

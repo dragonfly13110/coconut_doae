@@ -136,6 +136,16 @@ async function getForecast(request, env, user) {
 
   // Compute baseline forecast using official 2569 stats (prior anchor)
   const baseline2569 = calculatePlot2569BaselineForecast(plot, undefined, districtParam);
+  if (env.DEMO_MODE === 'true' && baseline2569) {
+    const sampleMonthlyShares = [9, 9, 8, 7, 6, 6, 7, 9, 10, 10, 10, 9];
+    baseline2569.isDemo = true;
+    baseline2569.source = 'ข้อมูลจำลองสำหรับสาธิต';
+    baseline2569.monthlyDistribution = baseline2569.monthlyDistribution.map((month, index) => ({
+      ...month,
+      percent: sampleMonthlyShares[index],
+      estimatedFruits: Math.round(baseline2569.totalAnnualYield * sampleMonthlyShares[index] / 100),
+    }));
+  }
 
   return json({
     plot,

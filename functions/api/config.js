@@ -1,7 +1,7 @@
 import { CONFIG } from '../../src/core.js';
 import { json, methodNotAllowed } from '../../src/pages-api.js';
 
-export async function onRequest({ request }) {
+export async function onRequest({ request, env }) {
   if (request.method !== 'GET') return methodNotAllowed();
 
   return json({
@@ -11,5 +11,6 @@ export async function onRequest({ request }) {
     maxPlots: CONFIG.maxPlots,
     bunchesPerPlot: CONFIG.bunchesPerPlot,
     roundDates: CONFIG.roundDates,
+    demoMode: env.DEMO_MODE === 'true',
   });
 }

@@ -1,0 +1,12 @@
+name = "coconut-doae-demo"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "./public"
+
+[vars]
+DEMO_MODE = "true"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "coconut_doae_demo"
+database_id = "ffd92c9a-783f-42ab-b0e1-2e600473e57a"
+preview_database_id = "DB"

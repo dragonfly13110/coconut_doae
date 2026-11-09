@@ -257,6 +257,20 @@ export async function readJson(request) {
 
 export async function requireUser(request, env) {
   await ensureDbInitialized(env.DB);
+
+  // ponytail: demo deployments share a synthetic admin identity; keep DEMO_MODE isolated to its own D1 database.
+  if (env.DEMO_MODE === 'true') {
+    return {
+      id: null,
+      username: 'demo',
+      province_code: 'doae',
+      province_label: 'ผู้ใช้ตัวอย่าง',
+      district_code: null,
+      district_name: null,
+      role: 'admin',
+    };
+  }
+
   const cookies = parseCookies(request.headers.get('cookie') || '');
   const sid = cookies.sid || request.headers.get('x-session-id');
   if (!sid) throw unauthorized();

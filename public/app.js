@@ -84,6 +84,7 @@ const ROLE_LABELS = {
 const state = {
   user: null,
   data: null,
+  demoMode: false,
   activeRound: 1,
   activeTab: 'entry',
   dashboardView: 'cards',
@@ -114,6 +115,12 @@ async function init() {
   fillNumberSelect(el('round'), 1, 6, 'รอบที่ ');
   fillNumberSelect(el('plot'), 1, 10, 'แปลงที่ ');
   bindEvents();
+  try {
+    const config = await api('/api/config');
+    state.demoMode = config.demoMode === true;
+    window.COCONUT_DEMO_MODE = state.demoMode;
+    el('demoNotice').hidden = !state.demoMode;
+  } catch (error) { }
   await loadMe();
 }
 
@@ -1150,9 +1157,11 @@ function showApp() {
   el('loginView').hidden = true;
   if (el('modeNavBar')) el('modeNavBar').hidden = false;
   if (el('appFooter')) el('appFooter').hidden = false;
-  el('logoutBtn').hidden = false;
-  if (el('changePinBtn')) el('changePinBtn').hidden = false;
-  el('userLine').textContent = `${state.user.province_label} | ${roleLabel(state.user.role)}`;
+  el('logoutBtn').hidden = state.demoMode;
+  if (el('changePinBtn')) el('changePinBtn').hidden = state.demoMode;
+  el('userLine').textContent = state.demoMode
+    ? 'เข้าใช้งานตัวอย่างโดยไม่ต้องล็อกอิน'
+    : `${state.user.province_label} | ${roleLabel(state.user.role)}`;
 
   const isAdmin = state.user.role === 'admin';
   el('provinceWrap').hidden = !isAdmin;
